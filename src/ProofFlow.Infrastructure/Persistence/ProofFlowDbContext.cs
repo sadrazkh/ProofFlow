@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Domain.Auditing;
 using ProofFlow.Domain.Common;
+using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Tagging;
 using ProofFlow.Domain.Workspaces;
@@ -39,6 +40,9 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<TagAssignment> TagAssignments => Set<TagAssignment>();
+    public DbSet<ProjectEnvironment> Environments => Set<ProjectEnvironment>();
+    public DbSet<EnvironmentVariable> Variables => Set<EnvironmentVariable>();
+    public DbSet<Secret> Secrets => Set<Secret>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

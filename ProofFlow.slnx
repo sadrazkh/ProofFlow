@@ -11,5 +11,6 @@
   <Folder Name="/tests/">
     <Project Path="tests/ProofFlow.Tests/ProofFlow.Tests.csproj" />
     <Project Path="tests/ProofFlow.IntegrationTests/ProofFlow.IntegrationTests.csproj" />
+    <Project Path="tests/ProofFlow.FakeApi/ProofFlow.FakeApi.csproj" />
   </Folder>
 </Solution>

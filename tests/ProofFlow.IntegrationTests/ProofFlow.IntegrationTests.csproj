@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProofFlow.Web\ProofFlow.Web.csproj" />
     <ProjectReference Include="..\..\src\ProofFlow.Worker\ProofFlow.Worker.csproj" />
+    <ProjectReference Include="..\ProofFlow.FakeApi\ProofFlow.FakeApi.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!--
+    The system under test, for ProofFlow's own tests and for the demo.
+
+    Section 19 of the brief asks for one: something that can be made to be slow, to fail, to
+    succeed on the third try, to return an unordered array, to mint a token. Testing a testing tool
+    against real third-party APIs makes the suite depend on the internet and on somebody else's
+    uptime, and makes "did the diff engine change or did their API?" unanswerable.
+  -->
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- A library, not a host. The web SDK is used for its framework reference to ASP.NET Core;
+         nothing here has a Main, because callers host it in their own process. -->
+    <OutputType>Library</OutputType>
+    <GenerateProgramFile>false</GenerateProgramFile>
+  </PropertyGroup>
+
+</Project>

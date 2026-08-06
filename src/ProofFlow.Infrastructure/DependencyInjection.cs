@@ -4,6 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Infrastructure.Auditing;
 using ProofFlow.Infrastructure.Common;
+using ProofFlow.Infrastructure.Environments;
+using ProofFlow.Infrastructure.Http;
+using ProofFlow.Infrastructure.Security;
+using ProofFlow.TestEngine.Http;
 using ProofFlow.Infrastructure.Persistence;
 
 namespace ProofFlow.Infrastructure;
@@ -48,6 +52,11 @@ public static class DependencyInjection
         services.AddSingleton(new DatabaseSettings(provider, connection));
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IAuditLog, AuditLog>();
+
+        services.AddSingleton<ISecretCipher, AesGcmSecretCipher>();
+        services.AddProofFlowHttpClients();
+        services.AddScoped<IHttpExecutor, GuardedHttpExecutor>();
+        services.AddScoped<EnvironmentContextBuilder>();
 
         return services;
     }

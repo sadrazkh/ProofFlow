@@ -50,8 +50,38 @@ the real queries against SQLite.
 
 ---
 
-## Phase B — Environments, secrets, request builder · next
+## Phase B — Environments, secrets, HTTP execution · **engine done, interface next**
 
-Environments with base URL, authentication, headers, proxy and allowed hosts. Encrypted secrets.
-The HTTP executor with its SSRF guard. A request builder and a response viewer you can click a
-field in. A fake API to test against, so the demo runs with no internet.
+### Done and tested
+
+| | |
+|---|---|
+| Domain | `ProjectEnvironment`, `EnvironmentVariable`, `Secret`, with migrations for both providers |
+| Secrets | AES-256-GCM, fresh nonce per value, key version recorded, generated key persisted |
+| SSRF guard | Policy check before the request **and** an address check at connect time |
+| HTTP executor | Manual redirect following, size cap, timeout, retry with the attempt count kept |
+| Redaction | Values this run used, plus JWT / provider-key / self-naming-JSON patterns |
+| Variables | `{{environment.x}}`, `{{secrets.x}}`, `{{vars.x}}`, `{{steps.a.response.b[0].c}}`, `{{dataset…}}`, `{{run.id}}` |
+| Fake API | Login, categories, category fields, product CRUD, paging, slow, flaky, poll-until, redirect, oversized |
+| Tests | 168 passing — 145 unit, 23 integration against a real socket |
+
+The integration suite runs a genuine login → read-categories chain through the resolver, and proves
+the SSRF guard refuses a **redirect** to `169.254.169.254` — which is the case that matters, because
+`HttpClient`'s own redirect handling runs no policy at all.
+
+### Two bugs caught while building it, both worth recording
+
+The Data Protection fallback for the master key derived a *different* key on every start, because
+`Protect` includes fresh randomness. Nothing would have failed loudly: every secret stored before a
+restart would simply have become an authentication error somewhere else, days later. Replaced with
+a generated key persisted to a file, and there is a test that stands in for a restart.
+
+SQLite refuses to `ORDER BY` a `DateTimeOffset` (found in Phase A, recorded here because the same
+class of problem will recur): the two providers disagree, and only running the real queries on both
+finds it.
+
+### Not built yet
+
+The interface for all of the above — environment and secret screens, the request builder, and the
+response viewer you can click a field in. The engine underneath them is complete and tested, so
+these are views over working machinery rather than new mechanism.

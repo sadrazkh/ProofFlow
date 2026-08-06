@@ -145,6 +145,203 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("AuditEvents", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Environments.EnvironmentVariable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(8000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("ProjectId", "EnvironmentId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Variables", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("AllowInvalidCertificate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("AllowPrivateNetwork")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AllowedHosts")
+                        .HasMaxLength(4000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AuthenticationJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BaseUrl")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("DefaultHeadersJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsProduction")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MaxRedirects")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MaxResponseKilobytes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProxyUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("TimeoutSeconds")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "Slug")
+                        .IsUnique();
+
+                    b.ToTable("Environments", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Environments.Secret", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Ciphertext")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("KeyVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Nonce")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Preview")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tag")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("ProjectId", "EnvironmentId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Secrets", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -455,6 +652,37 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Environments.EnvironmentVariable", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany("Variables")
+                        .HasForeignKey("EnvironmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Environment");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Environments.Secret", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Environment");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Projects.Project", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Workspaces.Workspace", "Workspace")
@@ -486,6 +714,11 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .IsRequired();
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>
+                {
+                    b.Navigation("Variables");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Workspaces.Workspace", b =>
