@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/ProofFlow.Web/package-lock.json
+
+      # The frontend goes first: the .NET build copies wwwroot/build into the output, and a manifest
+      # that is not there yet produces an application that starts and renders unstyled.
+      - name: Install frontend dependencies
+        working-directory: src/ProofFlow.Web
+        run: npm ci
+
+      - name: Type-check and build the frontend
+        working-directory: src/ProofFlow.Web
+        run: npm run build
+
+      - name: Frontend unit tests
+        working-directory: src/ProofFlow.Web
+        run: npm test
+
+      - name: Restore
+        run: dotnet restore ProofFlow.slnx
+
+      - name: Build
+        run: dotnet build ProofFlow.slnx --no-restore --configuration Release
+
+      - name: Test
+        run: dotnet test ProofFlow.slnx --no-build --configuration Release --logger "console;verbosity=normal"
+
+  postgres:
+    name: PostgreSQL migrations and integration tests
+    runs-on: ubuntu-latest
+
+    # The development and test provider is SQLite, so nothing on a laptop ever runs the PostgreSQL
+    # migrations. This job is the only place they are applied before production applies them.
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: proofflow
+          POSTGRES_PASSWORD: proofflow
+          POSTGRES_DB: proofflow
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install dotnet-ef
+        run: dotnet tool install --global dotnet-ef --version 10.0.10
+
+      - name: Apply the PostgreSQL migrations
+        env:
+          ConnectionStrings__Default: 'Host=localhost;Port=5432;Database=proofflow;Username=proofflow;Password=proofflow'
+          Database__Provider: postgres
+        run: |
+          dotnet ef database update \
+            --project src/ProofFlow.Infrastructure \
+            --startup-project src/ProofFlow.Web \
+            --context PostgresProofFlowDbContext
+
+      - name: The model and the migrations agree
+        env:
+          ConnectionStrings__Default: 'Host=localhost;Port=5432;Database=proofflow;Username=proofflow;Password=proofflow'
+          Database__Provider: postgres
+        # An empty migration means the last model change was never captured. Building it against a
+        # stale assembly would capture the old model instead, so this runs after a real build.
+        run: |
+          dotnet ef migrations add CiDriftCheck \
+            --project src/ProofFlow.Infrastructure \
+            --startup-project src/ProofFlow.Web \
+            --context PostgresProofFlowDbContext \
+            --output-dir Persistence/Migrations/Postgres
+          if grep -q "migrationBuilder\." src/ProofFlow.Infrastructure/Persistence/Migrations/Postgres/*CiDriftCheck.cs; then
+            echo "::error::The PostgreSQL model has changes with no migration. Run 'dotnet ef migrations add <name>'."
+            cat src/ProofFlow.Infrastructure/Persistence/Migrations/Postgres/*CiDriftCheck.cs
+            exit 1
+          fi
+
+  lint:
+    name: Translations and formatting
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # TranslationCompletenessTests is the guard against an English sentence appearing in the
+      # middle of a Persian panel, so it gets its own fast job rather than waiting behind the suite.
+      - name: Translation catalogues agree
+        run: dotnet test tests/ProofFlow.Tests --filter "FullyQualifiedName~TranslationCompleteness"

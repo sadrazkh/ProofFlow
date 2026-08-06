@@ -1,0 +1,21 @@
+<Project>
+
+  <!--
+    One version, one target framework, one set of language settings for the whole product.
+
+    The panel reports this version at /api/v1/version and the exported run reports carry it, so a
+    report that says "produced by ProofFlow 0.1.0" is only meaningful while every assembly agrees
+    on the number. Bump it here.
+  -->
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+</Project>

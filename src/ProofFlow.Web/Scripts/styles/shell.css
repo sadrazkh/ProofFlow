@@ -1,0 +1,313 @@
+/*
+  The application shell: sidebar, top bar, page frame, command palette.
+
+  The layout is a two-column grid on desktop and an off-canvas panel below 900px. Written with
+  logical properties throughout, so the whole thing mirrors for Persian without a second rule set.
+*/
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-width, 244px) 1fr;
+  min-block-size: 100dvh;
+  transition: grid-template-columns var(--motion-base) var(--ease-out);
+}
+
+html.sidebar-collapsed .shell { --sidebar-width: 64px; }
+
+/* ---- sidebar ---------------------------------------------------------------------------- */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-inline-end: 1px solid var(--line);
+  position: sticky;
+  inset-block-start: 0;
+  block-size: 100dvh;
+  overflow: hidden;
+  z-index: 30;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  block-size: 56px;
+  flex: none;
+  border-block-end: 1px solid var(--line);
+  color: var(--ink);
+}
+.sidebar-mark {
+  inline-size: 28px;
+  block-size: 28px;
+  flex: none;
+  color: var(--accent);
+}
+.sidebar-wordmark {
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.sidebar-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--space-3) var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.nav-section {
+  padding: var(--space-4) var(--space-3) var(--space-1);
+  font-size: var(--text-2xs);
+  font-weight: var(--weight-medium);
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+}
+/* Persian has no case and does not letter-space; the same rule would render as damage. */
+html[dir='rtl'] .nav-section { text-transform: none; letter-spacing: 0; font-size: var(--text-xs); }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  position: relative;
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+}
+.nav-item:hover { background: var(--surface-hover); color: var(--ink); }
+.nav-item svg { inline-size: 17px; block-size: 17px; flex: none; }
+
+.nav-item.is-active {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: var(--weight-medium);
+}
+/* The active marker is a bar on the reading-start edge, so it moves side with the language. */
+.nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block: 20%;
+  inline-size: 3px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+}
+
+.nav-badge {
+  margin-inline-start: auto;
+  padding: 0 var(--space-2);
+  min-inline-size: 20px;
+  text-align: center;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--ink-subtle);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+}
+.nav-item.is-active .nav-badge { background: var(--accent); color: var(--accent-on); }
+
+.sidebar-foot {
+  flex: none;
+  padding: var(--space-2);
+  border-block-start: 1px solid var(--line);
+}
+
+/* Collapsed: icons only. The label is hidden rather than removed so it stays in the accessibility
+   tree — a rail of unlabelled glyphs is unusable with a screen reader. */
+html.sidebar-collapsed .sidebar-wordmark,
+html.sidebar-collapsed .nav-label,
+html.sidebar-collapsed .nav-section,
+html.sidebar-collapsed .nav-badge,
+html.sidebar-collapsed .workspace-switch-text {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+html.sidebar-collapsed .nav-item { justify-content: center; padding-inline: 0; }
+html.sidebar-collapsed .sidebar-brand { justify-content: center; padding-inline: 0; }
+
+/* ---- workspace switcher ------------------------------------------------------------------ */
+
+.workspace-switch {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--ink);
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.workspace-switch:hover { background: var(--surface-hover); }
+.workspace-switch-text { display: flex; flex-direction: column; align-items: flex-start; min-inline-size: 0; }
+.workspace-switch-name { font-size: var(--text-sm); font-weight: var(--weight-medium); max-inline-size: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-switch-role { font-size: var(--text-2xs); color: var(--ink-subtle); }
+
+/* ---- top bar ------------------------------------------------------------------------------ */
+
+.main-column { display: flex; flex-direction: column; min-inline-size: 0; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-5);
+  block-size: 56px;
+  flex: none;
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(10px);
+  border-block-end: 1px solid var(--line);
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+}
+
+.breadcrumb { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-sm); min-inline-size: 0; }
+.breadcrumb a { color: var(--ink-subtle); }
+.breadcrumb a:hover { color: var(--ink); }
+.breadcrumb-sep { color: var(--ink-faint); flex: none; }
+html[dir='rtl'] .breadcrumb-sep { transform: scaleX(-1); }
+.breadcrumb-current { color: var(--ink); font-weight: var(--weight-medium); }
+
+/*
+  The search is a button, not a text field. A field that accepts typing and does nothing until
+  focus moves elsewhere is worse than no field; this opens the palette, which is what it does.
+*/
+.search-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 200px;
+  padding: 0 var(--space-3);
+  block-size: 32px;
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  color: var(--ink-faint);
+  font-size: var(--text-xs);
+  transition: border-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+}
+.search-trigger:hover { border-color: var(--line-strong); color: var(--ink-subtle); }
+.search-trigger svg { inline-size: 15px; block-size: 15px; }
+.search-trigger .kbd { margin-inline-start: auto; }
+
+/* ---- page frame --------------------------------------------------------------------------- */
+
+.page { flex: 1 1 auto; padding: var(--space-6); min-inline-size: 0; }
+.page-narrow { max-inline-size: 760px; margin-inline: auto; }
+.page-wide { max-inline-size: 1400px; margin-inline: auto; }
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-block-end: var(--space-6);
+}
+.page-title { font-size: var(--text-xl); font-weight: var(--weight-bold); letter-spacing: -0.02em; }
+html[dir='rtl'] .page-title { letter-spacing: 0; }
+.page-subtitle { font-size: var(--text-sm); color: var(--ink-subtle); margin-block-start: var(--space-1); max-inline-size: 62ch; }
+.page-actions { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+
+/* ---- command palette ---------------------------------------------------------------------- */
+
+.palette-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(23, 21, 40, 0.4);
+  backdrop-filter: blur(3px);
+  display: flex;
+  justify-content: center;
+  padding-block-start: 12vh;
+  padding-inline: var(--space-4);
+}
+.palette {
+  inline-size: min(560px, 100%);
+  max-block-size: 60dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+.palette-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-block-end: 1px solid var(--line);
+}
+.palette-input-row svg { inline-size: 18px; block-size: 18px; color: var(--ink-faint); flex: none; }
+.palette-input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+.palette-input:focus { outline: none; }
+.palette-list { overflow-y: auto; padding: var(--space-2); }
+.palette-empty { padding: var(--space-8); text-align: center; color: var(--ink-subtle); font-size: var(--text-sm); }
+
+/* ---- mobile ------------------------------------------------------------------------------- */
+
+@media (max-width: 899px) {
+  .shell { grid-template-columns: 1fr; }
+
+  .sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    inline-size: 268px;
+    transform: translateX(-100%);
+    transition: transform var(--motion-base) var(--ease-out);
+    box-shadow: var(--shadow-xl);
+  }
+  html[dir='rtl'] .sidebar { transform: translateX(100%); }
+  html.sidebar-open .sidebar { transform: translateX(0); }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgba(23, 21, 40, 0.5);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--motion-base) var(--ease-out);
+  }
+  html.sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+
+  .page { padding: var(--space-4); }
+  .topbar { padding-inline: var(--space-3); }
+  .search-trigger { min-inline-size: 0; }
+  .search-trigger span, .search-trigger .kbd { display: none; }
+  .page-title { font-size: var(--text-lg); }
+}
+
+@media (min-width: 900px) {
+  .sidebar-backdrop, .mobile-only { display: none !important; }
+}
+
+@media (max-width: 640px) {
+  .desktop-only { display: none !important; }
+  .page-head { flex-direction: column; align-items: stretch; }
+  .page-actions .btn { flex: 1; }
+}

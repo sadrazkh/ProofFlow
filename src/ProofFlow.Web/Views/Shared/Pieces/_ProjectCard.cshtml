@@ -1,0 +1,35 @@
+@model ProjectCardViewModel
+<a class="card card-pad card-link project-card" href="/projects/@Model.Id" data-accent="@Model.Accent">
+    <div class="row" style="gap: var(--space-3); align-items: flex-start;">
+        <span class="project-mark" aria-hidden="true">@Model.Name[..1].ToUpperInvariant()</span>
+        <div class="grow" style="min-inline-size: 0;">
+            @* dir="auto" on everything the user typed. An English name inside a Persian panel
+               otherwise has its punctuation moved to the wrong end of the line. *@
+            <div class="row" style="gap: var(--space-2);">
+                <span class="semibold truncate" dir="auto">@Model.Name</span>
+                @if (Model.IsArchived)
+                {
+                    <span class="badge badge-idle">@T["project.archivedBadge"]</span>
+                }
+            </div>
+            <p class="text-xs subtle project-card-description" dir="auto">
+                @(Model.Description ?? T["project.subtitle"].Value)
+            </p>
+        </div>
+    </div>
+
+    <div class="row project-card-stats text-xs subtle">
+        <span class="row" style="gap: var(--space-1);">
+            <i data-lucide="workflow" aria-hidden="true"></i>
+            <span class="tabular">@Model.ScenarioCount</span> @T["project.stats.scenarios"]
+        </span>
+        <span class="row" style="gap: var(--space-1);">
+            <i data-lucide="globe" aria-hidden="true"></i>
+            <span class="tabular">@Model.EnvironmentCount</span> @T["project.stats.environments"]
+        </span>
+        <span class="row" style="gap: var(--space-1);">
+            <i data-lucide="target" aria-hidden="true"></i>
+            <span class="tabular">@Model.BaselineCount</span> @T["project.stats.baselines"]
+        </span>
+    </div>
+</a>

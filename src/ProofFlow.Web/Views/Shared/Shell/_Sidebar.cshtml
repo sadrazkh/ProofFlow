@@ -1,0 +1,101 @@
+@{
+    var path = Context.Request.Path.Value ?? "/";
+    var projectId = Context.Items["ProjectId"] as Guid?;
+    var sections = Navigation.For(Me, projectId);
+    var workspaceName = Context.Items["WorkspaceName"] as string ?? "";
+    var roleKey = Me.Role is { } role ? $"workspace.role_{role}" : null;
+}
+<aside class="sidebar" id="sidebar">
+    <a class="sidebar-brand" href="/" aria-label="ProofFlow">
+        <svg class="sidebar-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            @* A seal over a flow line: the run passes through, and what comes out is stamped. *@
+            <path d="M4 22.5c4.2 0 5.6-6 9.4-6 3.1 0 3.6 3.6 6.6 3.6 3 0 4.3-4.1 8-4.1"
+                  stroke="currentColor" stroke-width="2.1" stroke-linecap="round" opacity=".38" />
+            <circle cx="16" cy="12" r="8.2" stroke="currentColor" stroke-width="2.1" />
+            <path d="m12.4 12.1 2.6 2.7 4.7-5.2" stroke="currentColor" stroke-width="2.3"
+                  stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <span class="sidebar-wordmark">ProofFlow</span>
+    </a>
+
+    <nav class="sidebar-scroll" aria-label="@T["nav.dashboard"]">
+        @foreach (var section in sections)
+        {
+            if (section.TitleKey is not null)
+            {
+                <div class="nav-section">@T[section.TitleKey]</div>
+            }
+            @foreach (var item in section.Items)
+            {
+                var active = Navigation.IsActive(item.Path, path);
+                <a class="nav-item @(active ? "is-active" : "")"
+                   href="@item.Path"
+                   @(active ? "aria-current=page" : "")
+                   title="@T[item.LabelKey]">
+                    <i data-lucide="@item.Icon" aria-hidden="true"></i>
+                    <span class="nav-label">@T[item.LabelKey]</span>
+                    @if (item.Badge is > 0)
+                    {
+                        <span class="nav-badge">@item.Badge</span>
+                    }
+                </a>
+            }
+        }
+    </nav>
+
+    <div class="sidebar-foot">
+        @if (Me.IsAuthenticated)
+        {
+            <div data-menu-root style="position: relative;">
+                <button type="button" class="workspace-switch" data-menu-trigger
+                        aria-haspopup="true" aria-expanded="false">
+                    <span class="avatar" aria-hidden="true">@(workspaceName.Length > 0 ? workspaceName[..1].ToUpperInvariant() : "?")</span>
+                    <span class="workspace-switch-text grow">
+                        <span class="workspace-switch-name" dir="auto">@workspaceName</span>
+                        @if (roleKey is not null)
+                        {
+                            <span class="workspace-switch-role">@T[roleKey]</span>
+                        }
+                    </span>
+                    <i data-lucide="chevrons-up-down" aria-hidden="true"></i>
+                </button>
+
+                <div class="menu hidden" data-menu
+                     style="inset-block-end: calc(100% + 6px); inset-inline-start: 0; inline-size: 100%;">
+                    <div class="menu-label">@Me.DisplayName</div>
+                    <div class="menu-separator"></div>
+
+                    <div class="menu-label">@T["theme.label"]</div>
+                    <button type="button" class="menu-item" data-theme-choice="light" aria-pressed="false">
+                        <i data-lucide="sun"></i>@T["theme.light"]
+                    </button>
+                    <button type="button" class="menu-item" data-theme-choice="dark" aria-pressed="false">
+                        <i data-lucide="moon"></i>@T["theme.dark"]
+                    </button>
+                    <button type="button" class="menu-item" data-theme-choice="system" aria-pressed="false">
+                        <i data-lucide="monitor"></i>@T["theme.system"]
+                    </button>
+
+                    <div class="menu-separator"></div>
+                    <div class="menu-label">@T["language.label"]</div>
+                    @* A GET link, not a form: switching language is not a mutation, and it must
+                       return the reader to the page they were on. *@
+                    <a class="menu-item" href="/settings/language?culture=fa&amp;returnUrl=@Uri.EscapeDataString(path)">
+                        <i data-lucide="languages"></i>@T["language.fa"]
+                    </a>
+                    <a class="menu-item" href="/settings/language?culture=en&amp;returnUrl=@Uri.EscapeDataString(path)">
+                        <i data-lucide="languages"></i>@T["language.en"]
+                    </a>
+
+                    <div class="menu-separator"></div>
+                    <form method="post" action="/account/sign-out">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="menu-item">
+                            <i data-lucide="log-out"></i>@T["action.signOut"]
+                        </button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+</aside>

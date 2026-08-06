@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Entities and enums. No package references and no project references, deliberately: the moment
+    the domain can name an EF Core type or an HttpClient, the layering stops being a rule and
+    becomes a suggestion. ArchitectureTests enforces this.
+  -->
+
+</Project>

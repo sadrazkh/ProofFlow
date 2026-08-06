@@ -1,0 +1,104 @@
+@using System.Globalization
+@using System.Text.Json
+@inject ViteManifest Vite
+@inject JsonTranslations Translations
+@{
+    var culture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    var isRtl = culture == "fa";
+    var (script, styles) = Vite.Resolve("Scripts/main.ts");
+    var path = Context.Request.Path.Value ?? "/";
+}
+<!DOCTYPE html>
+<html lang="@culture" dir="@(isRtl ? "rtl" : "ltr")">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>@(ViewData["Title"] is string t && t.Length > 0 ? $"{t} · ProofFlow" : "ProofFlow")</title>
+    <meta name="theme-color" content="#f9f8fc" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    @if (Vite.UseDevServer)
+    {
+        <script type="module" src="@(Vite.DevServerUrl)/@@vite/client"></script>
+        <script type="module" src="@(Vite.DevServerUrl)/Scripts/main.ts"></script>
+    }
+    else
+    {
+        foreach (var href in styles) { <link rel="stylesheet" href="@href" /> }
+    }
+    <script>
+        (function () {
+            var choice = localStorage.getItem('proofflow-theme') || 'system';
+            var dark = choice === 'dark' || (choice === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', dark);
+            document.documentElement.dataset.themeChoice = choice;
+        })();
+    </script>
+</head>
+<body>
+<script type="application/json" id="pf-i18n">@Html.Raw(JsonSerializer.Serialize(Translations.Catalogue(culture)))</script>
+
+<div class="auth-shell">
+    <div class="auth-form-side">
+        <div class="auth-form stack-6">
+            <a class="auth-brand" href="/">
+                <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                    <path d="M4 22.5c4.2 0 5.6-6 9.4-6 3.1 0 3.6 3.6 6.6 3.6 3 0 4.3-4.1 8-4.1"
+                          stroke="currentColor" stroke-width="2.1" stroke-linecap="round" opacity=".38" />
+                    <circle cx="16" cy="12" r="8.2" stroke="currentColor" stroke-width="2.1" />
+                    <path d="m12.4 12.1 2.6 2.7 4.7-5.2" stroke="currentColor" stroke-width="2.3"
+                          stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <span>ProofFlow</span>
+            </a>
+
+            @RenderBody()
+
+            @* Language is switchable before sign-in. Someone who cannot read the form cannot ask
+               for the form in their language once they are past it. *@
+            <div class="row text-xs subtle" style="gap: var(--space-3); justify-content: center;">
+                <a href="/settings/language?culture=fa&amp;returnUrl=@Uri.EscapeDataString(path)">@T["language.fa"]</a>
+                <span class="divider-v" style="block-size: 12px;"></span>
+                <a href="/settings/language?culture=en&amp;returnUrl=@Uri.EscapeDataString(path)">@T["language.en"]</a>
+            </div>
+        </div>
+    </div>
+
+    <aside class="auth-aside">
+        <h2 class="auth-aside-title">@T["app.tagline"]</h2>
+        <div class="auth-points">
+            <div class="auth-point">
+                <span class="auth-point-icon"><i data-lucide="target" aria-hidden="true"></i></span>
+                <div>
+                    <div class="auth-point-title">@T["auth.point1Title"]</div>
+                    <div class="auth-point-body">@T["auth.point1Body"]</div>
+                </div>
+            </div>
+            <div class="auth-point">
+                <span class="auth-point-icon"><i data-lucide="workflow" aria-hidden="true"></i></span>
+                <div>
+                    <div class="auth-point-title">@T["auth.point2Title"]</div>
+                    <div class="auth-point-body">@T["auth.point2Body"]</div>
+                </div>
+            </div>
+            <div class="auth-point">
+                <span class="auth-point-icon"><i data-lucide="git-compare-arrows" aria-hidden="true"></i></span>
+                <div>
+                    <div class="auth-point-title">@T["auth.point3Title"]</div>
+                    <div class="auth-point-body">@T["auth.point3Body"]</div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+
+@foreach (var (kind, message) in TempData.Toasts())
+{
+    <div data-toast="@message" data-toast-kind="@kind"></div>
+}
+
+@if (!Vite.UseDevServer && script is not null)
+{
+    <script type="module" src="@script"></script>
+}
+</body>
+</html>

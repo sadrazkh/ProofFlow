@@ -1,0 +1,42 @@
+@{
+    var crumbs = ViewData["Breadcrumbs"] as IReadOnlyList<(string Label, string? Href)> ?? [];
+}
+<header class="topbar">
+    <button type="button" class="btn btn-ghost btn-icon mobile-only" data-sidebar-toggle
+            aria-expanded="false" aria-controls="sidebar" aria-label="@T["nav.openMenu"]">
+        <i data-lucide="menu" aria-hidden="true"></i>
+    </button>
+
+    <button type="button" class="btn btn-ghost btn-icon desktop-only has-tip" data-sidebar-collapse
+            data-tip="@T["nav.collapse"]" aria-label="@T["nav.collapse"]">
+        <i data-lucide="panel-left-close" aria-hidden="true"></i>
+    </button>
+
+    <nav class="breadcrumb grow truncate" aria-label="@T["nav.overview"]">
+        @for (var i = 0; i < crumbs.Count; i++)
+        {
+            var crumb = crumbs[i];
+            if (i > 0)
+            {
+                <i class="breadcrumb-sep" data-lucide="chevron-right" aria-hidden="true"></i>
+            }
+            if (crumb.Href is { } href && i < crumbs.Count - 1)
+            {
+                <a href="@href" class="truncate">@crumb.Label</a>
+            }
+            else
+            {
+                <span class="breadcrumb-current truncate">@crumb.Label</span>
+            }
+        }
+    </nav>
+
+    @if (Me.IsAuthenticated)
+    {
+        <button type="button" class="search-trigger" data-palette-open aria-label="@T["nav.search"]">
+            <i data-lucide="search" aria-hidden="true"></i>
+            <span>@T["nav.searchHint"]</span>
+            <span class="kbd" aria-hidden="true">Ctrl K</span>
+        </button>
+    }
+</header>

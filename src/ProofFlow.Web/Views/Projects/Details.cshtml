@@ -1,0 +1,32 @@
+@model ProjectCardViewModel
+
+<div class="page-head">
+    <div>
+        <div class="row" style="gap: var(--space-3);">
+            <h1 class="page-title" dir="auto">@Model.Name</h1>
+            @if (Model.IsArchived)
+            {
+                <span class="badge badge-idle">@T["project.archivedBadge"]</span>
+            }
+        </div>
+        <p class="page-subtitle" dir="auto">@(Model.Description ?? T["project.subtitle"].Value)</p>
+    </div>
+    <div class="page-actions">
+        @if (Me.Can(Capability.ManageProject))
+        {
+            <a class="btn btn-secondary" href="/projects/@Model.Id/settings">
+                <i data-lucide="settings" aria-hidden="true"></i>@T["nav.settings"]
+            </a>
+        }
+    </div>
+</div>
+
+@* The project workspace fills in as each phase lands. Rather than render eleven tabs that lead
+   nowhere, the page shows what genuinely exists and names what is next. *@
+<div class="card">
+    <div class="empty">
+        <div class="empty-art"><i data-lucide="waypoints" aria-hidden="true"></i></div>
+        <h2 class="empty-title">@T["projectHome.title"]</h2>
+        <p class="empty-body">@T["projectHome.body"]</p>
+    </div>
+</div>

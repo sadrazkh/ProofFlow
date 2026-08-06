@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The part of ProofFlow that actually runs a test.
+
+    It knows nothing about EF Core, ASP.NET, or the browser. Everything it needs from the outside —
+    a way to send an HTTP request, the time, a secret's value — arrives through an interface
+    declared in this project and implemented in Infrastructure. That is what makes a scenario
+    runnable inside a unit test with no database and no web host, which is the only way the
+    assertion and diff logic can be tested at the granularity it needs.
+  -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProofFlow.Domain\ProofFlow.Domain.csproj" />
+    <ProjectReference Include="..\ProofFlow.Contracts\ProofFlow.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- json-everything: JSON Path and JSON Schema over System.Text.Json's own node model, so no
+         second JSON object model enters the engine. Both MIT. -->
+    <PackageReference Include="JsonPath.Net" Version="3.0.2" />
+    <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+  </ItemGroup>
+
+</Project>

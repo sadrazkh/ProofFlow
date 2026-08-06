@@ -1,0 +1,24 @@
+/*
+  The one stylesheet Razor links. Order matters: tokens define the variables everything else reads,
+  base resets and sets type, then components, then the shell that arranges them.
+*/
+
+/*
+  Two variable faces, upright only.
+
+  `wght.css` rather than `index.css`: index adds the italic axis, and neither face is ever
+  italicised here — Persian has no italic form at all, and slanting a joining script is a rendering
+  fault rather than an emphasis.
+
+  Each file declares one @font-face per Unicode subset with a `unicode-range`, so a Persian page
+  fetches the Arabic block and an English page fetches the Latin one. Both are declared because
+  Persian text is full of Latin: product names, JSON keys, HTTP methods, durations.
+*/
+@import '@fontsource-variable/inter/wght.css';
+@import '@fontsource-variable/vazirmatn/wght.css';
+
+@import './styles/tokens.css';
+@import './styles/base.css';
+@import './styles/components.css';
+@import './styles/shell.css';
+@import './styles/pages.css';

@@ -1,0 +1,34 @@
+# ProofFlow — editor and analyzer conventions.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+
+[*.{cs,csx}]
+indent_size = 4
+# A constructor parameter nobody reads is a dependency nobody wired up. Fail the build rather than
+# let it accumulate.
+dotnet_diagnostic.CS9113.severity = error
+dotnet_diagnostic.IDE0060.severity = warning
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_using_directive_placement = outside_namespace:warning
+
+# EF Core writes these. Holding generated code to the hand-written style rules produces warnings
+# nobody can fix without editing a file the tool will overwrite.
+[**/Persistence/Migrations/**.cs]
+generated_code = true
+dotnet_diagnostic.IDE0161.severity = none
+dotnet_diagnostic.IDE0060.severity = none
+
+[*.{js,ts,vue,json,css,yml,yaml}]
+indent_size = 2
+
+[*.{cshtml,razor}]
+indent_size = 4
+
+[*.md]
+trim_trailing_whitespace = false

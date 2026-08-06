@@ -1,0 +1,23 @@
+@model StatTile
+@{
+    var toneClass = Model.Tone switch
+    {
+        "pass" => "badge-pass",
+        "fail" => "badge-fail",
+        "warn" => "badge-warn",
+        "running" => "badge-running",
+        _ => "badge-accent",
+    };
+}
+<div class="card card-pad stat-tile">
+    <div class="row-between">
+        <span class="text-xs subtle">@Model.Label</span>
+        <span class="badge @toneClass" aria-hidden="true"><i data-lucide="@Model.Icon"></i></span>
+    </div>
+    @* tabular-nums so a column of these does not shift width as the numbers change. *@
+    <div class="stat-value tabular">@Model.Value</div>
+    @if (Model.Caption is { Length: > 0 })
+    {
+        <div class="text-xs faint">@Model.Caption</div>
+    }
+</div>

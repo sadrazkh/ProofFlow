@@ -1,0 +1,171 @@
+/*
+  Reset, typography and the direction-neutral defaults.
+
+  Everything positional in this application is written with logical properties — inline-start
+  rather than left, margin-inline rather than margin-left. Persian is the default language, and a
+  layout built on physical sides has to be mirrored by hand, one rule at a time, forever. Logical
+  properties mirror themselves.
+*/
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui-latin);
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv05' 1, 'ss03' 1;
+}
+
+/*
+  Persian gets its own family and a slightly larger size. Vazirmatn's x-height sits lower than
+  Inter's, so 13px Persian reads smaller than 13px Latin even though the numbers agree — matching
+  the numbers rather than the apparent size is the mistake that makes bilingual interfaces look
+  like the second language was an afterthought.
+*/
+html[lang='fa'] body,
+html[dir='rtl'] body {
+  font-family: var(--font-ui-arabic);
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+}
+
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--ink);
+  letter-spacing: -0.011em;
+}
+
+/* Persian does not letter-space. Negative tracking on a joining script is a rendering fault. */
+html[dir='rtl'] h1, html[dir='rtl'] h2, html[dir='rtl'] h3,
+html[dir='rtl'] h4, html[dir='rtl'] h5, html[dir='rtl'] h6 {
+  letter-spacing: 0;
+}
+
+h1 { font-size: var(--text-xl); }
+h2 { font-size: var(--text-lg); }
+h3 { font-size: var(--text-md); }
+h4 { font-size: var(--text-base); }
+
+p { margin: 0; }
+
+a {
+  color: var(--accent-ink);
+  text-decoration: none;
+  transition: color var(--motion-fast) var(--ease-out);
+}
+a:hover { color: var(--accent-hover); }
+
+code, pre, kbd, samp, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  font-variant-ligatures: none;
+  /* Payloads, hashes and variable paths are read left-to-right whatever the page direction is.
+     Without this, a JSON path inside a Persian sentence reverses its own punctuation. */
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/*
+  Digits.
+
+  Persian pages show Persian digits in prose, but never inside a payload, a duration, a status code
+  or a JSON path — a response time of ۱۲۴ms cannot be copied into a bug report, and a Persian digit
+  inside a JSON string is a different character. So: Persian numerals are opt-in through .num-fa,
+  and everything technical stays Latin.
+*/
+.num-fa { font-variant-numeric: normal; }
+html[dir='rtl'] .num-fa { font-feature-settings: 'ss01' 1; }
+
+.tabular { font-variant-numeric: tabular-nums; }
+
+hr { border: 0; border-block-start: 1px solid var(--line); margin: var(--space-4) 0; }
+
+img, svg, video, canvas { display: block; max-width: 100%; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+
+ul, ol { margin: 0; padding: 0; list-style: none; }
+
+table { border-collapse: collapse; width: 100%; }
+
+/*
+  One focus treatment, everywhere, and only for keyboard users. Removing the outline without
+  replacing it is the single most common way an interface becomes unusable without a mouse.
+*/
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+::selection { background: var(--accent-soft-hover); color: var(--accent-ink); }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); background-clip: content-box; }
+
+/* Visible to a screen reader, invisible on screen. Used for headings that structure a page whose
+   visual hierarchy already says the same thing. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  inset-block-start: var(--space-2);
+  inset-inline-start: var(--space-2);
+  z-index: 100;
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-on);
+  border-radius: var(--radius-md);
+  transform: translateY(-200%);
+  transition: transform var(--motion-base) var(--ease-out);
+}
+.skip-link:focus-visible { transform: translateY(0); color: var(--accent-on); }
+
+/*
+  Anyone who has asked their system to stop animating things means it. Durations go to
+  near-zero rather than to zero, because a few components read transitionend to clean up.
+*/
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

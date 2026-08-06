@@ -1,0 +1,86 @@
+@using System.Globalization
+@using System.Text.Json
+@inject ViteManifest Vite
+@inject JsonTranslations Translations
+@{
+    var culture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    var isRtl = culture == "fa";
+    var (script, styles) = Vite.Resolve("Scripts/main.ts");
+
+    // The islands' strings, emitted as JSON. This is the mechanism that keeps text out of the
+    // components: a component that wants a word it was not given renders the key, visibly.
+    var islandStrings = JsonSerializer.Serialize(Translations.Catalogue(culture));
+}
+<!DOCTYPE html>
+<html lang="@culture" dir="@(isRtl ? "rtl" : "ltr")">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>@(ViewData["Title"] is string t && t.Length > 0 ? $"{t} · ProofFlow" : "ProofFlow")</title>
+    <meta name="theme-color" content="#f9f8fc" />
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+
+    @if (Vite.UseDevServer)
+    {
+        <script type="module" src="@(Vite.DevServerUrl)/@@vite/client"></script>
+        <script type="module" src="@(Vite.DevServerUrl)/Scripts/main.ts"></script>
+    }
+    else
+    {
+        foreach (var href in styles)
+        {
+            <link rel="stylesheet" href="@href" />
+        }
+    }
+
+    @* Runs before first paint. A module cannot: it arrives deferred, which is exactly long enough
+       for a dark-mode user to be shown a white page first. *@
+    <script>
+        (function () {
+            var choice = localStorage.getItem('proofflow-theme') || 'system';
+            var dark = choice === 'dark'
+                || (choice === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+            var root = document.documentElement;
+            root.classList.toggle('dark', dark);
+            root.dataset.themeChoice = choice;
+            if (localStorage.getItem('proofflow-sidebar') === 'collapsed') root.classList.add('sidebar-collapsed');
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute('content', dark ? '#100e1d' : '#f9f8fc');
+        })();
+    </script>
+
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body>
+<a class="skip-link" href="#main">@T["nav.dashboard"]</a>
+
+<script type="application/json" id="pf-i18n">@Html.Raw(islandStrings)</script>
+@Html.AntiForgeryToken()
+
+<div class="shell">
+    <div class="sidebar-backdrop" data-sidebar-backdrop></div>
+    <partial name="Shell/_Sidebar" />
+
+    <div class="main-column">
+        <partial name="Shell/_Topbar" />
+
+        <main class="page @(ViewData["PageClass"] as string)" id="main">
+            @RenderBody()
+        </main>
+    </div>
+</div>
+
+<partial name="Shell/_CommandPalette" />
+
+@foreach (var (kind, message) in TempData.Toasts())
+{
+    <div data-toast="@message" data-toast-kind="@kind"></div>
+}
+
+@if (!Vite.UseDevServer && script is not null)
+{
+    <script type="module" src="@script"></script>
+}
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

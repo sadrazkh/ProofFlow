@@ -1,0 +1,52 @@
+@model SignInViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = T["auth.signInTitle"].Value;
+    var summary = ViewData.ModelState[string.Empty]?.Errors;
+}
+
+<div class="stack-2">
+    <h1 class="page-title">@T["auth.signInTitle"]</h1>
+    <p class="page-subtitle">@T["auth.signInSubtitle"]</p>
+</div>
+
+<form method="post" action="/account/sign-in" class="stack" novalidate>
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+
+    @if (summary is { Count: > 0 })
+    {
+        <div class="form-summary-error" role="alert">
+            <i data-lucide="circle-alert" aria-hidden="true"></i>
+            <span>@summary[0].ErrorMessage</span>
+        </div>
+    }
+
+    <div class="field">
+        <label class="field-label" for="Email">@T["auth.email"]</label>
+        <input class="input" id="Email" name="Email" type="email" value="@Model.Email"
+               autocomplete="username" required
+               aria-invalid="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "true" : "false")"
+               aria-describedby="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "Email-error" : null)" />
+        <partial name="Pieces/_FieldError" model="@("Email")" />
+    </div>
+
+    <div class="field">
+        <label class="field-label" for="Password">@T["auth.password"]</label>
+        <input class="input" id="Password" name="Password" type="password"
+               autocomplete="current-password" required
+               aria-invalid="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "true" : "false")" />
+        <partial name="Pieces/_FieldError" model="@("Password")" />
+    </div>
+
+    <label class="check-row">
+        <input class="checkbox" type="checkbox" name="RememberMe" value="true" checked="@Model.RememberMe" />
+        <span class="check-row-text"><span class="check-row-title">@T["auth.rememberMe"]</span></span>
+    </label>
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block">@T["action.signIn"]</button>
+
+    <p class="text-xs subtle" style="text-align: center;">
+        @T["auth.noAccount"] <a href="/account/sign-up">@T["action.signUp"]</a>
+    </p>
+</form>

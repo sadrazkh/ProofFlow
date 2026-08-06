@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProofFlow.Domain\ProofFlow.Domain.csproj" />
+    <ProjectReference Include="..\ProofFlow.Contracts\ProofFlow.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Abstractions only. Concrete logging, configuration and DI live in the hosts. -->
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+  </ItemGroup>
+
+</Project>

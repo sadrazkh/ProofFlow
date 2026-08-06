@@ -1,0 +1,78 @@
+@model DashboardViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["dashboard.greeting", Model.DisplayName]</h1>
+        <p class="page-subtitle">@T["app.tagline"]</p>
+    </div>
+    @if (Me.Can(Capability.ManageProject))
+    {
+        <div class="page-actions">
+            <a class="btn btn-primary" href="/projects/new">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["project.new"]
+            </a>
+        </div>
+    }
+</div>
+
+@if (Model.IsEmpty)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="flask-conical" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["dashboard.empty.title"]</h2>
+            <p class="empty-body">@T["dashboard.empty.body"]</p>
+            @if (Me.Can(Capability.ManageProject))
+            {
+                <div class="empty-actions">
+                    <a class="btn btn-primary" href="/projects/new">
+                        <i data-lucide="plus" aria-hidden="true"></i>@T["dashboard.empty.action"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="stack-6">
+        <div class="grid-stats">
+            <partial name="Pieces/_StatTile" model="@(new StatTile(T["dashboard.passRate"].Value, Model.TotalRuns == 0 ? "—" : $"{Model.PassRatePercent}%", "circle-check", "pass"))" />
+            <partial name="Pieces/_StatTile" model="@(new StatTile(T["dashboard.failing"].Value, Model.TotalRuns == 0 ? "—" : Model.FailingCount.ToString(), "circle-alert", "fail"))" />
+            <partial name="Pieces/_StatTile" model="@(new StatTile(T["dashboard.awaitingApproval"].Value, Model.AwaitingApproval.ToString(), "list-checks", "warn"))" />
+            <partial name="Pieces/_StatTile" model="@(new StatTile(T["nav.projects"].Value, Model.TotalProjects.ToString(), "folder-open", "accent"))" />
+        </div>
+
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">@T["nav.projects"]</h2>
+                    <p class="card-subtitle">@T["project.subtitle"]</p>
+                </div>
+                <a class="btn btn-ghost btn-sm" href="/projects">
+                    @T["action.more"]<i class="icon-forward" data-lucide="arrow-right" aria-hidden="true"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="grid-cards">
+                    @foreach (var project in Model.Projects)
+                    {
+                        <partial name="Pieces/_ProjectCard" model="project" />
+                    }
+                </div>
+            </div>
+        </section>
+
+        @* The panels the brief asks for arrive with the phases that produce their data. Showing an
+           empty chart labelled "Trend" would be a decoration, not information. *@
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">@T["dashboard.recentRuns"]</h2>
+            </div>
+            <div class="empty empty-inline">
+                <div class="empty-art"><i data-lucide="history" aria-hidden="true"></i></div>
+                <p class="empty-body">@T["dashboard.empty.body"]</p>
+            </div>
+        </section>
+    </div>
+}

@@ -1,0 +1,13 @@
+@model string
+@{
+    // The message sits directly under the field it belongs to. A validation summary at the top of
+    // a form makes the reader match sentences to inputs by hand, which they do wrong on long forms.
+    var entry = ViewData.ModelState[Model];
+}
+@if (entry is { Errors.Count: > 0 })
+{
+    <p class="field-error" id="@(Model)-error" role="alert">
+        <i data-lucide="circle-alert" aria-hidden="true"></i>
+        <span>@entry.Errors[0].ErrorMessage</span>
+    </p>
+}

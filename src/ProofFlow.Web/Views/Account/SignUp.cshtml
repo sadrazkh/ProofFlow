@@ -1,0 +1,70 @@
+@model SignUpViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = T["auth.signUpTitle"].Value;
+    var summary = ViewData.ModelState[string.Empty]?.Errors;
+}
+
+<div class="stack-2">
+    <h1 class="page-title">@T["auth.signUpTitle"]</h1>
+    <p class="page-subtitle">@T["auth.signUpSubtitle"]</p>
+</div>
+
+<form method="post" action="/account/sign-up" class="stack" novalidate>
+    @Html.AntiForgeryToken()
+
+    @if (summary is { Count: > 0 })
+    {
+        <div class="form-summary-error" role="alert">
+            <i data-lucide="circle-alert" aria-hidden="true"></i>
+            <span>@summary[0].ErrorMessage</span>
+        </div>
+    }
+
+    <div class="field">
+        <label class="field-label" for="DisplayName">@T["auth.displayName"]</label>
+        <input class="input" id="DisplayName" name="DisplayName" value="@Model.DisplayName"
+               autocomplete="name" required />
+        <partial name="Pieces/_FieldError" model="@("DisplayName")" />
+    </div>
+
+    <div class="field">
+        <label class="field-label" for="Email">@T["auth.email"]</label>
+        <input class="input" id="Email" name="Email" type="email" value="@Model.Email"
+               autocomplete="username" required />
+        <partial name="Pieces/_FieldError" model="@("Email")" />
+    </div>
+
+    <div class="field">
+        <label class="field-label" for="Password">@T["auth.password"]</label>
+        <input class="input" id="Password" name="Password" type="password"
+               autocomplete="new-password" required minlength="10" />
+        <p class="field-hint">@T["auth.passwordTooShort", 10]</p>
+        <partial name="Pieces/_FieldError" model="@("Password")" />
+    </div>
+
+    <div class="field">
+        <label class="field-label" for="ConfirmPassword">@T["auth.confirmPassword"]</label>
+        <input class="input" id="ConfirmPassword" name="ConfirmPassword" type="password"
+               autocomplete="new-password" required />
+        <partial name="Pieces/_FieldError" model="@("ConfirmPassword")" />
+    </div>
+
+    @if (Model.IsFirstAccount)
+    {
+        <div class="field">
+            <label class="field-label" for="WorkspaceName">
+                @T["auth.workspaceName"]
+                <span class="field-optional">· @T["common.optional"]</span>
+            </label>
+            <input class="input" id="WorkspaceName" name="WorkspaceName" value="@Model.WorkspaceName" />
+            <partial name="Pieces/_FieldError" model="@("WorkspaceName")" />
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block">@T["action.signUp"]</button>
+
+    <p class="text-xs subtle" style="text-align: center;">
+        @T["auth.haveAccount"] <a href="/account/sign-in">@T["action.signIn"]</a>
+    </p>
+</form>

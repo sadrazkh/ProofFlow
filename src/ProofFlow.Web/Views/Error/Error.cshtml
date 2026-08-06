@@ -1,0 +1,23 @@
+@{
+    Layout = "_AuthLayout";
+    var code = ViewData["Code"] as int? ?? 500;
+    var (titleKey, bodyKey) = code switch
+    {
+        404 => ("error.404title", "error.404body"),
+        403 => ("error.403title", "error.403body"),
+        401 => ("error.403title", "error.403body"),
+        _   => ("error.500title", "error.500body"),
+    };
+    ViewData["Title"] = T[titleKey].Value;
+}
+
+@* No stack trace, no exception type, no correlation id nobody can use. What happened, whether
+   anything was saved, and the one link that gets the reader out. The detail is in the log. *@
+<div class="stack">
+    <div class="error-code tabular">@code</div>
+    <h1 class="page-title">@T[titleKey]</h1>
+    <p class="page-subtitle">@T[bodyKey]</p>
+    <div>
+        <a class="btn btn-primary" href="/">@T["error.home"]</a>
+    </div>
+</div>

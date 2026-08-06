@@ -1,0 +1,39 @@
+# .NET
+bin/
+obj/
+*.user
+artifacts/
+
+# Frontend
+node_modules/
+src/ProofFlow.Web/wwwroot/build/
+.vite/
+
+# Local database files. SQLite is the development default, so these appear on every checkout.
+*.db
+*.db-shm
+*.db-wal
+
+# Data Protection keyring — signing/encryption keys, never in a commit.
+keys/
+
+# Secrets / local config
+.env
+*.log
+appsettings.*.local.json
+
+# Test output
+TestResults/
+playwright-report/
+test-results/
+.playwright/
+
+# Screenshots taken against a running instance can hold live tokens and secrets. Only the
+# reviewed, redacted copies under docs/ui/*.reviewed.png belong in the repository.
+docs/ui/raw/
+
+# OS / IDE
+.vs/
+.idea/
+.DS_Store
+Thumbs.db

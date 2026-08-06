@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProofFlow.Domain\ProofFlow.Domain.csproj" />
+    <ProjectReference Include="..\ProofFlow.Contracts\ProofFlow.Contracts.csproj" />
+    <ProjectReference Include="..\ProofFlow.Application\ProofFlow.Application.csproj" />
+    <ProjectReference Include="..\ProofFlow.TestEngine\ProofFlow.TestEngine.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.10" />
+    <PackageReference Include="Cronos" Version="0.13.0" />
+
+    <!--
+      EF Core 10.0.10 still pulls SQLitePCLRaw 2.1.11, whose bundled SQLite carries
+      GHSA-2m69-gcr7-jv3q. Pinning the 3.x bundle lifts the native library past it. Direct rather
+      than transitive on purpose: a transitive pin is invisible, and the next EF bump would quietly
+      drop back to the vulnerable one.
+    -->
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Design-time only: `dotnet ef migrations` needs it, the published app does not. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>

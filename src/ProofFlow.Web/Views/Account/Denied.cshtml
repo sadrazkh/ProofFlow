@@ -1,0 +1,17 @@
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = T["auth.deniedTitle"].Value;
+}
+
+<div class="stack">
+    <div class="empty-art"><i data-lucide="shield" aria-hidden="true"></i></div>
+    <h1 class="page-title">@T["auth.deniedTitle"]</h1>
+    <p class="page-subtitle">@T["auth.deniedBody"]</p>
+    <div class="row" style="gap: var(--space-2);">
+        <a class="btn btn-secondary" href="/">@T["error.home"]</a>
+        <form method="post" action="/account/sign-out">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-ghost">@T["action.signOut"]</button>
+        </form>
+    </div>
+</div>

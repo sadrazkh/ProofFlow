@@ -1,0 +1,52 @@
+@model ProjectFormViewModel
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["project.newTitle"]</h1>
+            <p class="page-subtitle">@T["project.nameHint"]</p>
+        </div>
+    </div>
+
+    <form method="post" action="/projects/new" class="card" novalidate data-guard-unsaved>
+        @Html.AntiForgeryToken()
+
+        <div class="card-body stack">
+            <div class="field">
+                <label class="field-label" for="Name">@T["common.name"]</label>
+                <input class="input" id="Name" name="Name" value="@Model.Name" required autofocus
+                       placeholder="Orders API" />
+                <p class="field-hint">@T["project.nameHint"]</p>
+                <partial name="Pieces/_FieldError" model="@("Name")" />
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="Description">
+                    @T["common.description"] <span class="field-optional">· @T["common.optional"]</span>
+                </label>
+                <textarea class="textarea" id="Description" name="Description" rows="3">@Model.Description</textarea>
+                <p class="field-hint">@T["project.descriptionHint"]</p>
+                <partial name="Pieces/_FieldError" model="@("Description")" />
+            </div>
+
+            <fieldset class="field" style="border: 0; padding: 0; margin: 0;">
+                <legend class="field-label">@T["project.accent"]</legend>
+                <div class="accent-choices">
+                    @foreach (var accent in ProjectFormViewModel.Accents)
+                    {
+                        <label class="accent-choice" data-accent="@accent" title="@accent">
+                            <input type="radio" name="Accent" value="@accent" checked="@(Model.Accent == accent)" />
+                            <span class="sr-only">@accent</span>
+                        </label>
+                    }
+                </div>
+                <p class="field-hint">@T["project.accentHint"]</p>
+            </fieldset>
+        </div>
+
+        <div class="card-footer">
+            <a class="btn btn-secondary" href="/projects">@T["action.cancel"]</a>
+            <button type="submit" class="btn btn-primary">@T["action.create"]</button>
+        </div>
+    </form>
+</div>

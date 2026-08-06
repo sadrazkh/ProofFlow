@@ -1,0 +1,73 @@
+@model ProjectFormViewModel
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["nav.settings"]</h1>
+            <p class="page-subtitle">@Model.Name</p>
+        </div>
+    </div>
+
+    <div class="stack-6">
+        <form method="post" action="/projects/@Model.Id/settings" class="card" novalidate data-guard-unsaved>
+            @Html.AntiForgeryToken()
+
+            <div class="card-body stack">
+                <div class="field">
+                    <label class="field-label" for="Name">@T["common.name"]</label>
+                    <input class="input" id="Name" name="Name" value="@Model.Name" required />
+                    <partial name="Pieces/_FieldError" model="@("Name")" />
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="Description">
+                        @T["common.description"] <span class="field-optional">· @T["common.optional"]</span>
+                    </label>
+                    <textarea class="textarea" id="Description" name="Description" rows="3">@Model.Description</textarea>
+                    <partial name="Pieces/_FieldError" model="@("Description")" />
+                </div>
+
+                <fieldset class="field" style="border: 0; padding: 0; margin: 0;">
+                    <legend class="field-label">@T["project.accent"]</legend>
+                    <div class="accent-choices">
+                        @foreach (var accent in ProjectFormViewModel.Accents)
+                        {
+                            <label class="accent-choice" data-accent="@accent" title="@accent">
+                                <input type="radio" name="Accent" value="@accent" checked="@(Model.Accent == accent)" />
+                                <span class="sr-only">@accent</span>
+                            </label>
+                        }
+                    </div>
+                </fieldset>
+            </div>
+
+            <div class="card-footer">
+                <a class="btn btn-secondary" href="/projects/@Model.Id">@T["action.cancel"]</a>
+                <button type="submit" class="btn btn-primary">@T["action.save"]</button>
+            </div>
+        </form>
+
+        <section class="card">
+            <div class="card-header">
+                <h2 class="card-title">@T["common.dangerZone"]</h2>
+            </div>
+            <div class="card-body row-between wrap">
+                <div>
+                    <div class="semibold">@T["action.archive"]</div>
+                    <p class="text-xs subtle" style="max-inline-size: 52ch;">@T["project.archiveHint"]</p>
+                </div>
+                @* Archiving is reversible, so it asks once and says what it does — no phrase to
+                   type, because ceremony where nothing is lost only teaches people to skip it. *@
+                <form method="post" action="/projects/@Model.Id/archive"
+                      data-confirm="@T["project.archiveHint"]"
+                      data-confirm-title="@T["action.archive"]"
+                      data-confirm-action="@T["action.archive"]">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary">
+                        <i data-lucide="ban" aria-hidden="true"></i>@T["action.archive"]
+                    </button>
+                </form>
+            </div>
+        </section>
+    </div>
+</div>

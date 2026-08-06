@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/ProofFlow.Domain/ProofFlow.Domain.csproj" />
+    <Project Path="src/ProofFlow.Contracts/ProofFlow.Contracts.csproj" />
+    <Project Path="src/ProofFlow.Application/ProofFlow.Application.csproj" />
+    <Project Path="src/ProofFlow.TestEngine/ProofFlow.TestEngine.csproj" />
+    <Project Path="src/ProofFlow.Infrastructure/ProofFlow.Infrastructure.csproj" />
+    <Project Path="src/ProofFlow.Web/ProofFlow.Web.csproj" />
+    <Project Path="src/ProofFlow.Worker/ProofFlow.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ProofFlow.Tests/ProofFlow.Tests.csproj" />
+    <Project Path="tests/ProofFlow.IntegrationTests/ProofFlow.IntegrationTests.csproj" />
+  </Folder>
+</Solution>

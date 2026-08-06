@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <!--
+    The test runner, as its own process.
+
+    Section 9 of the brief: "Test Runner باید از UI جدا و مستقل از Browser کاربر باشد." It can be
+    hosted inside the web application for a single-container install (Runner:InProcess), or run
+    separately against the same database for anything larger. Both topologies drain the same
+    durable job table, so which one is in use changes throughput, not behaviour.
+  -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProofFlow.Domain\ProofFlow.Domain.csproj" />
+    <ProjectReference Include="..\ProofFlow.Contracts\ProofFlow.Contracts.csproj" />
+    <ProjectReference Include="..\ProofFlow.Application\ProofFlow.Application.csproj" />
+    <ProjectReference Include="..\ProofFlow.TestEngine\ProofFlow.TestEngine.csproj" />
+    <ProjectReference Include="..\ProofFlow.Infrastructure\ProofFlow.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

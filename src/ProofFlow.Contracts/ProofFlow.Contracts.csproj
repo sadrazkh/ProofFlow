@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The shapes that cross a boundary: what the browser posts, what a run report exports, what a
+    remote runner agent is handed. Separate from Domain because these are versioned wire formats —
+    changing one breaks a saved file or a deployed agent, and that has to be a visible decision.
+  -->
+
+</Project>

@@ -1,0 +1,48 @@
+@model ProjectListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["project.title"]</h1>
+        <p class="page-subtitle">@T["project.subtitle"]</p>
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-ghost btn-sm" href="/projects?archived=@(!Model.ShowArchived)">
+            <i data-lucide="@(Model.ShowArchived ? "eye-off" : "eye")" aria-hidden="true"></i>
+            @T["project.showArchived"]
+        </a>
+        @if (Model.CanCreate)
+        {
+            <a class="btn btn-primary" href="/projects/new">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["project.new"]
+            </a>
+        }
+    </div>
+</div>
+
+@if (Model.Projects.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="folder-open" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["project.empty.title"]</h2>
+            <p class="empty-body">@T["project.empty.body"]</p>
+            @if (Model.CanCreate)
+            {
+                <div class="empty-actions">
+                    <a class="btn btn-primary" href="/projects/new">
+                        <i data-lucide="plus" aria-hidden="true"></i>@T["project.empty.action"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="grid-cards">
+        @foreach (var project in Model.Projects)
+        {
+            <partial name="Pieces/_ProjectCard" model="project" />
+        }
+    </div>
+}

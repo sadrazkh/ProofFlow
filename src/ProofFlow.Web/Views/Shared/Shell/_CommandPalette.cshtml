@@ -1,0 +1,35 @@
+@{
+    var projectId = Context.Items["ProjectId"] as Guid?;
+    var entries = Navigation.For(Me, projectId).SelectMany(s => s.Items).ToList();
+}
+@if (Me.IsAuthenticated)
+{
+    @* Rendered server-side from the same map as the sidebar, so it can only offer routes this
+       member is authorised to reach. Building the list in the browser would mean shipping the
+       whole route table to every account. *@
+    <div class="palette-overlay hidden" data-palette aria-hidden="true" role="dialog" aria-modal="true"
+         aria-label="@T["nav.search"]">
+        <div class="palette-backdrop" data-palette-backdrop
+             style="position: absolute; inset: 0;"></div>
+        <div class="palette" style="position: relative;">
+            <div class="palette-input-row">
+                <i data-lucide="search" aria-hidden="true"></i>
+                <input class="palette-input" data-palette-input type="text"
+                       placeholder="@T["nav.searchHint"]" aria-label="@T["nav.search"]" autocomplete="off" />
+                <span class="kbd">Esc</span>
+            </div>
+            <div class="palette-list">
+                @foreach (var entry in entries)
+                {
+                    <a class="menu-item" data-palette-item href="@entry.Path"
+                       data-search="@T[entry.LabelKey] @entry.Path">
+                        <i data-lucide="@entry.Icon" aria-hidden="true"></i>
+                        <span class="grow">@T[entry.LabelKey]</span>
+                        <span class="text-xs faint mono">@entry.Path</span>
+                    </a>
+                }
+                <div class="palette-empty hidden" data-palette-empty>@T["nav.noResults"]</div>
+            </div>
+        </div>
+    </div>
+}

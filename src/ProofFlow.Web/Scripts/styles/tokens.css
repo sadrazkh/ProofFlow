@@ -1,0 +1,336 @@
+/*
+  Design tokens.
+
+  Three layers, one direction. Primitives are raw scales with no meaning attached. Semantics give
+  them a job — surface, border, ink, accent. Components consume semantics and nothing else. A rule
+  that reaches past this file for --violet-600 is a rule that will be wrong in dark mode, so the
+  only place a primitive may be named is here.
+
+  Dark is a second set of semantic values, not an inversion. Inverting a light palette gives grey
+  text on charcoal with the contrast of neither: dark surfaces need a compressed, cooler ramp and
+  *less* saturated accents, because a colour that reads as confident on white vibrates on black.
+
+  On the accent: violet, deliberately far from every status hue. This application's colours carry
+  meaning — green passed, red failed, amber is unstable, blue is running — and a brand colour that
+  lands anywhere near those turns a glance at a run list into a second-guess.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* ---- primitives · neutral -------------------------------------------------------------- */
+  /* A hair of violet in the greys, so neutral surfaces sit with the accent instead of beside it. */
+  --gray-0:   #ffffff;
+  --gray-25:  #fdfcff;
+  --gray-50:  #f9f8fc;
+  --gray-100: #f3f1f8;
+  --gray-150: #ebe9f3;
+  --gray-200: #e1dfed;
+  --gray-300: #cbc8dc;
+  --gray-400: #9c98b4;
+  --gray-500: #726e8c;
+  --gray-600: #56526e;
+  --gray-700: #3f3b55;
+  --gray-800: #2a2740;
+  --gray-850: #201d32;
+  --gray-900: #171528;
+  --gray-950: #100e1d;
+
+  /* ---- primitives · accent --------------------------------------------------------------- */
+  --violet-50:  #f4f1ff;
+  --violet-100: #ebe5ff;
+  --violet-200: #d9cfff;
+  --violet-300: #bfacff;
+  --violet-400: #a181fb;
+  --violet-500: #8659f2;
+  --violet-600: #7139e0;
+  --violet-700: #5f2cbd;
+  --violet-800: #4e2799;
+  --violet-900: #40227a;
+
+  /* ---- primitives · status --------------------------------------------------------------- */
+  /* Pass */
+  --green-50:  #ecfdf3;  --green-100: #d3f8e0;  --green-200: #a8f0c4;
+  --green-500: #12a35c;  --green-600: #0b8549;  --green-700: #0a6b3c;
+  --green-300: #6fe0a2;  --green-400: #34c878;
+
+  /* Fail */
+  --red-50:  #fef2f3;  --red-100: #fde0e3;  --red-200: #fbc4ca;
+  --red-300: #f79aa4;  --red-400: #ef6b7c;  --red-500: #e03e55;
+  --red-600: #c22741;  --red-700: #9f1c33;
+
+  /* Unstable / needs attention */
+  --amber-50:  #fffaeb;  --amber-100: #fef0c7;  --amber-200: #fedf89;
+  --amber-300: #fec84b;  --amber-400: #fdb022;  --amber-500: #ef8f01;
+  --amber-600: #c96f05;  --amber-700: #a15c0c;
+
+  /* Running / in progress */
+  --sky-50:  #eff8ff;  --sky-100: #d9edff;  --sky-200: #b2ddff;
+  --sky-300: #7cc6ff;  --sky-400: #38aaf8;  --sky-500: #0d8de6;
+  --sky-600: #0470c2;  --sky-700: #075a9e;
+
+  /* Type changed / structural difference */
+  --fuchsia-100: #fbe8ff; --fuchsia-300: #eeaaff; --fuchsia-500: #c026d3; --fuchsia-600: #a21caf;
+
+  /* Order changed */
+  --teal-100: #cffaf1; --teal-300: #5fe9d0; --teal-500: #14a08a; --teal-600: #0d7d6d;
+
+  /* ---- primitives · geometry ------------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 9px;
+  --radius-lg: 13px;
+  --radius-xl: 18px;
+  --radius-full: 999px;
+
+  /* A 4px base. Every gap, pad and inset in the application is one of these. */
+  --space-1: 4px;   --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-5: 20px;  --space-6: 24px;  --space-8: 32px;  --space-10: 40px;
+  --space-12: 48px; --space-16: 64px; --space-20: 80px;
+
+  /* ---- primitives · type ----------------------------------------------------------------- */
+  /*
+    Two families, chosen per script rather than stacked and hoped for. Vazirmatn is a genuine
+    Persian typeface with proper joining and a matching Latin; Inter carries the Latin UI. Both are
+    variable fonts, so weight is continuous and the download is one file per family.
+
+    Monospace matters more here than in most applications: JSON payloads, headers, diffs and
+    variable paths are read character by character, and a proportional zero next to a capital O in
+    a hash is a real reading error.
+  */
+  --font-ui-latin: 'Inter Variable', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-ui-arabic: 'Vazirmatn Variable', 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+
+  --text-2xs: 0.6875rem;  /* 11px — badge text, table meta */
+  --text-xs:  0.75rem;    /* 12px */
+  --text-sm:  0.8125rem;  /* 13px — the application's default reading size */
+  --text-base: 0.9375rem; /* 15px */
+  --text-md:  1.0625rem;  /* 17px */
+  --text-lg:  1.3125rem;  /* 21px */
+  --text-xl:  1.625rem;   /* 26px */
+  --text-2xl: 2rem;       /* 32px */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+  --leading-relaxed: 1.75;
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- primitives · elevation ------------------------------------------------------------ */
+  /*
+    Shadows are tinted with the neutral's violet rather than pure black. A black shadow over a
+    tinted surface reads as dirt.
+  */
+  --shadow-xs: 0 1px 2px rgba(23, 21, 40, 0.05);
+  --shadow-sm: 0 1px 3px rgba(23, 21, 40, 0.07), 0 1px 2px rgba(23, 21, 40, 0.04);
+  --shadow-md: 0 4px 10px -2px rgba(23, 21, 40, 0.09), 0 2px 4px -2px rgba(23, 21, 40, 0.05);
+  --shadow-lg: 0 12px 24px -6px rgba(23, 21, 40, 0.12), 0 4px 8px -4px rgba(23, 21, 40, 0.06);
+  --shadow-xl: 0 24px 48px -12px rgba(23, 21, 40, 0.18);
+
+  --motion-fast: 110ms;
+  --motion-base: 180ms;
+  --motion-slow: 280ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ======================================================================================== */
+  /* SEMANTICS · light                                                                        */
+  /* ======================================================================================== */
+
+  /* Surfaces, from furthest back to nearest the reader. */
+  --canvas:        var(--gray-50);   /* the page behind everything */
+  --surface:       var(--gray-0);    /* cards, panels, the sidebar */
+  --surface-sunken: var(--gray-100); /* wells: code blocks, inputs at rest, table headers */
+  --surface-raised: var(--gray-0);   /* menus and dialogs, lifted by shadow rather than colour */
+  --surface-hover:  var(--gray-100);
+  --surface-active: var(--gray-150);
+
+  --line:        var(--gray-200);   /* ordinary borders */
+  --line-strong: var(--gray-300);   /* borders that must be seen: inputs, dividers under headers */
+  --line-subtle: var(--gray-150);   /* hairlines between table rows */
+
+  --ink:         var(--gray-900);   /* body text and headings */
+  --ink-muted:   var(--gray-600);   /* secondary text, still comfortably readable */
+  --ink-subtle:  var(--gray-500);   /* labels, timestamps, help text */
+  --ink-faint:   var(--gray-400);   /* placeholders and disabled text only */
+  --ink-inverse: var(--gray-0);
+
+  --accent:         var(--violet-600);
+  --accent-hover:   var(--violet-700);
+  --accent-active:  var(--violet-800);
+  --accent-soft:    var(--violet-50);
+  --accent-soft-hover: var(--violet-100);
+  --accent-border:  var(--violet-200);
+  --accent-ink:     var(--violet-700);  /* accent-coloured text on a light surface */
+  --accent-on:      #ffffff;            /* text on top of the accent */
+
+  --focus-ring: var(--violet-400);
+
+  /* Status. Each has a solid, a soft background, a border and a readable ink. */
+  --pass:        var(--green-600);
+  --pass-soft:   var(--green-50);
+  --pass-border: var(--green-200);
+  --pass-ink:    var(--green-700);
+
+  --fail:        var(--red-500);
+  --fail-soft:   var(--red-50);
+  --fail-border: var(--red-200);
+  --fail-ink:    var(--red-700);
+
+  --warn:        var(--amber-500);
+  --warn-soft:   var(--amber-50);
+  --warn-border: var(--amber-200);
+  --warn-ink:    var(--amber-700);
+
+  --running:        var(--sky-500);
+  --running-soft:   var(--sky-50);
+  --running-border: var(--sky-200);
+  --running-ink:    var(--sky-700);
+
+  --idle:        var(--gray-400);
+  --idle-soft:   var(--gray-100);
+  --idle-border: var(--gray-200);
+  --idle-ink:    var(--gray-600);
+
+  /* Diff. Six categories, because "changed" alone does not tell a reader whether the API broke. */
+  --diff-added-soft:    var(--green-50);
+  --diff-added-ink:     var(--green-700);
+  --diff-added-marker:  var(--green-500);
+  --diff-removed-soft:  var(--red-50);
+  --diff-removed-ink:   var(--red-700);
+  --diff-removed-marker: var(--red-500);
+  --diff-changed-soft:  var(--amber-50);
+  --diff-changed-ink:   var(--amber-700);
+  --diff-changed-marker: var(--amber-500);
+  --diff-type-soft:     var(--fuchsia-100);
+  --diff-type-ink:      var(--fuchsia-600);
+  --diff-type-marker:   var(--fuchsia-500);
+  --diff-order-soft:    var(--teal-100);
+  --diff-order-ink:     var(--teal-600);
+  --diff-order-marker:  var(--teal-500);
+  --diff-ignored-ink:   var(--gray-400);
+
+  /* JSON syntax, used by the response viewer and every payload preview. */
+  --json-key:     var(--violet-700);
+  --json-string:  var(--green-700);
+  --json-number:  var(--sky-700);
+  --json-boolean: var(--fuchsia-600);
+  --json-null:    var(--gray-500);
+  --json-punct:   var(--gray-400);
+
+  /* The workflow canvas. Named separately because the canvas is its own surface with its own
+     contrast needs — node cards must read against the dot grid, not against the page. */
+  --canvas-bg:     var(--gray-100);
+  --canvas-dot:    var(--gray-300);
+  --canvas-node:   var(--gray-0);
+  --canvas-edge:   var(--gray-400);
+  --canvas-edge-active: var(--violet-500);
+  --canvas-selection: rgba(113, 57, 224, 0.10);
+}
+
+/*
+  Dark.
+
+  Surfaces climb rather than fall: the page is the darkest thing, and every card, menu and dialog
+  is a step lighter. Borders do most of the separating work here because shadow barely registers on
+  a dark ground, so --line is proportionally stronger than its light counterpart.
+*/
+:root.dark {
+  color-scheme: dark;
+
+  --canvas:        var(--gray-950);
+  --surface:       var(--gray-900);
+  --surface-sunken: var(--gray-950);
+  --surface-raised: var(--gray-850);
+  --surface-hover:  var(--gray-850);
+  --surface-active: var(--gray-800);
+
+  --line:        #2e2b45;
+  --line-strong: #3d3959;
+  --line-subtle: #252239;
+
+  --ink:         #ebe9f5;
+  --ink-muted:   #a9a4c2;
+  --ink-subtle:  #8b86a5;
+  --ink-faint:   #6a6584;
+  --ink-inverse: var(--gray-950);
+
+  /* One step lighter than the light-mode accent: --violet-600 on near-black vibrates. */
+  --accent:         var(--violet-400);
+  --accent-hover:   var(--violet-300);
+  --accent-active:  var(--violet-200);
+  --accent-soft:    rgba(134, 89, 242, 0.14);
+  --accent-soft-hover: rgba(134, 89, 242, 0.22);
+  --accent-border:  rgba(161, 129, 251, 0.34);
+  --accent-ink:     var(--violet-300);
+  --accent-on:      var(--gray-950);
+
+  --focus-ring: var(--violet-300);
+
+  --pass:        var(--green-400);
+  --pass-soft:   rgba(18, 163, 92, 0.15);
+  --pass-border: rgba(52, 200, 120, 0.32);
+  --pass-ink:    var(--green-300);
+
+  --fail:        var(--red-400);
+  --fail-soft:   rgba(224, 62, 85, 0.15);
+  --fail-border: rgba(239, 107, 124, 0.34);
+  --fail-ink:    var(--red-300);
+
+  --warn:        var(--amber-300);
+  --warn-soft:   rgba(239, 143, 1, 0.15);
+  --warn-border: rgba(253, 176, 34, 0.32);
+  --warn-ink:    var(--amber-200);
+
+  --running:        var(--sky-400);
+  --running-soft:   rgba(13, 141, 230, 0.16);
+  --running-border: rgba(56, 170, 248, 0.34);
+  --running-ink:    var(--sky-300);
+
+  --idle:        var(--gray-500);
+  --idle-soft:   rgba(156, 152, 180, 0.12);
+  --idle-border: #35314e;
+  --idle-ink:    var(--gray-400);
+
+  --diff-added-soft:    rgba(18, 163, 92, 0.16);
+  --diff-added-ink:     var(--green-300);
+  --diff-added-marker:  var(--green-400);
+  --diff-removed-soft:  rgba(224, 62, 85, 0.16);
+  --diff-removed-ink:   var(--red-300);
+  --diff-removed-marker: var(--red-400);
+  --diff-changed-soft:  rgba(239, 143, 1, 0.16);
+  --diff-changed-ink:   var(--amber-200);
+  --diff-changed-marker: var(--amber-300);
+  --diff-type-soft:     rgba(192, 38, 211, 0.18);
+  --diff-type-ink:      var(--fuchsia-300);
+  --diff-type-marker:   var(--fuchsia-300);
+  --diff-order-soft:    rgba(20, 160, 138, 0.18);
+  --diff-order-ink:     var(--teal-300);
+  --diff-order-marker:  var(--teal-300);
+  --diff-ignored-ink:   var(--gray-500);
+
+  --json-key:     var(--violet-300);
+  --json-string:  var(--green-300);
+  --json-number:  var(--sky-300);
+  --json-boolean: var(--fuchsia-300);
+  --json-null:    var(--gray-500);
+  --json-punct:   var(--gray-600);
+
+  --canvas-bg:     var(--gray-950);
+  --canvas-dot:    #302c48;
+  --canvas-node:   var(--gray-850);
+  --canvas-edge:   #4a4568;
+  --canvas-edge-active: var(--violet-400);
+  --canvas-selection: rgba(161, 129, 251, 0.16);
+
+  /* Shadow on dark is a ring of darkness, not a blur — the blur simply disappears. */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 6px 14px -3px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 32px -8px rgba(0, 0, 0, 0.65);
+  --shadow-xl: 0 28px 56px -14px rgba(0, 0, 0, 0.7);
+}
