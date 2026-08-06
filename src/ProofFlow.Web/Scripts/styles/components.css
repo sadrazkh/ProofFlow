@@ -451,6 +451,14 @@ html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
   gap: var(--space-2);
   max-inline-size: 380px;
 }
+/*
+  The kind is carried by the icon, not by a coloured bar down one edge.
+
+  A thick accent stripe on the leading side is the loudest possible way to say something the icon
+  beside it already says — and next to a run list where colour genuinely means pass or fail, a
+  second red thing that only means "a message" competes with the one that matters. The icon sits in
+  a soft tinted chip instead: same information, a quarter of the weight.
+*/
 .toast {
   display: flex;
   align-items: flex-start;
@@ -458,19 +466,26 @@ html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
   padding: var(--space-3) var(--space-4);
   background: var(--surface-raised);
   border: 1px solid var(--line);
-  border-inline-start: 3px solid var(--idle);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   font-size: var(--text-sm);
   animation: toast-in var(--motion-base) var(--ease-out);
 }
-.toast-success { border-inline-start-color: var(--pass); }
-.toast-error   { border-inline-start-color: var(--fail); }
-.toast-warn    { border-inline-start-color: var(--warn); }
-.toast svg { inline-size: 16px; block-size: 16px; flex: none; margin-block-start: 1px; }
-.toast-success svg { color: var(--pass); }
-.toast-error svg   { color: var(--fail); }
-.toast-warn svg    { color: var(--warn); }
+
+/* The first child is the status glyph; the close button's icon must not be tinted with it. */
+.toast > svg {
+  inline-size: 24px;
+  block-size: 24px;
+  flex: none;
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: var(--idle-soft);
+  color: var(--idle-ink);
+}
+.toast-success > svg { background: var(--pass-soft);    color: var(--pass); }
+.toast-error   > svg { background: var(--fail-soft);    color: var(--fail); }
+.toast-warn    > svg { background: var(--warn-soft);    color: var(--warn); }
+.toast .btn svg { inline-size: 16px; block-size: 16px; padding: 0; background: none; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }
