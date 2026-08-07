@@ -46,6 +46,17 @@ public class TestRun : Entity, IWorkspaceOwned
     /// </summary>
     public string? DefinitionJson { get; set; }
 
+    /// <summary>
+    /// The batch this was started as part of, when it was one of several.
+    ///
+    /// Null for an ordinary single run. A run does not behave differently for being in a batch —
+    /// it is the same run, recorded the same way — the batch only says it was started alongside
+    /// others, which is what makes a matrix readable.
+    /// </summary>
+    public Guid? BatchId { get; set; }
+
+    public RunBatch? Batch { get; set; }
+
     public RunStatus Status { get; set; } = RunStatus.Queued;
 
     public RunTrigger Trigger { get; set; } = RunTrigger.Person;

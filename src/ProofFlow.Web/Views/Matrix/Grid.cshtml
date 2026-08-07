@@ -1,0 +1,33 @@
+@using System.Text.Json
+@model MatrixGridViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        batchId = Model.BatchId,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title" dir="auto">@(Model.Name ?? T["matrix.untitled"].Value)</h1>
+        <p class="page-subtitle">@T["matrix.subtitle"]</p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-ghost btn-sm" href="/projects/@Model.ProjectId/matrix">
+            <i data-lucide="layout-grid" aria-hidden="true"></i>@T["nav.matrix"]
+        </a>
+    </div>
+</div>
+
+@*
+    The island carries a skeleton in the shape it becomes, so the page does not jump when Vue takes
+    over and pushes the table down under the reader's cursor.
+*@
+<div data-island="environment-matrix" data-props="@props">
+    <div class="matrix">
+        <div class="skeleton" style="block-size: 56px; border-radius: var(--radius-lg);"></div>
+        <div class="skeleton matrix-skeleton"></div>
+    </div>
+</div>

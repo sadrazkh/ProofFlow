@@ -1091,6 +1091,47 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("RunArtifacts", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Runs.RunBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StartedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "CreatedAt");
+
+                    b.ToTable("RunBatches", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Runs.RunEvent", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1156,6 +1197,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<int>("AssertionsPassed")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid?>("CancelledByUserId")
                         .HasColumnType("uuid");
 
@@ -1215,6 +1259,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BatchId");
 
                     b.HasIndex("DataSetVersionId");
 
@@ -1943,6 +1989,17 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Navigation("Run");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Runs.RunBatch", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Runs.RunEvent", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Runs.TestRun", "Run")
@@ -1956,6 +2013,11 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 
             modelBuilder.Entity("ProofFlow.Domain.Runs.TestRun", b =>
                 {
+                    b.HasOne("ProofFlow.Domain.Runs.RunBatch", "Batch")
+                        .WithMany("Runs")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ProofFlow.Domain.Data.DataSetVersion", "DataSetVersion")
                         .WithMany()
                         .HasForeignKey("DataSetVersionId");
@@ -1975,6 +2037,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasForeignKey("ScenarioId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("Batch");
 
                     b.Navigation("DataSetVersion");
 
@@ -2120,6 +2184,11 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
             modelBuilder.Entity("ProofFlow.Domain.Runs.NodeRun", b =>
                 {
                     b.Navigation("Assertions");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.RunBatch", b =>
+                {
+                    b.Navigation("Runs");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Runs.TestRun", b =>

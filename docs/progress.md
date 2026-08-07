@@ -478,3 +478,72 @@ the engine, which knows nothing about languages — so on a Persian console the 
 validator already had: a code and its arguments from the engine, the sentence from the web layer.
 It is not done piecemeal on purpose — half of it would give a banner that is Persian for the common
 cases and English whenever a step failed, which reads as broken rather than untranslated.
+
+---
+
+## Phase G — More than one place · **done**
+
+The same tests, at the same moment, in two environments — and what differs between them.
+
+| | |
+|---|---|
+| Batch | `RunBatch` is a grouping and nothing else; every cell of the grid is an ordinary `TestRun` |
+| Matrix | N scenarios × M environments queued in one press, capped at 60 cells because each one is a real request to somebody's real API |
+| Grid | A row per scenario, a column per environment, a cell that is a dot, a word and a duration — and a link to that run's console |
+| State | Queued, Running, Passed, Failed — derived from the runs, never stored, so it cannot disagree with them |
+| Comparison | The phase-C diff engine over two runs' responses, step by step, matched by node and iteration |
+| Dynamic fields | The pair detector from phase C offers what looks like an id or a timestamp, so a reader can tell noise from a regression |
+| Verified | `e2e/demo-matrix.ts` ticks the boxes, presses the button, waits for every cell to land, and opens a comparison |
+| Tests | 433 passing — 338 unit, 54 integration, 41 component; 93 accessibility checks, 228 screenshots |
+
+### Four decisions worth recording
+
+**A batch is only a grouping.** A separate "matrix run" type would need its own record of what
+happened, and then there would be two answers to "what did step three return" that could disagree.
+Every cell is a `TestRun`, so clicking one opens the console phase F already built, with its log,
+its timeline and its graph.
+
+**The comparison is computed, not stored.** It is a reading of two runs that are both already
+recorded; a saved copy would be a third answer able to contradict either.
+
+**Steps are matched by node and iteration, never by position.** A branch that went one way in
+staging and the other in production produces two different lists, and comparing them by index would
+diff step three against step four and report nonsense with total confidence. Steps only one side
+reached are listed rather than dropped — that is often the whole answer.
+
+**No rules by default, and that is honest rather than lazy.** Two environments differ in ids,
+timestamps and hostnames as a matter of course, and pretending to know which of those to hide would
+eventually hide a real one. The dynamic-field detector offers them instead and the reader decides.
+
+### What the run and the audit caught
+
+**The two comparison pickers filled the toolbar.** `.select` is full width by default, which is
+right in a form and wrong in a bar — two dropdowns as wide as the page read as the content rather
+than a setting.
+
+**The production column said "Production Production".** Most people call their production
+environment "Production", so a badge saying so beside it is a stutter. It is an icon now, with the
+word behind it for a screen reader, which also survives the column being called "live" or «اصلی».
+
+**The diff viewer said "Identical to the baseline" where no baseline exists.** Its copy assumed the
+one place it had been used. It takes a `subject` prop now, so the words fit the page and the
+colours, layout and keyboard behaviour stay one component.
+
+**The duration inside a cell failed contrast in dark mode** — the subtle grey that reads as
+secondary on a page background does not survive a tinted chip. The hierarchy is carried by weight
+instead.
+
+**A red chip reading "1" did not say what the 1 was**, which is the project's own dot-colour-word
+rule broken on the page that most needs it.
+
+**The scenario and environment pickers wore the browser's default fieldset groove.** The element is
+right — a screen reader should hear the legend before each choice — but its frame belongs to no
+design system.
+
+### Also fixed here
+
+The demo seed created two environments, one of them unreachable, so a comparison between them had
+nothing to show. It now seeds three: Local and Staging both answering the built-in fake API, which
+is exactly the shape of a blue/green pair and makes a comparison demonstrate something, and
+Production as a placeholder that deliberately does not resolve — a demo workspace must not have a
+working route to anything anybody could mistake for real.

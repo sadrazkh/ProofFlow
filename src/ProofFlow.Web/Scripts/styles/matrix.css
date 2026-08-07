@@ -1,0 +1,268 @@
+/*
+  The multi-environment matrix.
+
+  A table, deliberately. The comparison this page exists for is read along a row — "it passed here
+  and failed there" — and a table is the one layout where a row is a row at every width and to
+  every reader, including one using a screen reader who is told which column a cell is in.
+
+  No new colour language: the cells wear the same badge and status tokens as the run history, and
+  the comparison below wears the diff viewer's.
+*/
+
+.matrix {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.matrix-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+/*
+  The two comparison pickers sit on the line, not across it.
+
+  `.select` is full width by default, which is right inside a form and wrong in a toolbar — two
+  dropdowns each as wide as the page read as the main content of the bar rather than a setting.
+*/
+.matrix-head .select {
+  inline-size: auto;
+  min-inline-size: 9rem;
+  max-inline-size: 14rem;
+}
+
+.matrix-skeleton {
+  block-size: 18rem;
+  border-radius: var(--radius-lg);
+}
+
+/* ---- the grid --------------------------------------------------------------------------------- */
+
+.matrix-table th[scope='row'] {
+  font-weight: var(--weight-medium);
+  text-align: start;
+  white-space: nowrap;
+  max-inline-size: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.matrix-column {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+  Production is marked with a symbol, not the word.
+
+  Most people call their production environment "Production", so a badge saying so next to a column
+  headed "Production" reads as a stutter. The mark has to survive the column being called anything —
+  "live", "prod", "‌اصلی" — so it is an icon with the word behind it for a screen reader.
+*/
+.matrix-live {
+  display: inline-flex;
+  color: var(--warn-ink);
+}
+
+/*
+  A cell is a link to the run behind it. Which is the point of the batch being only a grouping:
+  after "this one failed" everything a person needs already exists, one click away.
+*/
+.matrix-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  padding: 3px var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+
+  font-size: var(--text-xs);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.matrix-cell:hover {
+  border-color: currentColor;
+}
+
+.matrix-cell:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+/*
+  The duration is quieter than the verdict, but not by colour.
+
+  It sits inside a tinted chip, and the subtle grey that reads as secondary on a page background
+  fails contrast against pass-soft and fail-soft in dark mode. So the hierarchy is carried by weight
+  instead: the verdict is the heavier word, and both are legible.
+*/
+.matrix-cell-word {
+  font-weight: var(--weight-medium);
+}
+
+.matrix-cell-time {
+  color: currentColor;
+  opacity: 0.85;
+}
+
+/* The row whose comparison is open, so the panel below is clearly about this one. */
+.matrix-table tr.is-open > * {
+  background: var(--accent-soft);
+}
+
+/* ---- the comparison --------------------------------------------------------------------------- */
+
+.matrix-comparison {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.matrix-comparison-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+
+.matrix-comparison-head h2 {
+  margin: 0;
+  font-weight: 600;
+}
+
+/*
+  Which side is which, said in the header rather than only in the columns. "Staging on the left,
+  production on the right" is the sentence a reader has to hold while reading forty rows.
+*/
+.matrix-sides {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.matrix-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+
+  margin: 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.matrix-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  margin: 0 var(--space-3) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.matrix-step-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+}
+
+.matrix-step-name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.matrix-step-codes {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}
+
+/* ---- starting one ----------------------------------------------------------------------------- */
+
+/*
+  Two lists of tick boxes rather than two multi-selects. A multiple-select is a control most people
+  cannot operate without discovering that Ctrl does something, and choosing what to run against
+  production is the wrong place to find that out.
+*/
+.matrix-pickers {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr));
+  gap: var(--space-4);
+}
+
+/*
+  A fieldset for the grouping and the legend, with the browser's frame taken off.
+
+  The element is right — these are a set of related choices and a screen reader should hear the
+  legend before each one — but its default border is a 2px inset groove that belongs to no design
+  system. The list inside carries the frame.
+*/
+.matrix-picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+.matrix-picker > legend {
+  padding: 0;
+}
+
+.matrix-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+
+  max-block-size: 14rem;
+  overflow-y: auto;
+  padding: var(--space-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.matrix-picker-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.matrix-picker-row:hover {
+  background: var(--surface-hover);
+}

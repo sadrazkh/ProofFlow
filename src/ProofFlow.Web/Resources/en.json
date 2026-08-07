@@ -31,7 +31,8 @@
     "closeMenu": "Close the menu",
     "noResults": "Nothing matches that.",
     "captures": "Review queue",
-    "wizard": "Guided setup"
+    "wizard": "Guided setup",
+    "matrix": "Environment matrix"
   },
   "theme": {
     "label": "Appearance",
@@ -466,7 +467,9 @@
       "OrderChanged": "Order changed",
       "RuleViolation": "Rule broken",
       "Ignored": "Ignored"
-    }
+    },
+    "identical": "The two are identical",
+    "against": "Against {0}"
   },
   "rule": {
     "tableCaption": "Comparison rules",
@@ -1228,5 +1231,31 @@
     "column.started": "Started",
     "column.trigger": "Started by",
     "timeline.show": "Show {0} in the log"
+  },
+  "matrix": {
+    "subtitle": "The same tests, at the same moment, in more than one place.",
+    "start": "Run across environments",
+    "cannotStart": "This project needs at least one scenario and one environment first.",
+    "ceiling": "Every cell is a real request to a real API.",
+    "name.placeholder": "Before the release",
+    "untitled": "Untitled matrix",
+    "progress": "Finished",
+    "production": "Production",
+    "compare": "Compare",
+    "compare.open": "Compare",
+    "same": "The same",
+    "differs": "Differs",
+    "column.scenario": "Scenario",
+    "column.cells": "Runs",
+    "state.queued": "Queued",
+    "state.running": "Running",
+    "state.passed": "All passed",
+    "state.failed": "Something failed",
+    "empty.title": "No matrix has been run yet",
+    "empty.body": "Choose some scenarios and two or more environments, and the grid will show where each one passes.",
+    "onlyOneSide": "Only one side reached these steps:",
+    "stepsNotShown": "{0} further steps are not shown.",
+    "noSharedSteps": "These two runs share no step that returned a response.",
+    "failedCount": "{0} failed"
   }
 }

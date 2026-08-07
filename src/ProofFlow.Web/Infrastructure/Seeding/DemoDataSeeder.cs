@@ -119,46 +119,61 @@ public sealed class DemoDataSeeder(
     }
 
     /// <summary>
-    /// Two environments per project, and a base URL that answers.
+    /// Three environments per project, because comparing them is what the product is for.
     ///
-    /// Without one nothing in the demo can run: almost every scenario's first step reads
-    /// <c>{{environment.baseUrl}}</c>, and a workspace where the first test somebody presses Run on
-    /// fails with "environment has no value" teaches them the product is broken.
+    /// At least one has to answer or nothing in the demo can run: almost every scenario's first
+    /// step reads <c>{{environment.baseUrl}}</c>, and a workspace where the first test somebody
+    /// presses Run on fails with "environment has no value" teaches them the product is broken.
     ///
-    /// Local points at this application's own fake API. It is on loopback, which the URL guard
-    /// refuses by default — so the environment says so explicitly, which is also the clearest place
-    /// anybody will ever see that setting demonstrated.
+    /// Local and Staging both point at this application's own fake API. That is not laziness — it
+    /// is what makes a comparison between them show something rather than two columns of failures,
+    /// and it is exactly the shape of a blue/green pair. Production is a placeholder that does not
+    /// resolve, and that is deliberate too: a demo workspace must not have a working route to
+    /// anything anybody could mistake for real, and a column that cannot be reached is a column
+    /// that demonstrates the guard.
+    ///
+    /// Both reachable ones are on loopback, which the URL guard refuses by default — so they say so
+    /// explicitly, which is the clearest place anybody will see that setting demonstrated.
     /// </summary>
     private void Environments(Guid workspaceId, Project project)
     {
-        var local = new ProjectEnvironment
+        var fake = configuration["Demo:BaseUrl"] ?? "http://localhost:5290/fake";
+
+        db.Environments.Add(new ProjectEnvironment
         {
             WorkspaceId = workspaceId,
             ProjectId = project.Id,
             Name = "Local",
             Slug = "local",
-            BaseUrl = configuration["Demo:BaseUrl"] ?? "http://localhost:5290/fake",
+            BaseUrl = fake,
             Kind = EnvironmentKind.Local,
             AllowPrivateNetwork = true,
             SortOrder = 0,
-        };
+        });
 
-        // A second one, unreachable on purpose: the comparison between environments is what the
-        // product is for, and a workspace with one environment cannot show it. It is marked
-        // production so the guard rails around production are visible from the first screen.
-        var staging = new ProjectEnvironment
+        db.Environments.Add(new ProjectEnvironment
         {
             WorkspaceId = workspaceId,
             ProjectId = project.Id,
             Name = "Staging",
             Slug = "staging",
-            BaseUrl = "https://staging.example.test",
+            BaseUrl = fake,
             Kind = EnvironmentKind.Staging,
+            AllowPrivateNetwork = true,
             SortOrder = 1,
-        };
+        });
 
-        db.Environments.Add(local);
-        db.Environments.Add(staging);
+        db.Environments.Add(new ProjectEnvironment
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            Name = "Production",
+            Slug = "production",
+            BaseUrl = "https://production.example.test",
+            Kind = EnvironmentKind.Production,
+            IsProduction = true,
+            SortOrder = 2,
+        });
     }
 
     /// <summary>

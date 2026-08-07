@@ -13,6 +13,7 @@ import ReviewQueue from './islands/ReviewQueue.vue';
 import RegressionWizard from './islands/RegressionWizard.vue';
 import ScenarioCanvas from './islands/ScenarioCanvas.vue';
 import RunConsole from './islands/RunConsole.vue';
+import EnvironmentMatrix from './islands/EnvironmentMatrix.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -45,6 +46,7 @@ island('review-queue', ReviewQueue);
 island('regression-wizard', RegressionWizard);
 island('scenario-canvas', ScenarioCanvas);
 island('run-console', RunConsole);
+island('environment-matrix', EnvironmentMatrix);
 
 mountIslands();
 mountSecretReveal();

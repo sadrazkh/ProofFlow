@@ -67,6 +67,7 @@ const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
   { name: 'wizard', path: (id) => `/projects/${id}/wizard` },
   { name: 'scenarios', path: (id) => `/projects/${id}/scenarios` },
   { name: 'runs', path: (id) => `/projects/${id}/runs` },
+  { name: 'matrix', path: (id) => `/projects/${id}/matrix` },
 ];
 
 type Combination = { language: 'fa' | 'en'; theme: 'light' | 'dark'; viewport: Viewport };

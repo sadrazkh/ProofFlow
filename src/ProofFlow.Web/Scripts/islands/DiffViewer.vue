@@ -20,7 +20,21 @@ import type { DiffResult, DiffRow } from './baselineTypes';
  * these jump to the first of their kind, and n and p walk the findings the way a person reads.
  */
 
-const props = defineProps<{ result: DiffResult | null; pending: boolean; canAccept: boolean }>();
+const props = defineProps<{
+  result: DiffResult | null;
+  pending: boolean;
+  canAccept: boolean;
+
+  /**
+   * What the left-hand side is.
+   *
+   * The viewer draws two JSON documents differing, and that is useful in more than one place — a
+   * response against an approved answer, and one environment against another. Only the words
+   * change, so only the words are a prop: "identical to the baseline" is a false statement on a
+   * page where no baseline is involved.
+   */
+  subject?: 'baseline' | 'other';
+}>();
 const emit = defineEmits<{ accept: [paths: string[]] }>();
 
 /** Row height in pixels. Fixed, because a virtual list needs to know where row 30,000 is. */
@@ -256,7 +270,7 @@ function short(value: string | null | undefined): string {
       <!-- The summary is a control: each number jumps to the first of its kind. -->
       <div class="diff-summary">
         <span v-if="result.matches" class="badge badge-pass">
-          <Icon name="circle-check" />{{ t('baseline.identical') }}
+          <Icon name="circle-check" />{{ t(subject === 'other' ? 'diff.identical' : 'baseline.identical') }}
         </span>
 
         <button
@@ -274,7 +288,7 @@ function short(value: string | null | undefined): string {
         <span class="grow"></span>
 
         <span v-if="result.baselineVersion" class="text-xs subtle">
-          {{ t('baseline.against', result.baselineVersion) }}
+          {{ t(subject === 'other' ? 'diff.against' : 'baseline.against', result.baselineVersion) }}
         </span>
 
         <div v-if="wide" class="segmented" role="group" :aria-label="t('diff.layout')">

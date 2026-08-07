@@ -275,6 +275,11 @@ Audit شده؛ ماتریس Screenshot کامل.
 - مقایسه دو محیط: همان Diff Viewer فاز C با Headerهای «Staging | Production» — زبان بصری جدید
   اختراع نشود.
 
+> **وضعیت اجرا (فاز G):** هر دو مورد انجام شد. سطر = سناریو، ستون = Environment، سلول = نقطه + کلمه
+> + مدت و لینک به Console همان اجرا. مقایسه دقیقاً همان `DiffViewer` فاز C است — فقط یک prop به نام
+> `subject` گرفت تا متنش «در برابر baseline» نگوید جایی که baseline‌ای در کار نیست. ستون Production
+> با آیکون علامت می‌خورد نه با کلمه، چون بیشتر مردم اسم محیطشان را همان «Production» می‌گذارند.
+
 ### D-H — Schedule و Flaky (جفت فاز H)
 
 - فهرست Schedule: Cron خام + ترجمه انسانی زیرش («هر روز ۰۶:۰۰») + «اجرای بعدی» نسبی با `Dates`.
@@ -332,7 +337,7 @@ Pixel-diff در CI برای صفحات پایدار؛ مستندات کاربر 
 - [x] **D-D — انجام شد** (ویرایشگر Dataset، Review Queue، Wizard نه‌گامی)
 - [x] **D-E — انجام شد** (Canvas، Palette، Inspector، Undo/Redo)
 - [x] **D-F — انجام شد** (Run Console: گراف زنده، Log مجازی، Timeline، Cancel)
-- [ ] D-G
+- [x] **D-G — انجام شد** (ماتریس چندمحیطی، مقایسه دو محیط با DiffViewer فاز C)
 - [ ] D-H
 - [ ] D-I
 - [ ] D-J

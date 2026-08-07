@@ -31,7 +31,8 @@
     "closeMenu": "بستن منو",
     "noResults": "چیزی مطابق این پیدا نشد.",
     "captures": "صف بازبینی",
-    "wizard": "راه‌اندازی گام‌به‌گام"
+    "wizard": "راه‌اندازی گام‌به‌گام",
+    "matrix": "ماتریس محیط‌ها"
   },
   "theme": {
     "label": "ظاهر",
@@ -466,7 +467,9 @@
       "OrderChanged": "تغییر ترتیب",
       "RuleViolation": "نقض قاعده",
       "Ignored": "نادیده‌گرفته"
-    }
+    },
+    "identical": "این دو یکسان‌اند",
+    "against": "در برابر {0}"
   },
   "rule": {
     "tableCaption": "قواعد مقایسه",
@@ -1228,5 +1231,31 @@
     "column.started": "شروع",
     "column.trigger": "آغازگر",
     "timeline.show": "نمایش {0} در گزارش"
+  },
+  "matrix": {
+    "subtitle": "همان تست‌ها، در همان لحظه، در بیش از یک جا.",
+    "start": "اجرا روی چند محیط",
+    "cannotStart": "این پروژه اول به دست‌کم یک سناریو و یک محیط نیاز دارد.",
+    "ceiling": "هر سلول یک درخواست واقعی به یک API واقعی است.",
+    "name.placeholder": "پیش از انتشار",
+    "untitled": "ماتریس بی‌نام",
+    "progress": "تمام‌شده",
+    "production": "Production",
+    "compare": "مقایسه",
+    "compare.open": "مقایسه",
+    "same": "یکسان",
+    "differs": "متفاوت",
+    "column.scenario": "سناریو",
+    "column.cells": "اجراها",
+    "state.queued": "در صف",
+    "state.running": "در حال اجرا",
+    "state.passed": "همه موفق",
+    "state.failed": "چیزی ناموفق",
+    "empty.title": "هنوز ماتریسی اجرا نشده",
+    "empty.body": "چند سناریو و دو محیط یا بیشتر را انتخاب کنید؛ جدول نشان می‌دهد هرکدام کجا موفق است.",
+    "onlyOneSide": "این گام‌ها را فقط یک طرف رسید:",
+    "stepsNotShown": "{0} گام دیگر نمایش داده نشده است.",
+    "noSharedSteps": "این دو اجرا هیچ گام مشترکی که پاسخی برگردانده باشد ندارند.",
+    "failedCount": "{0} ناموفق"
   }
 }

@@ -16,6 +16,9 @@ public sealed class TestRunConfiguration : IEntityTypeConfiguration<TestRun>
         builder.HasIndex(r => new { r.ScenarioId, r.CreatedAt });
         builder.HasIndex(r => new { r.WorkspaceId, r.Status });
 
+        // The matrix's own read: every run in one batch, in one query.
+        builder.HasIndex(r => r.BatchId);
+
         builder.HasMany(r => r.Nodes)
             .WithOne(n => n.Run!)
             .HasForeignKey(n => n.TestRunId)
@@ -32,6 +35,24 @@ public sealed class TestRunConfiguration : IEntityTypeConfiguration<TestRun>
             .WithMany()
             .HasForeignKey(r => r.ScenarioId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class RunBatchConfiguration : IEntityTypeConfiguration<RunBatch>
+{
+    public void Configure(EntityTypeBuilder<RunBatch> builder)
+    {
+        builder.ToTable("RunBatches");
+        builder.Property(b => b.Name).HasMaxLength(200);
+
+        builder.HasIndex(b => new { b.ProjectId, b.CreatedAt });
+
+        // Cascade, unlike a run's other references. A batch is nothing but the grouping, so
+        // deleting one should take the grouping and leave the runs — which is what SetNull does.
+        builder.HasMany(b => b.Runs)
+            .WithOne(r => r.Batch!)
+            .HasForeignKey(r => r.BatchId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 

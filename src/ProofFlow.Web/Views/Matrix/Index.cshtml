@@ -1,0 +1,149 @@
+@model MatrixListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.matrix"]</h1>
+        <p class="page-subtitle">@T["matrix.subtitle"]</p>
+    </div>
+</div>
+
+@if (Model.CanRun)
+{
+    <div class="card card-pad stack">
+        <h2 class="card-title">@T["matrix.start"]</h2>
+
+        @if (Model.Scenarios.Count == 0 || Model.Environments.Count < 1)
+        {
+            @* Said plainly rather than showing a form that cannot be submitted. *@
+            <p class="muted">@T["matrix.cannotStart"]</p>
+        }
+        else
+        {
+            <form method="post" action="/projects/@Model.ProjectId/matrix/start" class="stack">
+                @Html.AntiForgeryToken()
+
+                <div class="matrix-pickers">
+                    <fieldset class="matrix-picker">
+                        <legend class="field-label">@T["matrix.column.scenario"]</legend>
+                        <div class="matrix-picker-list">
+                            @foreach (var scenario in Model.Scenarios)
+                            {
+                                <label class="matrix-picker-row">
+                                    <input class="checkbox" type="checkbox" name="scenarioIds"
+                                           value="@scenario.Id" />
+                                    <span dir="auto">@scenario.Name</span>
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
+
+                    <fieldset class="matrix-picker">
+                        <legend class="field-label">@T["run.column.environment"]</legend>
+                        <div class="matrix-picker-list">
+                            @foreach (var environment in Model.Environments)
+                            {
+                                <label class="matrix-picker-row">
+                                    <input class="checkbox" type="checkbox" name="environmentIds"
+                                           value="@environment.Id" />
+                                    <span dir="auto">@environment.Name</span>
+                                    @if (environment.IsProduction)
+                                    {
+                                        @* Marked here as well as in the grid. This is the moment
+                                           somebody decides to send traffic at production. *@
+                                        <span class="badge badge-warn">@T["matrix.production"]</span>
+                                    }
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="matrix-name">
+                        @T["common.name"] <span class="field-optional">· @T["common.optional"]</span>
+                    </label>
+                    <input class="input" id="matrix-name" name="name" maxlength="200"
+                           placeholder="@T["matrix.name.placeholder"]" />
+                </div>
+
+                <div class="row">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="layout-grid" aria-hidden="true"></i>@T["matrix.start"]
+                    </button>
+                    <span class="text-xs subtle">@T["matrix.ceiling"]</span>
+                </div>
+            </form>
+        }
+    </div>
+}
+
+@if (Model.Batches.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="layout-grid" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["matrix.empty.title"]</h2>
+            <p class="empty-body">@T["matrix.empty.body"]</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table table-hover">
+                <caption class="sr-only">@T["nav.matrix"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["matrix.column.cells"]</th>
+                    <th>@T["run.column.verdict"]</th>
+                    <th>@T["run.column.started"]</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var batch in Model.Batches)
+                {
+                    var done = batch.Passed + batch.Failed;
+
+                    <tr>
+                        <td>
+                            <a href="/projects/@Model.ProjectId/matrix/@batch.Id" dir="auto">
+                                @(batch.Name ?? T["matrix.untitled"].Value)
+                            </a>
+                        </td>
+                        <td class="tabular" dir="ltr">@batch.Total</td>
+                        <td>
+                            @if (done < batch.Total)
+                            {
+                                <span class="badge badge-running status-running">
+                                    <span class="status-dot" aria-hidden="true"></span>
+                                    <span class="tabular" dir="ltr">@done/@batch.Total</span>
+                                    <span class="sr-only">@T["matrix.state.running"]</span>
+                                </span>
+                            }
+                            else if (batch.Failed == 0)
+                            {
+                                <span class="badge badge-pass status-pass">
+                                    <span class="status-dot" aria-hidden="true"></span>
+                                    @T["matrix.state.passed"]
+                                </span>
+                            }
+                            else
+                            {
+                                @* A dot, a colour and a word — a red chip reading "1" does not say
+                                   what the 1 is. *@
+                                <span class="badge badge-fail status-fail">
+                                    <span class="status-dot" aria-hidden="true"></span>
+                                    @T["matrix.failedCount", batch.Failed]
+                                </span>
+                            }
+                        </td>
+                        <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(batch.StartedAt))" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

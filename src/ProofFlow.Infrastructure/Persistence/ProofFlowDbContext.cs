@@ -63,6 +63,8 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<WorkflowNode> WorkflowNodes => Set<WorkflowNode>();
     public DbSet<WorkflowConnection> WorkflowConnections => Set<WorkflowConnection>();
     public DbSet<TestRun> Runs => Set<TestRun>();
+
+    public DbSet<RunBatch> RunBatches => Set<RunBatch>();
     public DbSet<NodeRun> NodeRuns => Set<NodeRun>();
     public DbSet<AssertionResult> AssertionResults => Set<AssertionResult>();
     public DbSet<RunEvent> RunEvents => Set<RunEvent>();

@@ -62,6 +62,8 @@ public static class DependencyInjection
         services.AddScoped<Data.DataSetService>();
         services.AddScoped<Scenarios.ScenarioGraphService>();
         services.AddScoped<Runs.RunService>();
+        services.AddScoped<Runs.MatrixService>();
+        services.AddScoped<Runs.EnvironmentComparison>();
         services.AddSingleton<Runs.ScenarioGraphSnapshots>();
 
         // Scoped, and set by whatever starts a piece of background work before anything that reads

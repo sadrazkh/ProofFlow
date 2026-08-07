@@ -41,6 +41,7 @@ public static class Navigation
                 new NavItem("nav.baselines", "target", $"{basePath}/baselines", Capability.ViewProject),
                 new NavItem("nav.captures", "inbox", $"{basePath}/captures", Capability.ViewProject),
                 new NavItem("nav.runs", "history", $"{basePath}/runs", Capability.ViewRun),
+                new NavItem("nav.matrix", "layout-grid", $"{basePath}/matrix", Capability.ViewRun),
             ]));
 
             sections.Add(new NavSection("nav.section_operate", [

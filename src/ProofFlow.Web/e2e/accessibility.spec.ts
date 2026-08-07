@@ -44,6 +44,7 @@ const PROJECT_PAGES = [
   { name: 'wizard', path: (id: string) => `/projects/${id}/wizard` },
   { name: 'scenarios', path: (id: string) => `/projects/${id}/scenarios` },
   { name: 'runs', path: (id: string) => `/projects/${id}/runs` },
+  { name: 'matrix', path: (id: string) => `/projects/${id}/matrix` },
 ];
 
 let projectId: string | null = null;
@@ -161,6 +162,40 @@ for (const theme of ['light', 'dark'] as const) {
           await audit(page, `${target.name} (${language}/${theme})`);
         });
       }
+
+      /**
+       * The matrix with a finished batch in it, and a comparison open.
+       *
+       * The list page would measure a form. The grid is the dense part — a table of coloured cells
+       * that are links, a production marker carried by an icon, and a diff underneath — and every
+       * one of those is a way to be unreadable.
+       */
+      test('matrix grid', async ({ page }) => {
+        test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+        const id = await firstProject(page);
+        expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+        await page.goto(`${BASE}/projects/${id}/matrix`, { waitUntil: 'networkidle' });
+
+        const first = await page.locator('td a[href*="/matrix/"]').first()
+          .getAttribute('href').catch(() => null);
+
+        expect(first, 'there should be a batch to audit — run e2e/demo-matrix.ts first').not.toBeNull();
+
+        await page.goto(`${BASE}${first}`, { waitUntil: 'networkidle' });
+        await page.waitForSelector('[data-island-mounted="true"]');
+        await page.waitForSelector('.matrix-table');
+        await page.waitForTimeout(600);
+
+        await audit(page, `matrix grid (${language}/${theme})`);
+
+        // And with a comparison open, which is markup axe has not seen yet.
+        await page.locator('.matrix-table tbody button').first().click();
+        await page.waitForSelector('.matrix-step', { timeout: 20_000 });
+
+        await audit(page, `matrix comparison (${language}/${theme})`);
+      });
 
       /**
        * The run console, with a finished run in it.
