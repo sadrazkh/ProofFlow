@@ -176,8 +176,47 @@ in Phase I.
 contrast, which in a borderless key/value table made every example look like a value already
 entered. They are italic instead.
 
+---
+
+## Phase C — Assertions, baselines, semantic diff · **engine done, interface next**
+
+### Done and tested
+
+| | |
+|---|---|
+| Matchers | All twenty from §6 of the brief — ignore, type-only, regex, tolerances, subset, array strategies, counts |
+| Rule paths | `$.field`, `$.items[*].x`, `$.items[0].x`, `$..field`, `$['odd key']`, and `$` for the whole document |
+| Diff | Six categories over a two-tree walk: added, removed, changed, type-changed, order-changed, rule violation — plus ignored, which stays visible |
+| Arrays | Ordered, unordered, and matched by key — the last reports the one field that moved instead of everything after position two |
+| Suggestions | GUIDs, JWTs, signed URLs, timestamps and trace ids, graded by confidence and never applied |
+| Assertions | Status, header, JSON field with any matcher, JSON Schema, response time, body contains |
+| Domain | `Baseline`, `BaselineVersion`, `BaselineRule` with the six-state lifecycle, migrations on both providers |
+| Tests | 248 passing — 218 unit, 30 integration |
+
+The comparison is structural, which is the whole point: key order, whitespace and `1` versus `1.0`
+are not differences, and a shuffled list under an unordered rule reports as order-changed rather
+than as every row differing.
+
+### Three decisions worth recording
+
+**Rule paths are matched by our own pattern rather than by the JsonPath library**, because the
+question runs the other way. JsonPath answers "which nodes match this expression?"; the diff walks
+two documents together and needs "does any rule apply to where I am standing?", asked thousands of
+times against a path it is already building. The library is still used for assertions, where the
+question genuinely is find-me-the-nodes.
+
+**System.Text.Json stops at 64 levels by default — the same depth the walk stops at.** A payload
+past the limit failed to parse, fell through to a text comparison, and two identical monsters
+compared equal with the depth never mentioned. Parsing is allowed four times the walk's budget so
+the walk's own limit is the one that fires and explains itself.
+
+**A suggestion is never applied.** The detector grades its confidence so the interface can pre-tick
+the certain ones, but an unticked row does nothing — a field silently excluded is a field that
+stopped being checked without anyone deciding to.
+
 ### Not built yet
 
-Assertions, baselines and the diff engine — Phase C, with **D-C** as its design. The response
-viewer's click menu offers only what exists today (copy the path, copy the value, use it in a
-header); the four options that need a baseline are absent rather than present and disabled.
+The interface: the diff viewer with its summary bar and n/p navigation, the rule builder, the
+suggestion list, field-level accept and reject, and the version timeline. That is **D-C** in the
+[design plan](plan/01-design-plan.md). The engine underneath is complete and tested, so these are
+views over working machinery — the same shape Phase B took.

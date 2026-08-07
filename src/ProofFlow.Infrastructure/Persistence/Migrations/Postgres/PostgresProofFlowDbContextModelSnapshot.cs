@@ -149,6 +149,193 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("AuditEvents", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.Baseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ApprovedVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RequestJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("ProjectId", "EnvironmentId");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Baselines", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("FromSuggestion")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Matcher")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<double?>("Number")
+                        .HasColumnType("double precision");
+
+                    b.Property<double?>("Number2")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Text")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaselineId", "SortOrder");
+
+                    b.ToTable("BaselineRules", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("HeadersJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("NormalizedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("RulesJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("SupersededVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaselineId", "Number")
+                        .IsUnique();
+
+                    b.HasIndex("BaselineId", "Status");
+
+                    b.ToTable("BaselineVersions", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Environments.EnvironmentVariable", b =>
                 {
                     b.Property<Guid>("Id")
@@ -639,6 +826,45 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.Baseline", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId");
+
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Environment");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineRule", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Baselines.Baseline", "Baseline")
+                        .WithMany()
+                        .HasForeignKey("BaselineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Baseline");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineVersion", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Baselines.Baseline", "Baseline")
+                        .WithMany("Versions")
+                        .HasForeignKey("BaselineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Baseline");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Environments.EnvironmentVariable", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
@@ -701,6 +927,11 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .IsRequired();
 
                     b.Navigation("Workspace");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.Baseline", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>

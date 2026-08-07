@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Domain.Auditing;
+using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Common;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
@@ -43,6 +44,9 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<ProjectEnvironment> Environments => Set<ProjectEnvironment>();
     public DbSet<EnvironmentVariable> Variables => Set<EnvironmentVariable>();
     public DbSet<Secret> Secrets => Set<Secret>();
+    public DbSet<Baseline> Baselines => Set<Baseline>();
+    public DbSet<BaselineVersion> BaselineVersions => Set<BaselineVersion>();
+    public DbSet<BaselineRule> BaselineRules => Set<BaselineRule>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
