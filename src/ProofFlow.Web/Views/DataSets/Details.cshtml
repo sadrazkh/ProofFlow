@@ -1,0 +1,76 @@
+@using System.Text.Json
+@model DataSetDetailViewModel
+@{
+    var isNew = Model.DataSetId == Guid.Empty;
+
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        dataSetId = isNew ? null : (Guid?)Model.DataSetId,
+        versionId = Model.CurrentVersionId,
+        canManage = Model.CanManage,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title" dir="auto">@Model.Name</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <p class="page-subtitle" dir="auto">@Model.Description</p>
+        }
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/datasets">
+            <i data-lucide="arrow-left" class="icon-forward" aria-hidden="true"></i>@T["nav.datasets"]
+        </a>
+    </div>
+</div>
+
+<div class="@(isNew ? "stack" : "baseline-layout")">
+    <div data-island="dataset-editor" data-props="@props">
+        <div class="card card-pad stack">
+            <div class="skeleton" style="block-size: 120px;"></div>
+            <div class="skeleton" style="block-size: 240px;"></div>
+        </div>
+    </div>
+
+    @if (!isNew)
+    {
+        <aside class="stack">
+            <section class="card card-pad stack-2">
+                <h2 class="card-title">@T["baseline.history"]</h2>
+                <p class="text-xs subtle">@T["dataset.versionsHelp"]</p>
+
+                <div class="version-rail">
+                    @foreach (var version in Model.Versions)
+                    {
+                        <article class="version-item @(version.IsCurrent ? "is-approved" : "is-superseded")">
+                            <div class="version-mark">
+                                <i data-lucide="@(version.IsCurrent ? "circle-check" : "history")" aria-hidden="true"></i>
+                            </div>
+                            <div>
+                                <div class="version-head">
+                                    <span class="version-number">@T["baseline.version", version.Number]</span>
+                                    @if (version.IsCurrent)
+                                    {
+                                        <span class="badge badge-pass">@T["dataset.current"]</span>
+                                    }
+                                </div>
+                                <p class="version-meta">
+                                    <partial name="Pieces/_Timestamp" model="@(new TimestampView(version.CreatedAt))" />
+                                    <span aria-hidden="true">·</span>
+                                    @T["dataset.rowsShort", version.RowCount]
+                                </p>
+                                @if (!string.IsNullOrWhiteSpace(version.Description))
+                                {
+                                    <p class="version-description" dir="auto">@version.Description</p>
+                                }
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+        </aside>
+    }
+</div>

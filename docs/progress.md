@@ -278,3 +278,60 @@ a size cap, and a clear message when it has gone.
 is one where every difference is a field that changes by itself: the right answer is three rules and
 no new version. Folding that into "save as a new version" would bless a timestamp as a baseline
 value. The two buttons say two different things because they mean two different things.
+
+---
+
+## Phase D — Sample-based regression, capture mode, guided wizard · **done**
+
+Section 5's case, working: two thousand identifiers, two thousand calls, two thousand answers to
+file — and each one with its own idea of what correct looks like.
+
+| | |
+|---|---|
+| Data sets | `DataSet` / `DataSetVersion` / `DataSetRow`, versioned so a report can say which data it ran against |
+| Paste | One value per line, comma- or tab-separated, or JSON — guessed, shown, and overrulable before anything is imported |
+| Capture | One request per row, four in flight, written in chunks so a cancelled sweep keeps what it has |
+| Per-input answers | `BaselineSample`: one approved response per data-set key, written by approving what a sweep captured |
+| Review queue | Six states, bulk selection, and `j` `k` `a` `r` `x` — the work is a keyboard task and the diff sits beside the list |
+| Wizard | Nine steps, one question each, resumable from the browser after a reload |
+| Verified | `e2e/demo-regression.ts` walks all nine steps: paste twelve rows, define the baseline, sweep, approve twelve samples — through the interface, against the local fake API |
+| Tests | 308 passing — 240 unit, 39 integration, 29 component; 69 accessibility checks, 192 screenshots |
+
+### Four decisions worth recording
+
+**A sample-based baseline has no version, and that is not a gap.** Its request necessarily contains
+`{{dataset.current.…}}`, which cannot be sent from the request lab — there is no current row there.
+So "send it, then save what came back" is a path that does not exist for this kind of test, and
+`POST baselines/define` is its own door: a request and a set of rules, with the answers living per
+input in `BaselineSamples`.
+
+**Four requests in flight, not as many as possible.** The thing on the other end is somebody's real
+API, often the one their customers are using, and a test tool that opens two hundred connections to
+it is a denial of service with a friendly name.
+
+**The paste parser looks for agreement among most lines, not all of them.** Demanding unanimity on
+the raw delimiter count sounds stricter and is worse in both directions: one quoted comma inside one
+value made a real table read as a plain list, and so did a single row with a missing cell — the case
+the problem list exists to report. It counts delimiters outside quotes and takes the modal count.
+
+**A duplicate key is numbered apart rather than refused.** Two rows with the same key would mean two
+approved answers for one input, which the baseline cannot hold — but the rows are still worth
+keeping, so the editor says how many before saving and the server disambiguates.
+
+### What the run and the audit caught
+
+**The wizard could not see the data set it had just created.** The list came with the page, so a set
+made at step five was not in it, and step six was permanently unable to start — the exact path the
+wizard exists to make possible. The version it creates is now held separately.
+
+**Step seven was a dead end after a reload.** The sweep summary lived only in memory while
+everything else was persisted, so coming back to the review step showed a heading and nothing else.
+
+**The cursor tint failed contrast in dark mode**, on the one row somebody is reading. At 18% the
+purple wash lifted the background enough that `--ink-subtle` fell to 4.25:1; it is 10% now, and the
+inset accent bar was always the primary marker.
+
+**The fake API had nothing to sweep.** Its catalog is behind a bearer check and its list shuffles;
+`/stable` takes no input and `/volatile` changes every call. `/fake/records/{id}` was added for
+exactly this: an answer that varies by input and by nothing else, so a sweep reporting one
+difference has found a real one.

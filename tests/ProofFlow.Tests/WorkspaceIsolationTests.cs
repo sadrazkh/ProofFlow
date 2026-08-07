@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Domain.Common;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Persistence;
@@ -25,6 +26,37 @@ public sealed class WorkspaceIsolationTests : IDisposable
 
         using var context = Context(new SystemWorkspaceScope());
         context.Database.EnsureCreated();
+    }
+
+    /// <summary>
+    /// Every workspace-owned entity is actually filtered.
+    ///
+    /// The filters are applied by reflecting over the model, which is the right mechanism and also
+    /// a silent one: an entity that implements the interface but is never added as a
+    /// <c>DbSet</c> — or one added under a base type — simply is not there, and nothing says so.
+    /// The consequence is a table readable across tenants, discovered by a customer.
+    /// </summary>
+    [Fact]
+    public void Every_workspace_owned_entity_is_behind_a_filter()
+    {
+        using var context = Context(new SystemWorkspaceScope());
+
+        var owned = typeof(Project).Assembly.GetTypes()
+            .Where(t => t is { IsAbstract: false, IsClass: true }
+                        && typeof(IWorkspaceOwned).IsAssignableFrom(t))
+            .ToArray();
+
+        owned.Should().NotBeEmpty();
+
+        var unfiltered = owned
+            .Where(type => context.Model.FindEntityType(type)?.GetDeclaredQueryFilters().Any() != true)
+            .Select(type => type.Name)
+            .OrderBy(name => name)
+            .ToArray();
+
+        unfiltered.Should().BeEmpty(
+            "these entities hold customer data and are not behind the tenant filter: {0}",
+            string.Join(", ", unfiltered));
     }
 
     [Fact]

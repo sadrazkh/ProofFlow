@@ -323,7 +323,7 @@ Pixel-diff در CI برای صفحات پایدار؛ مستندات کاربر 
 - [x] **D-0 — انجام شد** (۱۱ آیتم؛ جزئیات و یافته‌های حین اجرا در [progress.md](../progress.md))
 - [x] **D-B — انجام شد** (محیط‌ها، Secretها، Request Builder، Response Viewer)
 - [x] **D-C — انجام شد** (Diff، Rule Builder، پیشنهادها، چرخهٔ نسخه‌ها)
-- [ ] D-D
+- [x] **D-D — انجام شد** (ویرایشگر Dataset، Review Queue، Wizard نه‌گامی)
 - [ ] D-E
 - [ ] D-F
 - [ ] D-G

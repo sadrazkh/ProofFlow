@@ -32,12 +32,14 @@ public static class Navigation
                 new NavItem("nav.suites", "square-stack", $"{basePath}/suites", Capability.ViewProject),
                 new NavItem("nav.scenarios", "workflow", $"{basePath}/scenarios", Capability.ViewProject),
                 new NavItem("nav.datasets", "table-2", $"{basePath}/datasets", Capability.ViewProject),
+                new NavItem("nav.wizard", "wand-sparkles", $"{basePath}/wizard", Capability.ViewProject),
                 new NavItem("nav.environments", "globe", $"{basePath}/environments", Capability.ViewProject),
                 new NavItem("nav.variables", "variable", $"{basePath}/variables", Capability.ViewProject),
             ]));
 
             sections.Add(new NavSection("nav.section_verify", [
                 new NavItem("nav.baselines", "target", $"{basePath}/baselines", Capability.ViewProject),
+                new NavItem("nav.captures", "inbox", $"{basePath}/captures", Capability.ViewProject),
                 new NavItem("nav.runs", "history", $"{basePath}/runs", Capability.ViewRun),
             ]));
 

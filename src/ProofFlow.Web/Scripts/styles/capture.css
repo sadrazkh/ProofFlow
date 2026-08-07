@@ -1,0 +1,207 @@
+/*
+  Data sets, the review queue, and the wizard.
+
+  The queue is the screen that decides whether this feature is usable. Somebody sits with two
+  thousand samples and sixty findings, and every millimetre of vertical space is a sample they can
+  see without scrolling — so the rows are tight, the diff sits beside them rather than below, and
+  the whole thing is reachable from the keyboard.
+*/
+
+/* ============================================================================================== */
+/* Data set editor                                                                                 */
+/* ============================================================================================== */
+
+.dataset-editor .textarea { font-size: var(--text-xs); }
+
+.paste-preview {
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.paste-problems { font-size: var(--text-xs); }
+.paste-problems summary { cursor: pointer; color: var(--warn-ink); }
+.paste-problems ul { margin-block-start: var(--space-2); display: flex; flex-direction: column; gap: 4px; }
+.paste-problems li { display: flex; gap: var(--space-3); align-items: baseline; }
+.paste-problems li > .tabular { inline-size: 3ch; text-align: end; color: var(--ink-subtle); flex: none; }
+.paste-problems code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-inline-size: 40ch; }
+
+.data-table td { padding-block: 4px; }
+.data-table .input { block-size: 28px; font-size: var(--text-xs); }
+
+.data-ordinal { inline-size: 44px; text-align: end; font-size: var(--text-xs); }
+.data-actions { inline-size: 40px; }
+
+.data-head { display: flex; align-items: center; gap: var(--space-2); }
+.data-column { block-size: 26px; font-weight: var(--weight-medium); }
+
+/* ============================================================================================== */
+/* Review queue                                                                                    */
+/* ============================================================================================== */
+
+.review { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.review-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+/* The pressed filter. An outline rather than a fill, so the category's own colour still reads. */
+.diff-chip.is-active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.review-layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1100px) {
+  /* The list and the diff side by side: deciding about a sample means reading it, and a diff a
+     scroll away turns one decision into two movements. */
+  .review-layout { grid-template-columns: minmax(320px, 2fr) minmax(0, 3fr); align-items: start; }
+  .review-list { position: sticky; inset-block-start: var(--space-4); max-block-size: 80vh; overflow-y: auto; }
+}
+
+.sample-list { display: flex; flex-direction: column; }
+
+.sample {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  border-block-end: 1px solid var(--line-subtle);
+}
+.sample:hover { background: var(--surface-raised); }
+
+/* Where j and k left the reader, marked the same way the diff marks its cursor. */
+.sample.is-cursor {
+  background: var(--diff-cursor);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+html[dir='rtl'] .sample.is-cursor { box-shadow: inset -2px 0 0 var(--accent); }
+
+.sample.is-selected { background: var(--accent-soft); }
+
+.sample-open {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  padding-block: var(--space-2);
+  font-size: var(--text-xs);
+  text-align: start;
+  cursor: pointer;
+}
+
+.sample-key {
+  flex: 0 0 12ch;
+  max-inline-size: 12ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink);
+}
+
+.sample-summary {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+.sample-failed { color: var(--fail-ink); }
+
+.review-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+/* ============================================================================================== */
+/* Wizard                                                                                          */
+/* ============================================================================================== */
+
+.wizard {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .wizard { grid-template-columns: 220px minmax(0, 1fr); align-items: start; }
+}
+
+.wizard-rail ol { display: flex; gap: var(--space-1); overflow-x: auto; }
+
+@media (min-width: 900px) {
+  /* Vertical where there is room for the step names, horizontal where there is not — the same nine
+     steps either way, because a wizard that hides how many are left is one nobody trusts to end. */
+  .wizard-rail ol { flex-direction: column; overflow: visible; }
+}
+
+.wizard-rail button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wizard-rail button:hover:not(:disabled) { background: var(--surface-sunken); color: var(--ink); }
+.wizard-rail button:disabled { cursor: not-allowed; color: var(--ink-faint); }
+
+.wizard-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+}
+
+.wizard-rail .is-current button { color: var(--ink); font-weight: var(--weight-medium); }
+.wizard-rail .is-current .wizard-mark {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.wizard-rail .is-done .wizard-mark {
+  border-color: var(--pass-border);
+  background: var(--pass-soft);
+  color: var(--pass-ink);
+}
+
+/* On a phone the names would wrap the rail into four lines; the numbers still say where you are. */
+@media (max-width: 899px) {
+  .wizard-name { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+  .wizard-rail button { inline-size: auto; }
+}
+
+.wizard-panel { min-block-size: 320px; }
+
+.wizard-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  border-block-start: 1px solid var(--line);
+  padding-block-start: var(--space-4);
+}

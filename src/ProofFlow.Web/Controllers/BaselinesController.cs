@@ -183,6 +183,59 @@ public sealed class BaselinesController(
     }
 
     /// <summary>
+    /// Creates a baseline from a request alone, with no captured response.
+    ///
+    /// This is how a sample-based test starts, and it needs its own door. The request for one
+    /// necessarily contains <c>{{dataset.current.…}}</c>, which cannot be sent from the request lab
+    /// because there is no current row there — so "send it, then save what came back" is a path
+    /// that does not exist for this kind of test.
+    ///
+    /// What it produces is a baseline with no version: no whole-response answer, because there
+    /// isn't one. The answers live per input in <c>BaselineSamples</c>, written by approving what a
+    /// sweep captured.
+    /// </summary>
+    [HttpPost("define")]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    public async Task<IActionResult> Define(
+        Guid projectId, [FromBody] DefineBaselineCommand command, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(command.Name))
+            return ValidationProblem(localizer["error.required"].Value);
+
+        var name = command.Name.Trim();
+
+        if (await db.Baselines.AnyAsync(b => b.ProjectId == projectId && b.Name == name, cancellationToken))
+            return ValidationProblem(localizer["baseline.nameTaken", name].Value);
+
+        var baseline = new Baseline
+        {
+            WorkspaceId = me.WorkspaceId!.Value,
+            ProjectId = projectId,
+            EnvironmentId = command.EnvironmentId,
+            Name = name,
+            Description = command.Description,
+            RequestJson = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                method = string.IsNullOrWhiteSpace(command.Method) ? "GET" : command.Method,
+                url = command.Url ?? string.Empty,
+            }),
+            CreatedByUserId = me.UserId ?? Guid.Empty,
+        };
+
+        db.Baselines.Add(baseline);
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.created", projectId, nameof(Baseline), baseline.Id, baseline.Name), cancellationToken);
+
+        return Json(new
+        {
+            baselineId = baseline.Id,
+            url = $"/projects/{projectId}/baselines/{baseline.Id}",
+        });
+    }
+
+    /// <summary>
     /// Replays the baseline's request and compares what comes back with what was approved.
     /// </summary>
     [HttpPost("{baselineId:guid}/compare")]
@@ -443,5 +496,14 @@ public sealed record CaptureBaselineCommand
 }
 
 public sealed record CompareCommand(Guid? EnvironmentId);
+
+public sealed record DefineBaselineCommand
+{
+    public string? Name { get; init; }
+    public string? Description { get; init; }
+    public string? Method { get; init; }
+    public string? Url { get; init; }
+    public Guid? EnvironmentId { get; init; }
+}
 
 public sealed record BodyCommand(string? Body);

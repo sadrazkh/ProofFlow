@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Domain.Auditing;
 using ProofFlow.Domain.Baselines;
+using ProofFlow.Domain.Capture;
+using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Common;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
@@ -47,6 +49,12 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<Baseline> Baselines => Set<Baseline>();
     public DbSet<BaselineVersion> BaselineVersions => Set<BaselineVersion>();
     public DbSet<BaselineRule> BaselineRules => Set<BaselineRule>();
+    public DbSet<BaselineSample> BaselineSamples => Set<BaselineSample>();
+    public DbSet<DataSet> DataSets => Set<DataSet>();
+    public DbSet<DataSetVersion> DataSetVersions => Set<DataSetVersion>();
+    public DbSet<DataSetRow> DataSetRows => Set<DataSetRow>();
+    public DbSet<CaptureSession> CaptureSessions => Set<CaptureSession>();
+    public DbSet<CaptureSample> CaptureSamples => Set<CaptureSample>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

@@ -1,0 +1,35 @@
+@using System.Text.Json
+@model WizardViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        environments = Model.Environments.Select(e => new
+        {
+            id = e.Id, name = e.Name, baseUrl = e.BaseUrl, isProduction = e.IsProduction,
+        }),
+        baselines = Model.Baselines.Select(b => new { id = b.Id, name = b.Name }),
+        dataSets = Model.DataSets.Select(d => new
+        {
+            id = d.Id, name = d.Name, currentVersionId = d.CurrentVersionId, rowCount = d.RowCount,
+        }),
+        canRun = Model.CanRun,
+        canManage = Model.CanManage,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["wizard.title"]</h1>
+        <p class="page-subtitle">@T["wizard.subtitle"]</p>
+    </div>
+</div>
+
+@* The rail is server-rendered in the skeleton at the same width the island uses, so the panel
+   beside it does not jump sideways when Vue takes over. *@
+<div data-island="regression-wizard" data-props="@props">
+    <div class="card card-pad stack">
+        <div class="skeleton skeleton-title" style="inline-size: 30%;"></div>
+        <div class="skeleton" style="block-size: 260px;"></div>
+    </div>
+</div>

@@ -8,6 +8,9 @@ import { flushServerToasts, mountToastDemos } from './lib/toast';
 import { island, mountIslands } from './lib/islands';
 import RequestLab from './islands/RequestLab.vue';
 import BaselineWorkbench from './islands/BaselineWorkbench.vue';
+import DataSetEditor from './islands/DataSetEditor.vue';
+import ReviewQueue from './islands/ReviewQueue.vue';
+import RegressionWizard from './islands/RegressionWizard.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -35,6 +38,9 @@ mountUnsavedGuard();
 // Registered before mounting, which is the only ordering that matters here.
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);
+island('dataset-editor', DataSetEditor);
+island('review-queue', ReviewQueue);
+island('regression-wizard', RegressionWizard);
 
 mountIslands();
 mountSecretReveal();

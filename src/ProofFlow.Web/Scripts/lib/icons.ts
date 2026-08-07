@@ -2,15 +2,17 @@ import {
   createIcons,
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Ban, Bell, Boxes, Braces, Bug,
   CalendarClock, Camera, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+  ClipboardPaste,
   ChevronsUpDown,
   CircleAlert, CircleCheck, CircleDot, CircleHelp, CirclePlay, CircleSlash, Clock, Code,
   Copy, Database, Diff, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileJson, FilePlus2,
   Filter, FlaskConical, FolderOpen, GitBranch, GitCompareArrows, Globe, Hash, History,
-  Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
+  Inbox, Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
   Lock, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
   RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck,
   SlidersHorizontal, Sparkles, Square, SquareStack, Sun, Table2, Tag, Target, Timer,
-  TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, Waypoints, Workflow, X, Zap,
+  TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, WandSparkles, Waypoints,
+  Workflow, X, Zap,
 } from 'lucide';
 
 /**
@@ -24,15 +26,17 @@ import {
 const used = {
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Ban, Bell, Boxes, Braces, Bug,
   CalendarClock, Camera, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+  ClipboardPaste,
   ChevronsUpDown,
   CircleAlert, CircleCheck, CircleDot, CircleHelp, CirclePlay, CircleSlash, Clock, Code,
   Copy, Database, Diff, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileJson, FilePlus2,
   Filter, FlaskConical, FolderOpen, GitBranch, GitCompareArrows, Globe, Hash, History,
-  Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
+  Inbox, Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
   Lock, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
   RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck,
   SlidersHorizontal, Sparkles, Square, SquareStack, Sun, Table2, Tag, Target, Timer,
-  TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, Waypoints, Workflow, X, Zap,
+  TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, WandSparkles, Waypoints,
+  Workflow, X, Zap,
 };
 
 /** One icon's shape: a list of SVG child elements, as lucide ships them. */

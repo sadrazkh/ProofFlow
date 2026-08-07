@@ -102,7 +102,7 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
     /// response the way a person reads it. Rows that are neither findings nor on the path to one
     /// are kept — a diff that only shows what changed gives no sense of what did not.
     /// </summary>
-    private static DiffResultDto Flatten(DiffResult diff, string version, int statusCode, double durationMs)
+    public static DiffResultDto Flatten(DiffResult diff, string version, int statusCode, double durationMs)
     {
         var rows = new List<DiffRowDto>();
         var findings = new List<int>();
@@ -433,7 +433,7 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
     /// Lets a replay answer "did anything change?" without a full comparison, which matters when a
     /// suite walks two thousand samples. Only a mismatch triggers the real diff.
     /// </summary>
-    private static string Hash(string body, ComparisonRuleSet rules)
+    public static string Hash(string body, ComparisonRuleSet rules)
     {
         // Compared against itself under the same rules: whatever the rules set aside cannot
         // contribute, so two bodies differing only in ignored fields hash the same.

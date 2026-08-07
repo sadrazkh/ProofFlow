@@ -173,6 +173,33 @@ public static class FakeApi
             nested = new { score = 12.5, active = true },
         }));
 
+        /// <summary>
+        /// One record per identifier, the same answer every time.
+        ///
+        /// What sample-based regression needs and nothing else here provides: the catalog is behind
+        /// a bearer check and its list shuffles, <c>/stable</c> takes no input, and
+        /// <c>/volatile</c> changes on every call. This varies by input and by nothing else, so a
+        /// sweep across two thousand rows that reports a single difference has found a real one.
+        ///
+        /// Everything is derived from the id arithmetically rather than stored, so the set can be
+        /// as large as a test wants without the fixture growing.
+        /// </summary>
+        group.MapGet("/records/{id}", (string id) =>
+        {
+            if (!int.TryParse(id, out var number))
+                return Results.Json(new { error = "not_a_number", id }, statusCode: 400);
+
+            return Results.Ok(new
+            {
+                id = number,
+                name = $"Record {number}",
+                score = Math.Round(number * 1.5, 2),
+                active = number % 3 != 0,
+                tags = new[] { number % 2 == 0 ? "even" : "odd", $"band-{number / 10}" },
+                nested = new { depth = number % 5, label = $"group {number % 4}" },
+            });
+        });
+
         // Three fields that differ on every call. What "suggest the dynamic fields" has to find.
         group.MapGet("/volatile", () => Results.Ok(new
         {

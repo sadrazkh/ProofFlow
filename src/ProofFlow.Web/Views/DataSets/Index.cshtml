@@ -1,0 +1,83 @@
+@model DataSetListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.datasets"]</h1>
+        <p class="page-subtitle">@T["dataset.subtitle"]</p>
+    </div>
+    @if (Model.CanManage)
+    {
+        <div class="page-actions">
+            <a class="btn btn-primary" href="/projects/@Model.ProjectId/datasets/new">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["dataset.new"]
+            </a>
+        </div>
+    }
+</div>
+
+@if (Model.Sets.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="table-2" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["dataset.empty.title"]</h2>
+            <p class="empty-body">@T["dataset.empty.body"]</p>
+            @if (Model.CanManage)
+            {
+                <div class="empty-actions">
+                    <a class="btn btn-primary" href="/projects/@Model.ProjectId/datasets/new">
+                        <i data-lucide="plus" aria-hidden="true"></i>@T["dataset.new"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table">
+                <caption class="sr-only">@T["nav.datasets"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["dataset.keyColumn"]</th>
+                    <th>@T["dataset.rows"]</th>
+                    <th>@T["baseline.versions"]</th>
+                    <th>@T["common.updated"]</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var set in Model.Sets)
+                {
+                    <tr>
+                        <td>
+                            <a href="/projects/@Model.ProjectId/datasets/@set.Id" dir="auto">@set.Name</a>
+                            @if (!string.IsNullOrWhiteSpace(set.Description))
+                            {
+                                <p class="text-xs subtle" dir="auto">@set.Description</p>
+                            }
+                        </td>
+                        <td>
+                            @if (set.KeyColumn is { Length: > 0 } key)
+                            {
+                                <code class="mono">@key</code>
+                            }
+                            else
+                            {
+                                @* Not blank: rows without a key column are identified by position,
+                                   which is worth saying rather than leaving to be discovered. *@
+                                <span class="subtle">@T["dataset.byPosition"]</span>
+                            }
+                        </td>
+                        <td class="tabular">@set.RowCount</td>
+                        <td class="tabular">@set.VersionCount</td>
+                        <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(set.UpdatedAt))" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

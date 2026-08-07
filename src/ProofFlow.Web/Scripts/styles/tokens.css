@@ -388,7 +388,10 @@
   --diff-rule-marker:   var(--red-300);
   --diff-ignored-soft:  rgba(255, 255, 255, 0.04);
   --diff-ignored-ink:   var(--gray-400);
-  --diff-cursor:        rgba(129, 90, 245, 0.18);
+  /* Light enough that --ink-subtle still clears 4.5:1 on top of it. At 0.18 it did not, and the
+     row under the cursor — the one being read — was the one with the least readable text on it.
+     The inset accent bar is the primary marker anyway; this is the secondary one. */
+  --diff-cursor:        rgba(129, 90, 245, 0.10);
 
   --json-key:     var(--violet-300);
   --json-string:  var(--green-300);

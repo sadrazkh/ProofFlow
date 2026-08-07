@@ -261,6 +261,64 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("BaselineRules", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineSample", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ApprovedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ApprovedFromSampleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DataSetVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<string>("NormalizedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaselineId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("BaselineSamples", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -334,6 +392,294 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.HasIndex("BaselineId", "Status");
 
                     b.ToTable("BaselineVersions", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CaptureSample", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("CaptureSessionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DiffSummaryJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<bool>("Differs")
+                        .HasColumnType("boolean");
+
+                    b.Property<double>("DurationMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<string>("NormalizedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ResolvedUrl")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ReviewedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaptureSessionId", "Key");
+
+                    b.HasIndex("CaptureSessionId", "Ordinal")
+                        .IsUnique();
+
+                    b.HasIndex("CaptureSessionId", "Status", "Differs");
+
+                    b.ToTable("CaptureSamples", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CaptureSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Completed")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DataSetVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Differing")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Failed")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("StartedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("StoppedReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<int>("TotalRows")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DataSetVersionId");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("BaselineId", "Status");
+
+                    b.HasIndex("ProjectId", "StartedAt");
+
+                    b.ToTable("CaptureSessions", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSet", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("ArchivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CurrentVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("KeyColumn")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("DataSets", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSetRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("DataSetVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
+                    b.Property<int>("Ordinal")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValuesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DataSetVersionId", "Key");
+
+                    b.HasIndex("DataSetVersionId", "Ordinal")
+                        .IsUnique();
+
+                    b.ToTable("DataSetRows", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSetVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ColumnsJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("DataSetId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RowCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DataSetId", "Number")
+                        .IsUnique();
+
+                    b.ToTable("DataSetVersions", (string)null);
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Environments.EnvironmentVariable", b =>
@@ -854,6 +1200,17 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Navigation("Baseline");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineSample", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Baselines.Baseline", "Baseline")
+                        .WithMany()
+                        .HasForeignKey("BaselineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Baseline");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Baselines.BaselineVersion", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Baselines.Baseline", "Baseline")
@@ -863,6 +1220,83 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .IsRequired();
 
                     b.Navigation("Baseline");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CaptureSample", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Capture.CaptureSession", "Session")
+                        .WithMany("Samples")
+                        .HasForeignKey("CaptureSessionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Session");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CaptureSession", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Baselines.Baseline", "Baseline")
+                        .WithMany()
+                        .HasForeignKey("BaselineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Data.DataSetVersion", "DataSetVersion")
+                        .WithMany()
+                        .HasForeignKey("DataSetVersionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId");
+
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Baseline");
+
+                    b.Navigation("DataSetVersion");
+
+                    b.Navigation("Environment");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSet", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSetRow", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Data.DataSetVersion", "Version")
+                        .WithMany("Rows")
+                        .HasForeignKey("DataSetVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Version");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSetVersion", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Data.DataSet", "DataSet")
+                        .WithMany("Versions")
+                        .HasForeignKey("DataSetId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DataSet");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Environments.EnvironmentVariable", b =>
@@ -932,6 +1366,21 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
             modelBuilder.Entity("ProofFlow.Domain.Baselines.Baseline", b =>
                 {
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CaptureSession", b =>
+                {
+                    b.Navigation("Samples");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSet", b =>
+                {
+                    b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Data.DataSetVersion", b =>
+                {
+                    b.Navigation("Rows");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>

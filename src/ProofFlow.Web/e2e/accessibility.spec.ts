@@ -38,6 +38,10 @@ const PROJECT_PAGES = [
   { name: 'environments', path: (id: string) => `/projects/${id}/environments` },
   { name: 'request lab', path: (id: string) => `/projects/${id}/request` },
   { name: 'baselines', path: (id: string) => `/projects/${id}/baselines` },
+  { name: 'data sets', path: (id: string) => `/projects/${id}/datasets` },
+  { name: 'new data set', path: (id: string) => `/projects/${id}/datasets/new` },
+  { name: 'captures', path: (id: string) => `/projects/${id}/captures` },
+  { name: 'wizard', path: (id: string) => `/projects/${id}/wizard` },
 ];
 
 let projectId: string | null = null;
@@ -171,10 +175,14 @@ for (const theme of ['light', 'dark'] as const) {
         expect(id, 'the demo seed should have created a project').not.toBeNull();
 
         await page.goto(`${BASE}/projects/${id}/baselines`, { waitUntil: 'networkidle' });
-        const href = await page.locator('td a[href*="/baselines/"]').first()
+
+        // A baseline defined for sample-based work has no approved whole-response version, so its
+        // Compare button is correctly disabled — auditing that one would measure an empty screen.
+        const href = await page.locator('tr', { has: page.locator('.badge-pass') })
+          .locator('a[href*="/baselines/"]').first()
           .getAttribute('href').catch(() => null);
 
-        test.skip(!href, 'No baseline recorded. Run e2e/demo.ts first.');
+        test.skip(!href, 'No baseline with an approved version. Run e2e/demo.ts first.');
 
         await page.goto(`${BASE}${href}`, { waitUntil: 'networkidle' });
         await assertOn(page, href!);
@@ -187,6 +195,36 @@ for (const theme of ['light', 'dark'] as const) {
           'the diff should have rows to audit').toBeGreaterThan(0);
 
         await audit(page, `baseline diff (${language}/${theme})`);
+      });
+
+      /**
+       * The review queue with samples in it.
+       *
+       * Loading the capture list and auditing that would measure a table of links. The queue is the
+       * dense part — six status tones, a selection model, a diff beside it — and it only exists
+       * once a sweep has run, so this one finds a session and refuses to report if it is empty.
+       */
+      test('review queue', async ({ page }) => {
+        test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+        const id = await firstProject(page);
+        expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+        await page.goto(`${BASE}/projects/${id}/captures`, { waitUntil: 'networkidle' });
+        const href = await page.locator('td a[href*="/captures/"]').first()
+          .getAttribute('href').catch(() => null);
+
+        test.skip(!href, 'No sweep recorded. Run e2e/demo-regression.ts first.');
+
+        await page.goto(`${BASE}${href}`, { waitUntil: 'networkidle' });
+        await assertOn(page, href!);
+        await page.waitForSelector('[data-island-mounted="true"]');
+        await page.waitForSelector('.sample');
+
+        expect(await page.locator('.sample').count(),
+          'the queue should have samples to audit').toBeGreaterThan(0);
+
+        await audit(page, `review queue (${language}/${theme})`);
       });
     });
   }

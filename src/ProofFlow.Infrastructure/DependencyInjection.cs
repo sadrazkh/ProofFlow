@@ -58,6 +58,8 @@ public static class DependencyInjection
         services.AddScoped<IHttpExecutor, GuardedHttpExecutor>();
         services.AddScoped<EnvironmentContextBuilder>();
         services.AddScoped<Baselines.BaselineService>();
+        services.AddScoped<Capture.CaptureService>();
+        services.AddScoped<Data.DataSetService>();
 
         return services;
     }
