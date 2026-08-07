@@ -1,5 +1,8 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using FluentAssertions;
+using ProofFlow.Domain.Baselines;
+using ProofFlow.TestEngine.Comparison;
 
 namespace ProofFlow.Tests;
 
@@ -74,6 +77,78 @@ public class TranslationCompletenessTests
 
             blank.Should().BeEmpty("{0} has blank values: {1}", file, string.Join(", ", blank));
         }
+    }
+
+    /// <summary>
+    /// Every key the markup asks for has to exist.
+    ///
+    /// The failure this catches is not a crash. A missing key renders as itself, so the page shows
+    /// "environment.title" in a table heading and goes on working — and it survives review because
+    /// it looks like a variable name somebody expects to see somewhere. It reached a screenshot
+    /// before anything noticed.
+    ///
+    /// Only literal keys are found this way. The ones this project builds from an enum name are
+    /// covered by the theory below rather than quietly skipped.
+    /// </summary>
+    [Fact]
+    public void Every_key_the_markup_asks_for_exists()
+    {
+        var english = Flatten("en.json");
+        var web = Path.GetDirectoryName(ResourcesDirectory)!;
+
+        var referenced = new SortedSet<string>(StringComparer.Ordinal);
+
+        void Scan(string file, string pattern)
+        {
+            foreach (Match match in Regex.Matches(File.ReadAllText(file), pattern))
+            {
+                referenced.Add(match.Groups[1].Value);
+            }
+        }
+
+        foreach (var file in Directory.EnumerateFiles(web, "*.cshtml", SearchOption.AllDirectories))
+        {
+            Scan(file, "T\\[\"([a-zA-Z][a-zA-Z0-9._]*)\"");
+        }
+
+        foreach (var file in Directory.EnumerateFiles(Path.Combine(web, "Scripts"), "*.*", SearchOption.AllDirectories)
+                     .Where(f => f.EndsWith(".vue") || f.EndsWith(".ts")))
+        {
+            Scan(file, @"\bt\('([a-zA-Z][a-zA-Z0-9._]*)'");
+        }
+
+        referenced.Should().NotBeEmpty("the scan should find keys at all");
+
+        var missing = referenced.Where(key => !english.ContainsKey(key)).ToArray();
+
+        missing.Should().BeEmpty(
+            "these keys are used in markup but are not in en.json: {0}", string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// The keys built at render time from an enum name, checked against the enums themselves.
+    ///
+    /// These are the ones the scan above cannot see, and also the ones most likely to drift:
+    /// adding a matcher to the engine is a one-line change that silently leaves a dropdown entry
+    /// reading "matcher.NewThing".
+    /// </summary>
+    [Theory]
+    [InlineData("matcher.{0}", typeof(MatcherKind))]
+    [InlineData("matcher.{0}.help", typeof(MatcherKind))]
+    [InlineData("diff.kind.{0}", typeof(DiffKind))]
+    [InlineData("dynamic.{0}", typeof(DynamicReason))]
+    [InlineData("confidence.{0}", typeof(Confidence))]
+    [InlineData("baseline.status.{0}", typeof(BaselineStatus))]
+    public void Every_enum_member_has_a_string(string pattern, Type enumType)
+    {
+        var english = Flatten("en.json");
+
+        var missing = Enum.GetNames(enumType)
+            .Select(name => string.Format(pattern, name))
+            .Where(key => !english.ContainsKey(key))
+            .ToArray();
+
+        missing.Should().BeEmpty("missing: {0}", string.Join(", ", missing));
     }
 
     private static HashSet<string> Placeholders(string value)

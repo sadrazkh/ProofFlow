@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Icon } from '../lib/Icon';
 import { computed, ref } from 'vue';
 import { t } from '../lib/i18n';
 
@@ -83,7 +84,7 @@ const display = computed(() => {
         :aria-label="open ? t('response.collapse') : t('response.expand')"
         @click="open = !open"
       >
-        <i :data-lucide="open ? 'chevron-down' : 'chevron-right'" aria-hidden="true"></i>
+        <Icon :name="open ? 'chevron-down' : 'chevron-right'" />
       </button>
       <span v-else class="json-toggle-spacer" aria-hidden="true"></span>
 

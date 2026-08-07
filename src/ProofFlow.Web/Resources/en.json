@@ -62,7 +62,9 @@
     "signOut": "Sign out",
     "signUp": "Create an account",
     "open": "Open",
-    "more": "More"
+    "more": "More",
+    "approve": "Approve",
+    "reject": "Reject"
   },
   "common": {
     "name": "Name",
@@ -78,7 +80,9 @@
     "no": "No",
     "unsaved": "You have unsaved changes.",
     "dangerZone": "Irreversible actions",
-    "typeToConfirm": "Type {0} to confirm."
+    "typeToConfirm": "Type {0} to confirm.",
+    "status": "Status",
+    "saving": "Saving…"
   },
   "auth": {
     "signInTitle": "Sign in",
@@ -207,7 +211,13 @@
       "secret.updated": "changed a secret",
       "secret.deleted": "deleted a secret",
       "secret.revealed": "revealed a secret",
-      "request.sent": "sent a request"
+      "request.sent": "sent a request",
+      "baseline.created": "recorded a baseline",
+      "baseline.compared": "compared against a baseline",
+      "baseline.rulesChanged": "changed a baseline's rules",
+      "baseline.versionProposed": "proposed a new baseline version",
+      "baseline.approved": "approved a baseline version",
+      "baseline.rejected": "rejected a baseline version"
     }
   },
   "error": {
@@ -230,7 +240,10 @@
     "hoursAgo": "{0} hours ago",
     "daysAgo": "{0} days ago",
     "seconds": "{0}s",
-    "milliseconds": "{0}ms"
+    "milliseconds": "{0}ms",
+    "minuteAgo": "1 minute ago",
+    "hourAgo": "1 hour ago",
+    "dayAgo": "yesterday"
   },
   "projectHome": {
     "title": "This project is ready for its first environment",
@@ -279,7 +292,10 @@
     "empty": {
       "title": "No environments yet",
       "body": "An environment is a base URL plus the variables, secrets and limits that go with it. Most projects have one per place they deploy."
-    }
+    },
+    "production": "Production",
+    "productionWarning": "This is a production environment. Comparing sends a real request to it.",
+    "title": "Environment"
   },
   "variable": {
     "subtitle": "Values a request can refer to. Nothing here is hidden — use a secret for anything that should be.",
@@ -368,5 +384,178 @@
       "Cancelled": "The request was cancelled.",
       "Unknown": "Trying again is safe — nothing was half-sent."
     }
+  },
+  "baseline": {
+    "subtitle": "What correct looked like, and what has moved since.",
+    "empty": {
+      "title": "No baseline recorded yet",
+      "body": "A baseline is a response you have read and agreed is right. Send a request, look at what comes back, and save it.",
+      "action": "Open the request lab"
+    },
+    "versions": "Versions",
+    "version": "Version {0}",
+    "bodySize": "{0} characters",
+    "history": "History",
+    "request": "The request",
+    "requestHelp": "Stored with the baseline so it can be sent again and compared. References are kept unresolved, so a rotated token does not break it.",
+    "noRequest": "This baseline has no request stored, so it cannot be replayed.",
+    "status": {
+      "Draft": "Draft",
+      "PendingApproval": "Awaiting approval",
+      "Approved": "Approved",
+      "Superseded": "Superseded",
+      "Rejected": "Rejected",
+      "Archived": "Archived"
+    },
+    "awaitingReview": "Version {0} is waiting to be approved. Until it is, comparisons still run against the approved version.",
+    "approvalNeededBySomeoneElse": "Your role cannot approve a baseline.",
+    "confirmReject": "Reject version {0}?",
+    "rejectionReason": "Rejected: {0}",
+    "approved": "Version {0} is now the approved baseline.",
+    "rejected": "Version {0} was rejected.",
+    "nameTaken": "A baseline called {0} already exists in this project.",
+    "compareExpired": "That comparison is no longer being held. Compare again, then accept.",
+    "compareEmpty": "Nothing compared yet. Press Compare to send the request and see what moved.",
+    "compareNow": "Compare",
+    "comparing": "Comparing…",
+    "compareTab": "Differences",
+    "rulesTab": "Rules",
+    "workbench": "What to show",
+    "identical": "Identical to the baseline",
+    "against": "Against {0}",
+    "needsApproved": "This baseline has no approved version yet, so there is nothing to compare against.",
+    "versionProposed": "Version {0} proposed. It needs approval before it becomes the baseline.",
+    "saveAs": "Save as baseline",
+    "saveAsHelp": "Stores this response as what correct looks like. The request is stored with it, so the same call can be checked again later.",
+    "namePlaceholder": "studies",
+    "descriptionPlaceholder": "What this response is meant to prove",
+    "capturedFrom": "Recorded against {0}.",
+    "captured": "Baseline recorded."
+  },
+  "diff": {
+    "title": "Differences",
+    "layout": "Layout",
+    "inline": "Inline",
+    "sideBySide": "Side by side",
+    "next": "Next difference",
+    "previous": "Previous difference",
+    "absent": "—",
+    "invalidRules": "These rules could not be read and were skipped: {0}",
+    "showUnchanged": "Show {0} unchanged fields",
+    "acceptAll": "Select every difference",
+    "acceptedCount": "{0} accepted, {1} left",
+    "acceptField": "Accept the new value at {0}",
+    "saveAsVersion": "Save as a new version",
+    "kind": {
+      "Unchanged": "Unchanged",
+      "Added": "Added",
+      "Removed": "Removed",
+      "Changed": "Changed",
+      "TypeChanged": "Type changed",
+      "OrderChanged": "Order changed",
+      "RuleViolation": "Rule broken",
+      "Ignored": "Ignored"
+    }
+  },
+  "rule": {
+    "tableCaption": "Comparison rules",
+    "path": "Path",
+    "pathPlaceholder": "$.data.items[*].id",
+    "matcher": "Allow",
+    "parameters": "Details",
+    "note": "Why",
+    "notePlaceholder": "Regenerated on every call",
+    "noParameters": "nothing to set",
+    "none": "No rules yet, so every field has to match exactly.",
+    "add": "Add a rule",
+    "save": "Save rules",
+    "saved": "Rules saved.",
+    "help": "A rule says which differences do not count. Anything without a rule has to match exactly.",
+    "compareAgain": "The rules changed, so the comparison on screen is out of date. Compare again.",
+    "newRule": "the new rule",
+    "enabledFor": "Use the rule for {0}",
+    "deleteFor": "Delete the rule for {0}",
+    "selectAll": "Select all",
+    "clearAll": "Clear",
+    "selectedCount": "{0} of {1} selected",
+    "suggestionsTitle": "{0} fields look like they change on their own",
+    "suggestionsHelp": "Nothing here is applied until you tick it and save. Each one stops a field from being checked, so read before you agree.",
+    "suggestionEffect": "Would apply: {0}",
+    "group": {
+      "presence": "Presence",
+      "shape": "Shape and type",
+      "text": "Text",
+      "number": "Numbers and time",
+      "array": "Lists"
+    },
+    "field": {
+      "pattern": "Pattern",
+      "key": "Key field",
+      "value": "Text",
+      "tolerance": "± tolerance",
+      "min": "Minimum",
+      "max": "Maximum",
+      "seconds": "± seconds"
+    },
+    "applySelected": "Add as rules"
+  },
+  "matcher": {
+    "Exact": "Exactly the same",
+    "Exact.help": "The value has to be identical to the approved one. This is what applies when no rule is written.",
+    "Ignore": "Ignore the value",
+    "Ignore.help": "The value is not looked at. What a timestamp or a generated id gets.",
+    "Exists": "Must be present",
+    "Exists.help": "The field has to be there. What it holds is not checked.",
+    "NotExists": "Must be absent",
+    "NotExists.help": "The field must not appear. For one that was removed on purpose.",
+    "TypeOnly": "Same type only",
+    "TypeOnly.help": "A string stays a string, a number stays a number. The value itself may change.",
+    "IsNull": "Must be null",
+    "IsNull.help": "The field has to be there and hold null.",
+    "IsNotNull": "Must not be null",
+    "IsNotNull.help": "The field has to hold something — anything but null.",
+    "Regex": "Matches a pattern",
+    "Regex.help": "The value has to match the regular expression. For an id with a known shape.",
+    "Contains": "Contains text",
+    "Contains.help": "The value has to contain this text somewhere.",
+    "StartsWith": "Starts with",
+    "StartsWith.help": "The value has to begin with this text.",
+    "EndsWith": "Ends with",
+    "EndsWith.help": "The value has to end with this text.",
+    "NumericTolerance": "Number within ±",
+    "NumericTolerance.help": "The number may differ from the approved one by up to this much. For a score that rounds differently elsewhere.",
+    "NumericRange": "Number in a range",
+    "NumericRange.help": "The number has to fall between these two, whatever was approved.",
+    "DateTolerance": "Time within ± seconds",
+    "DateTolerance.help": "The instant may differ from the approved one by up to this many seconds.",
+    "JsonSubset": "Contains at least",
+    "JsonSubset.help": "Every approved field has to be present with the same value. Extra fields are allowed.",
+    "ArrayOrdered": "Same items, same order",
+    "ArrayOrdered.help": "The default for a list: first against first, second against second.",
+    "ArrayUnordered": "Same items, any order",
+    "ArrayUnordered.help": "The list may come back shuffled. For anything a database returns unsorted.",
+    "ArrayMatchByKey": "Pair items by a key",
+    "ArrayMatchByKey.help": "Items are lined up by the field you name and then compared, so a reordered list reports what moved instead of calling every row different.",
+    "ArrayCount": "How many items",
+    "ArrayCount.help": "Only the number of items is checked, against a minimum and a maximum.",
+    "CaseInsensitive": "Ignore capitalisation",
+    "CaseInsensitive.help": "Compared as text, with upper and lower case treated as the same.",
+    "Trimmed": "Ignore surrounding spaces",
+    "Trimmed.help": "Whitespace at the start and end is removed before comparing."
+  },
+  "dynamic": {
+    "None": "Might change on its own",
+    "Guid": "Looks like a generated id",
+    "Timestamp": "Looks like a date or a time",
+    "TraceId": "Looks like a trace or request id",
+    "Token": "Looks like a token",
+    "Random": "Looks randomly generated",
+    "ExpiringUrl": "Looks like a link that expires",
+    "DiffersBetweenRuns": "Came back different on two runs of the same request"
+  },
+  "confidence": {
+    "Certain": "Certain",
+    "Likely": "Likely",
+    "Possible": "Possible"
   }
 }

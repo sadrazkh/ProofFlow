@@ -1,0 +1,175 @@
+@using System.Text.Json
+@model BaselineDetailViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        baselineId = Model.Baseline.Id,
+        environments = Model.Environments.Select(e => new
+        {
+            id = e.Id, name = e.Name, baseUrl = e.BaseUrl, isProduction = e.IsProduction,
+        }),
+        initialRules = Model.Rules,
+        defaultEnvironmentId = Model.Baseline.EnvironmentId,
+        canRecord = Model.CanRecord,
+        canRun = Model.CanRun,
+        hasApprovedVersion = Model.Approved is not null,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title" dir="auto">@Model.Baseline.Name</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Baseline.Description))
+        {
+            <p class="page-subtitle" dir="auto">@Model.Baseline.Description</p>
+        }
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/baselines">
+            <i data-lucide="arrow-left" class="icon-forward" aria-hidden="true"></i>@T["nav.baselines"]
+        </a>
+    </div>
+</div>
+
+@if (Model.AwaitingReview is { } awaiting)
+{
+    @* The one thing that blocks everything else, said before the reader scrolls. A proposed
+       version does nothing until somebody approves it — including not being compared against. *@
+    <div class="card card-pad stack-2">
+        <div class="row">
+            <span class="badge badge-warn">
+                <i data-lucide="clock" aria-hidden="true"></i>@T["baseline.status.PendingApproval"]
+            </span>
+            <span dir="auto">@T["baseline.awaitingReview", awaiting.Number]</span>
+            <span class="grow"></span>
+
+            @if (Model.CanApprove)
+            {
+                <form method="post"
+                      action="/projects/@Model.ProjectId/baselines/@Model.Baseline.Id/versions/@awaiting.Id/approve">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i data-lucide="check" aria-hidden="true"></i>@T["action.approve"]
+                    </button>
+                </form>
+                <form method="post"
+                      action="/projects/@Model.ProjectId/baselines/@Model.Baseline.Id/versions/@awaiting.Id/reject"
+                      data-confirm="@T["baseline.confirmReject", awaiting.Number]">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <i data-lucide="x" aria-hidden="true"></i>@T["action.reject"]
+                    </button>
+                </form>
+            }
+            else
+            {
+                <span class="text-xs subtle">@T["baseline.approvalNeededBySomeoneElse"]</span>
+            }
+        </div>
+    </div>
+}
+
+<div class="baseline-layout">
+    <div class="stack">
+        @* The island. The skeleton is the same shape as what replaces it, so the page below does
+           not move when Vue takes over. *@
+        <div data-island="baseline-workbench" data-props="@props">
+            <div class="card card-pad stack">
+                <div class="row">
+                    <div class="skeleton" style="inline-size: 220px; block-size: 32px;"></div>
+                    <div class="skeleton grow" style="block-size: 32px;"></div>
+                </div>
+                <div class="skeleton" style="block-size: 300px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <aside class="stack">
+        <section class="card card-pad stack-2">
+            <h2 class="card-title">@T["baseline.request"]</h2>
+            @if (Model.Baseline.RequestJson is { Length: > 0 })
+            {
+                <p class="text-xs subtle">@T["baseline.requestHelp"]</p>
+            }
+            else
+            {
+                <p class="text-xs subtle">@T["baseline.noRequest"]</p>
+            }
+
+            <dl class="detail-list">
+                <div>
+                    <dt>@T["environment.title"]</dt>
+                    <dd dir="auto">
+                        @(Model.Environments.FirstOrDefault(e => e.Id == Model.Baseline.EnvironmentId)?.Name
+                          ?? T["common.none"].Value)
+                    </dd>
+                </div>
+                <div>
+                    <dt>@T["baseline.versions"]</dt>
+                    <dd class="tabular">@Model.Versions.Count</dd>
+                </div>
+                <div>
+                    <dt>@T["baseline.rulesTab"]</dt>
+                    <dd class="tabular">@Model.Rules.Count</dd>
+                </div>
+            </dl>
+        </section>
+
+        <section class="card card-pad stack-2">
+            <h2 class="card-title">@T["baseline.history"]</h2>
+
+            <div class="version-rail">
+                @foreach (var version in Model.Versions)
+                {
+                    <article class="version-item is-@(version.Status.ToString().ToLowerInvariant())">
+                        <div class="version-mark">
+                            <i data-lucide="@BaselineStatusTone.Icon(version.Status)" aria-hidden="true"></i>
+                        </div>
+                        <div>
+                            <div class="version-head">
+                                <span class="version-number">@T["baseline.version", version.Number]</span>
+                                <span class="badge @BaselineStatusTone.For(version.Status)">
+                                    @T[$"baseline.status.{version.Status}"]
+                                </span>
+                            </div>
+
+                            <p class="version-meta">
+                                <partial name="Pieces/_Timestamp" model="@(new TimestampView(version.CreatedAt))" />
+                                <span aria-hidden="true">·</span>
+                                <span class="tabular">@version.StatusCode</span>
+                                <span aria-hidden="true">·</span>
+                                @T["baseline.bodySize", version.BodyLength]
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(version.Description))
+                            {
+                                <p class="version-description" dir="auto">@version.Description</p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(version.RejectionReason))
+                            {
+                                <p class="version-rejection" dir="auto">
+                                    @T["baseline.rejectionReason", version.RejectionReason]
+                                </p>
+                            }
+
+                            @if (version.Status == BaselineStatus.PendingApproval && Model.CanApprove)
+                            {
+                                <div class="version-actions">
+                                    <form method="post"
+                                          action="/projects/@Model.ProjectId/baselines/@Model.Baseline.Id/versions/@version.Id/approve">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-secondary btn-sm">
+                                            @T["action.approve"]
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        </section>
+    </aside>
+</div>

@@ -60,6 +60,7 @@ const PAGES: Target[] = [
 const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
   { name: 'environments', path: (id) => `/projects/${id}/environments` },
   { name: 'request', path: (id) => `/projects/${id}/request` },
+  { name: 'baselines', path: (id) => `/projects/${id}/baselines` },
 ];
 
 type Combination = { language: 'fa' | 'en'; theme: 'light' | 'dark'; viewport: Viewport };
@@ -101,7 +102,7 @@ async function newContext(
  * testing the rate limiter instead of the interface.
  */
 async function establishSession(browser: Browser): Promise<
-  { state: StorageState; projectId: string | null } | undefined
+  { state: StorageState; projectId: string | null; baselinePath: string | null } | undefined
 > {
   if (!PASSWORD) return undefined;
 
@@ -125,8 +126,18 @@ async function establishSession(browser: Browser): Promise<
   const href = await page.locator('a.project-card').first().getAttribute('href').catch(() => null);
   const projectId = href?.split('/').pop() ?? null;
 
+  // The baseline detail page is worth shooting and its address is only known once one exists.
+  // e2e/demo.ts creates it; without that run this stays null and the skip is reported.
+  let baselinePath: string | null = null;
+
+  if (projectId) {
+    await page.goto(`${BASE}/projects/${projectId}/baselines`, { waitUntil: 'networkidle' });
+    baselinePath = await page.locator('td a[href*="/baselines/"]').first()
+      .getAttribute('href').catch(() => null);
+  }
+
   await context.close();
-  return { state, projectId };
+  return { state, projectId, baselinePath };
 }
 
 async function capture(page: Page, target: Target, combination: Combination): Promise<void> {
@@ -186,6 +197,16 @@ async function main(): Promise<void> {
             }
           } else {
             skipped += PROJECT_PAGES.length;
+          }
+
+          if (session.baselinePath) {
+            await capture(
+              authedPage,
+              { name: 'baseline-detail', path: session.baselinePath, auth: true },
+              combination);
+            shots++;
+          } else {
+            skipped++;
           }
 
           await authed.close();

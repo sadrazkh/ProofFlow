@@ -136,6 +136,8 @@ builder.Services.AddSingleton<ViteManifest>();
 builder.Services.AddScoped<Dates>();
 builder.Services.AddScoped<WorkspaceContextFilter>();
 builder.Services.AddScoped<ProofFlow.Web.Infrastructure.Seeding.DemoDataSeeder>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<ComparisonScratch>();
 builder.Services.AddAntiforgery(options =>
 {
     options.HeaderName = "X-CSRF-Token";

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Icon } from '../lib/Icon';
 import { computed, onMounted, ref, watch } from 'vue';
 import KeyValueTable, { type KeyValueRow } from './KeyValueTable.vue';
 import ResponseViewer from './ResponseViewer.vue';
@@ -22,6 +23,7 @@ const props = defineProps<{
   projectId: string;
   environments: LabEnvironment[];
   canRun: boolean;
+  canRecordBaseline: boolean;
 }>();
 
 const method = ref('GET');
@@ -163,6 +165,59 @@ async function send(): Promise<void> {
   }
 }
 
+/**
+ * Recording this response as a baseline.
+ *
+ * The request definition travels with it, not just the body — a baseline that remembers what
+ * correct looked like but not how to ask for it again can never be re-checked, which is the only
+ * thing a baseline is for.
+ */
+const capture = ref<{ name: string; description: string } | null>(null);
+const capturing = ref(false);
+
+function openCapture(): void {
+  // Named after the URL's last segment, which is nearly always the resource: /api/v1/studies →
+  // "studies". A name people then edit is better than an empty box they have to invent one in.
+  const guess = url.value.split('?')[0]?.split('/').filter(Boolean).pop() ?? '';
+  capture.value = { name: guess, description: '' };
+}
+
+async function saveBaseline(): Promise<void> {
+  if (!capture.value || !result.value) return;
+  capturing.value = true;
+
+  try {
+    const created = await api.post<{ url: string }>(
+      `/projects/${props.projectId}/baselines/capture`,
+      {
+        name: capture.value.name,
+        description: capture.value.description || null,
+        environmentId: environmentId.value || null,
+        body: result.value.body,
+        contentType: result.value.contentType,
+        statusCode: result.value.statusCode,
+        headers: Object.fromEntries(result.value.responseHeaders.map((h) => [h.name, h.value])),
+        // The request as sent, so the baseline can be replayed. The *unresolved* form: a baseline
+        // that froze today's resolved token would stop working the moment the token rotated.
+        requestJson: JSON.stringify({
+          method: method.value,
+          url: url.value,
+          headers: headers.value.filter((r) => r.name && r.enabled)
+            .map((r) => ({ name: r.name, value: r.value, enabled: true })),
+          body: supportsBody.value && body.value
+            ? { kind: bodyKind.value, content: body.value }
+            : null,
+        }),
+      });
+
+    toast(t('baseline.captured'), 'success');
+    location.assign(created.url);
+  } catch (error) {
+    toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+    capturing.value = false;
+  }
+}
+
 /** Turns a picked response field into a header, which is what people do with a token. */
 function useValue(path: string, value: unknown): void {
   const text = typeof value === 'string' ? value : JSON.stringify(value);
@@ -200,7 +255,7 @@ function useValue(path: string, value: unknown): void {
         </select>
 
         <button type="button" class="btn btn-primary" :disabled="pending || !canRun || !url" @click="send">
-          <i :data-lucide="pending ? 'loader' : 'send'" aria-hidden="true"></i>
+          <Icon :name="pending ? 'loader' : 'send'" />
           {{ pending ? t('request.sending') : t('request.send') }}
         </button>
       </div>
@@ -218,7 +273,7 @@ function useValue(path: string, value: unknown): void {
           class="reference-chip mono"
           :class="reference.resolvable ? 'is-known' : 'is-unknown'"
         >
-          <i :data-lucide="reference.resolvable ? 'check' : 'circle-alert'" aria-hidden="true"></i>
+          <Icon :name="reference.resolvable ? 'check' : 'circle-alert'" />
           {{ reference.reference }}
         </span>
         <span v-if="unresolvedCount" class="text-xs subtle">{{ t('request.unresolvedHint') }}</span>
@@ -276,6 +331,60 @@ function useValue(path: string, value: unknown): void {
       </div>
     </div>
 
-    <ResponseViewer :result="result" :pending="pending" @use-value="useValue" />
+    <ResponseViewer :result="result" :pending="pending" @use-value="useValue">
+      <template #actions>
+        <button
+          v-if="canRecordBaseline"
+          type="button"
+          class="btn btn-secondary btn-sm"
+          @click="openCapture"
+        >
+          <Icon name="camera" />{{ t('baseline.saveAs') }}
+        </button>
+      </template>
+    </ResponseViewer>
+
+    <div v-if="capture" class="overlay" @click.self="capture = null">
+      <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="pf-capture-title">
+        <div class="card-header">
+          <h2 class="card-title" id="pf-capture-title">{{ t('baseline.saveAs') }}</h2>
+          <p class="card-subtitle">{{ t('baseline.saveAsHelp') }}</p>
+        </div>
+
+        <div class="card-body stack">
+          <label class="field">
+            <span class="field-label">{{ t('common.name') }}</span>
+            <input v-model="capture.name" class="input" dir="auto" autofocus
+                   :placeholder="t('baseline.namePlaceholder')" />
+          </label>
+
+          <label class="field">
+            <span class="field-label">
+              {{ t('common.description') }}
+              <span class="field-optional">{{ t('common.optional') }}</span>
+            </span>
+            <input v-model="capture.description" class="input" dir="auto"
+                   :placeholder="t('baseline.descriptionPlaceholder')" />
+          </label>
+
+          <p class="field-hint">{{ t('baseline.capturedFrom', environment?.name ?? t('common.none')) }}</p>
+        </div>
+
+        <div class="card-footer">
+          <button type="button" class="btn btn-secondary" @click="capture = null">
+            {{ t('action.cancel') }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-primary"
+            :disabled="!capture.name.trim() || capturing"
+            @click="saveBaseline"
+          >
+            <Icon name="camera" />
+            {{ capturing ? t('common.saving') : t('action.save') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

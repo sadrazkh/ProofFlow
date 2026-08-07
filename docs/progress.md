@@ -178,7 +178,7 @@ entered. They are italic instead.
 
 ---
 
-## Phase C — Assertions, baselines, semantic diff · **engine done, interface next**
+## Phase C — Assertions, baselines, semantic diff · **done, with the interface**
 
 ### Done and tested
 
@@ -191,7 +191,7 @@ entered. They are italic instead.
 | Suggestions | GUIDs, JWTs, signed URLs, timestamps and trace ids, graded by confidence and never applied |
 | Assertions | Status, header, JSON field with any matcher, JSON Schema, response time, body contains |
 | Domain | `Baseline`, `BaselineVersion`, `BaselineRule` with the six-state lifecycle, migrations on both providers |
-| Tests | 248 passing — 218 unit, 30 integration |
+| Tests | 278 passing — 227 unit, 30 integration, 21 component |
 
 The comparison is structural, which is the whole point: key order, whitespace and `1` versus `1.0`
 are not differences, and a shuffled list under an unordered rule reports as order-changed rather
@@ -214,9 +214,67 @@ the walk's own limit is the one that fires and explains itself.
 the certain ones, but an unticked row does nothing — a field silently excluded is a field that
 stopped being checked without anyone deciding to.
 
-### Not built yet
+---
 
-The interface: the diff viewer with its summary bar and n/p navigation, the rule builder, the
-suggestion list, field-level accept and reject, and the version timeline. That is **D-C** in the
-[design plan](plan/01-design-plan.md). The engine underneath is complete and tested, so these are
-views over working machinery — the same shape Phase B took.
+## D-C — The interface over it · **done**
+
+Baselines list, baseline detail with a version rail, and the workbench island: replay, read what
+moved, decide.
+
+| | |
+|---|---|
+| Diff viewer | Virtualised from the first line — fixed 30px rows over a spacer, only what is on screen exists. Clickable summary chips jump to the first of their kind; `n` and `p` step the findings |
+| Two layouts | Inline, and side-by-side above 900px. The choice is withdrawn below that width rather than offered and ignored |
+| Rule builder | Twenty matchers in five named groups, each with a sentence of help; only the parameters that matcher needs are shown |
+| Suggestions | Read off the compared response, every box clear, with the evidence and the effect spelled out beside each one |
+| Capture | "Save as baseline" in the request lab stores the response *and* the unresolved request, so it can be replayed |
+| Lifecycle | Capture approves the first version; every version after it is proposed and needs an approver |
+| Verified | `e2e/demo.ts` drives the whole loop through the interface: capture from `/fake/volatile`, compare, turn the three dynamic fields into rules, compare again — identical |
+
+### What the screenshots and the audit caught
+
+**Lucide was replacing Vue's own nodes, and it broke reactivity everywhere.** `<i data-lucide>`
+works in Razor, where markup is static. Inside a component it is poison: Vue created that `<i>` and
+holds a reference, lucide swaps in an `<svg>`, and the next patch operates on a node that has left
+the document. The symptom was not a missing icon — Vue patches an element's children before its
+props, so the throw abandoned the rest of the render and the side-by-side toggle turned on while
+the rows it controls never changed. Islands now render icons as real vnodes through `lib/Icon.ts`;
+`createIcons` still serves the server-rendered markup, where it is safe.
+
+**The default JSON encoder escapes everything outside ASCII.** Every value in every diff went
+through `ToJsonString()`, so `+00:00` read as `+00:00` and a Persian response would have read
+as `یک` — an entire class of API made unreadable by the one screen built to make
+responses readable, in the language this product's first users work in.
+
+**Five icons were used in markup and never registered**, so they rendered as nothing at all: the
+previous-difference chevron, the suggestions lamp, the camera on "save as baseline", the production
+shield and the forbidden padlock. The registry is explicit on purpose — the barrel import costs
+660 kB — and the cost of that is exactly this, so it now has a test.
+
+**A missing translation key renders as itself and survives review**, because `environment.title` in
+a table heading looks like a variable name somebody expects to see. Two tests now close it: every
+literal key in Razor and in the components must exist, and every member of `MatcherKind`,
+`DiffKind`, `DynamicReason`, `Confidence` and `BaselineStatus` must have a string.
+
+**Switching a matcher kept the old parameter when the new one had a slot for it.** A tolerance of
+±5 moved from NumericTolerance to ArrayCount became "at least five items" — a rule nobody wrote,
+in a row that reads as though it were just retyped. Parameters clear unconditionally now.
+
+**The "ignored" summary chip sat at 4.33:1.** Grey on grey, and it is the one category that says a
+check was deliberately turned off, so it has to be legible. It moved to the palette's documented
+readable floor.
+
+### Two decisions worth recording
+
+**The compared response is held in memory, not in TempData and not in the database.** Accepting
+three fields has to merge from the exact bytes that produced the diff on screen; fetching again
+would merge from a response nobody reviewed, and on anything with a clock in it that is a different
+response every time. TempData here is cookie-backed — a 200 KB body becomes fifty cookies and the
+next request dies on a header limit. It is scratch, worth nothing ten minutes later, and a rejected
+comparison should leave no trace, so: a memory cache keyed by user and baseline, with an expiry and
+a size cap, and a clear message when it has gone.
+
+**Suggestions save as rules on their own, without proposing a version.** The commonest comparison
+is one where every difference is a field that changes by itself: the right answer is three rules and
+no new version. Folding that into "save as a new version" would bless a timestamp as a baseline
+value. The two buttons say two different things because they mean two different things.

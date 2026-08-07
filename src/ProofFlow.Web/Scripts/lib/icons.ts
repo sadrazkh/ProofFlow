@@ -1,13 +1,14 @@
 import {
   createIcons,
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Ban, Bell, Boxes, Braces, Bug,
-  CalendarClock, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown,
+  CalendarClock, Camera, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+  ChevronsUpDown,
   CircleAlert, CircleCheck, CircleDot, CircleHelp, CirclePlay, CircleSlash, Clock, Code,
   Copy, Database, Diff, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileJson, FilePlus2,
   Filter, FlaskConical, FolderOpen, GitBranch, GitCompareArrows, Globe, Hash, History,
-  Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Link2, ListChecks, Loader,
-  LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
-  RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldCheck,
+  Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
+  Lock, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
+  RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck,
   SlidersHorizontal, Sparkles, Square, SquareStack, Sun, Table2, Tag, Target, Timer,
   TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, Waypoints, Workflow, X, Zap,
 } from 'lucide';
@@ -22,16 +23,35 @@ import {
  */
 const used = {
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Ban, Bell, Boxes, Braces, Bug,
-  CalendarClock, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronsUpDown,
+  CalendarClock, Camera, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
+  ChevronsUpDown,
   CircleAlert, CircleCheck, CircleDot, CircleHelp, CirclePlay, CircleSlash, Clock, Code,
   Copy, Database, Diff, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileJson, FilePlus2,
   Filter, FlaskConical, FolderOpen, GitBranch, GitCompareArrows, Globe, Hash, History,
-  Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Link2, ListChecks, Loader,
-  LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
-  RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldCheck,
+  Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
+  Lock, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
+  RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck,
   SlidersHorizontal, Sparkles, Square, SquareStack, Sun, Table2, Tag, Target, Timer,
   TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, Waypoints, Workflow, X, Zap,
 };
+
+/** One icon's shape: a list of SVG child elements, as lucide ships them. */
+export type IconNode = [string, Record<string, string | number>][];
+
+/**
+ * Looks up an icon by the kebab-case name the markup uses.
+ *
+ * The registry is keyed in PascalCase because that is how lucide exports them, and the markup is
+ * kebab because that is how `data-lucide` reads. One conversion, in one place.
+ */
+export function iconNode(name: string): IconNode | undefined {
+  const pascal = name
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+
+  return (used as Record<string, IconNode>)[pascal];
+}
 
 export function renderIcons(): void {
   createIcons({ icons: used, attrs: { 'stroke-width': '1.75' } });

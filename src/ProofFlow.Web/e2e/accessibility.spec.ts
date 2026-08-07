@@ -37,6 +37,7 @@ const AUTHENTICATED = [
 const PROJECT_PAGES = [
   { name: 'environments', path: (id: string) => `/projects/${id}/environments` },
   { name: 'request lab', path: (id: string) => `/projects/${id}/request` },
+  { name: 'baselines', path: (id: string) => `/projects/${id}/baselines` },
 ];
 
 let projectId: string | null = null;
@@ -154,6 +155,39 @@ for (const theme of ['light', 'dark'] as const) {
           await audit(page, `${target.name} (${language}/${theme})`);
         });
       }
+
+      /**
+       * The diff, with something in it.
+       *
+       * Loading the baseline page and auditing it would measure an empty state — the rows, the
+       * summary chips and the accept controls only exist after a comparison has run, and they are
+       * the densest, most colour-dependent markup in the product. So this one presses the button
+       * and refuses to report a result if nothing came back.
+       */
+      test('baseline diff', async ({ page }) => {
+        test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+        const id = await firstProject(page);
+        expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+        await page.goto(`${BASE}/projects/${id}/baselines`, { waitUntil: 'networkidle' });
+        const href = await page.locator('td a[href*="/baselines/"]').first()
+          .getAttribute('href').catch(() => null);
+
+        test.skip(!href, 'No baseline recorded. Run e2e/demo.ts first.');
+
+        await page.goto(`${BASE}${href}`, { waitUntil: 'networkidle' });
+        await assertOn(page, href!);
+        await page.waitForSelector('[data-island-mounted="true"]');
+
+        await page.locator('.workbench-bar .btn-primary').first().click();
+        await page.waitForSelector('.diff-summary', { timeout: 20_000 });
+
+        expect(await page.locator('.diff-row').count(),
+          'the diff should have rows to audit').toBeGreaterThan(0);
+
+        await audit(page, `baseline diff (${language}/${theme})`);
+      });
     });
   }
 }

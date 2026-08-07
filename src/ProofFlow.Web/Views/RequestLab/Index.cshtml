@@ -9,6 +9,7 @@
             id = e.Id, name = e.Name, baseUrl = e.BaseUrl, isProduction = e.IsProduction,
         }),
         canRun = Model.CanRun,
+        canRecordBaseline = Model.CanRecordBaseline,
     }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 

@@ -1,0 +1,88 @@
+@model BaselineListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.baselines"]</h1>
+        <p class="page-subtitle">@T["baseline.subtitle"]</p>
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/request-lab">
+            <i data-lucide="send" aria-hidden="true"></i>@T["request.title"]
+        </a>
+    </div>
+</div>
+
+@if (Model.Baselines.Count == 0)
+{
+    @* A baseline cannot be created from nothing — it is recorded from a response — so the empty
+       state points at the place responses come from rather than offering a "new" button that
+       would open a form with nothing to put in it. *@
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="camera" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["baseline.empty.title"]</h2>
+            <p class="empty-body">@T["baseline.empty.body"]</p>
+            <div class="empty-actions">
+                <a class="btn btn-primary" href="/projects/@Model.ProjectId/request-lab">
+                    <i data-lucide="send" aria-hidden="true"></i>@T["baseline.empty.action"]
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table">
+                <caption class="sr-only">@T["nav.baselines"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["environment.title"]</th>
+                    <th>@T["baseline.versions"]</th>
+                    <th>@T["common.status"]</th>
+                    <th>@T["common.updated"]</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var baseline in Model.Baselines)
+                {
+                    <tr>
+                        <td>
+                            <a href="/projects/@Model.ProjectId/baselines/@baseline.Id" dir="auto">
+                                @baseline.Name
+                            </a>
+                            @if (!string.IsNullOrWhiteSpace(baseline.Description))
+                            {
+                                <p class="text-xs subtle" dir="auto">@baseline.Description</p>
+                            }
+                        </td>
+                        <td>
+                            @if (baseline.EnvironmentName is { } environmentName)
+                            {
+                                <span dir="auto">@environmentName</span>
+                            }
+                            else
+                            {
+                                @* Not "0" and not blank: the baseline genuinely is not tied to one. *@
+                                <span class="subtle">@T["common.none"]</span>
+                            }
+                        </td>
+                        <td class="tabular">@baseline.VersionCount</td>
+                        <td>
+                            <span class="badge @BaselineStatusTone.For(baseline.LatestStatus)">
+                                <i data-lucide="@BaselineStatusTone.Icon(baseline.LatestStatus)" aria-hidden="true"></i>
+                                @T[$"baseline.status.{baseline.LatestStatus}"]
+                            </span>
+                        </td>
+                        <td>
+                            <partial name="Pieces/_Timestamp" model="@(new TimestampView(baseline.UpdatedAt))" />
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

@@ -249,7 +249,10 @@
   --idle-border: var(--gray-200);
   --idle-ink:    var(--gray-600);
 
-  /* Diff. Six categories, because "changed" alone does not tell a reader whether the API broke. */
+  /* Diff. Seven categories, because "changed" alone does not tell a reader whether the API broke.
+     RuleViolation shares red with Removed on purpose — both are failures, and a seventh hue nobody
+     can name would buy less than the marker glyph and the rule badge already give. It reads as a
+     heavier red rather than a different colour. */
   --diff-added-soft:    var(--green-50);
   --diff-added-ink:     var(--green-700);
   --diff-added-marker:  var(--green-500);
@@ -265,7 +268,14 @@
   --diff-order-soft:    var(--teal-100);
   --diff-order-ink:     var(--teal-700);
   --diff-order-marker:  var(--teal-500);
-  --diff-ignored-ink:   var(--gray-500);
+  --diff-rule-soft:     var(--red-100);
+  --diff-rule-ink:      var(--red-700);
+  --diff-rule-marker:   var(--red-600);
+  --diff-ignored-soft:  var(--gray-100);
+  /* gray-500 reads at 4.33:1 on the chip's own gray-100 background. The ignored category still
+     has to be legible — it is the one that says a check was deliberately turned off. */
+  --diff-ignored-ink:   var(--gray-550);
+  --diff-cursor:        var(--accent-soft);
 
   /* JSON syntax, used by the response viewer and every payload preview. */
   --json-key:     var(--violet-700);
@@ -373,7 +383,12 @@
   --diff-order-soft:    rgba(20, 160, 138, 0.18);
   --diff-order-ink:     var(--teal-300);
   --diff-order-marker:  var(--teal-300);
+  --diff-rule-soft:     rgba(224, 62, 85, 0.28);
+  --diff-rule-ink:      var(--red-200);
+  --diff-rule-marker:   var(--red-300);
+  --diff-ignored-soft:  rgba(255, 255, 255, 0.04);
   --diff-ignored-ink:   var(--gray-400);
+  --diff-cursor:        rgba(129, 90, 245, 0.18);
 
   --json-key:     var(--violet-300);
   --json-string:  var(--green-300);

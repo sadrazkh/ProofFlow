@@ -57,6 +57,7 @@ public static class DependencyInjection
         services.AddProofFlowHttpClients();
         services.AddScoped<IHttpExecutor, GuardedHttpExecutor>();
         services.AddScoped<EnvironmentContextBuilder>();
+        services.AddScoped<Baselines.BaselineService>();
 
         return services;
     }

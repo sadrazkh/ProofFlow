@@ -563,6 +563,22 @@ html[dir='rtl'] .has-tip:hover::after, html[dir='rtl'] .has-tip:focus-visible::a
 .divider { block-size: 1px; background: var(--line); }
 .divider-v { inline-size: 1px; align-self: stretch; background: var(--line); }
 
+/*
+  A short list of facts about the thing on screen.
+
+  Two columns rather than label-above-value, because these are read by scanning down the left edge
+  for the one term you came for; stacking them doubles the height and destroys that edge.
+*/
+.detail-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.detail-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 10ch) minmax(0, 1fr);
+  gap: var(--space-3);
+  align-items: baseline;
+}
+.detail-list dt { font-size: var(--text-xs); color: var(--ink-subtle); }
+.detail-list dd { font-size: var(--text-sm); color: var(--ink); min-inline-size: 0; overflow-wrap: anywhere; }
+
 /* ============================================================================================ */
 /* Layout helpers — a deliberately small set                                                     */
 /* ============================================================================================ */

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Icon } from '../lib/Icon';
 import { t } from '../lib/i18n';
 
 /**
@@ -90,7 +91,7 @@ function remove(index: number): void {
             :aria-label="t('action.delete')"
             @click="remove(index)"
           >
-            <i data-lucide="trash-2" aria-hidden="true"></i>
+            <Icon name="trash-2" />
           </button>
         </td>
       </tr>

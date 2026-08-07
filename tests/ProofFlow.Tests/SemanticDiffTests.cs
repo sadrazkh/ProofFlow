@@ -379,12 +379,16 @@ public class SemanticDiffTests
     }
 
     [Fact]
-    public void A_large_payload_compares_in_reasonable_time()
+    public void A_multi_megabyte_payload_compares_in_reasonable_time()
     {
-        // Two thousand records. The diff viewer virtualises rendering; the engine still has to
-        // produce the tree, and it is the half that runs on the server for every run.
-        var expected = Records(2_000, changeAt: -1);
-        var actual = Records(2_000, changeAt: 1_500);
+        // Over two megabytes, which is the size the design plan names and is not exotic: one page
+        // of search results from a catalogue API. The viewer virtualises its rendering; the engine
+        // still has to build the whole tree, and it is the half that runs on the server for every
+        // run of every scenario.
+        var expected = Records(45_000, changeAt: -1);
+        var actual = Records(45_000, changeAt: 20_000);
+
+        expected.Length.Should().BeGreaterThan(2 * 1024 * 1024, "the point is the size");
 
         var started = System.Diagnostics.Stopwatch.StartNew();
         var result = SemanticDiff.CompareText(expected, actual,
@@ -408,6 +412,35 @@ public class SemanticDiffTests
 
         result.Count(DiffKind.Changed).Should().Be(1);
         result.Findings.Should().ContainSingle();
+    }
+
+    [Fact]
+    public void Reports_non_ascii_values_as_themselves()
+    {
+        // The default JSON encoder escapes everything outside ASCII, which would render a Persian
+        // response as "یک" in the one screen built to make responses readable — and
+        // this product's first users test Persian APIs.
+        var result = SemanticDiff.CompareText(
+            """{"title":"سلام"}""",
+            """{"title":"خداحافظ"}""");
+
+        var node = result.Findings.Should().ContainSingle().Subject;
+
+        node.Expected.Should().Be("\"سلام\"");
+        node.Actual.Should().Be("\"خداحافظ\"");
+    }
+
+    [Fact]
+    public void Leaves_a_plus_in_a_timestamp_alone()
+    {
+        // The default encoder escapes '+' too, so every offset timestamp in every diff read
+        // "2026-08-07T10:18:54+00:00".
+        var result = SemanticDiff.CompareText(
+            """{"at":"2026-08-07T10:18:54+00:00"}""",
+            """{"at":"2026-08-07T11:20:51+00:00"}""");
+
+        result.Findings.Should().ContainSingle()
+            .Which.Actual.Should().NotContain("u002B").And.Contain("+00:00");
     }
 
     private static IEnumerable<DiffNode> Flatten(DiffNode node)

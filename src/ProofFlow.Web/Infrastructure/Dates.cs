@@ -71,12 +71,18 @@ public sealed class Dates(IHttpContextAccessor accessor, IStringLocalizer locali
         return span.Unit switch
         {
             RelativeUnit.JustNow => localizer["time.justNow"].Value,
-            RelativeUnit.Minutes => localizer["time.minutesAgo", span.Value].Value,
-            RelativeUnit.Hours => localizer["time.hoursAgo", span.Value].Value,
-            RelativeUnit.Days => localizer["time.daysAgo", span.Value].Value,
+            // The singular is a separate key rather than a rule. English inflects the noun,
+            // Persian does not, and "1 minutes ago" in a product's own interface is the kind of
+            // small wrongness that makes a reader trust the numbers less.
+            RelativeUnit.Minutes => Count("time.minute", span.Value),
+            RelativeUnit.Hours => Count("time.hour", span.Value),
+            RelativeUnit.Days => Count("time.day", span.Value),
             _ => Absolute(when),
         };
     }
+
+    private string Count(string stem, int value) =>
+        value == 1 ? localizer[$"{stem}Ago"].Value : localizer[$"{stem}sAgo", value].Value;
 
     /// <summary>
     /// The name of the zone the reader is being shown times in.

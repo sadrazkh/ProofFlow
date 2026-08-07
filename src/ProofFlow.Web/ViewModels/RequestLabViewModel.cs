@@ -6,6 +6,7 @@ public sealed record RequestLabViewModel
     public required string ProjectName { get; init; }
     public required IReadOnlyList<RequestLabEnvironment> Environments { get; init; }
     public bool CanRun { get; init; }
+    public bool CanRecordBaseline { get; init; }
 }
 
 /// <summary>

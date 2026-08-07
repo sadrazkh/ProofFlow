@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Icon } from '../lib/Icon';
 import { computed, ref } from 'vue';
 import JsonTree from './JsonTree.vue';
 import { formatDuration, t } from '../lib/i18n';
@@ -99,13 +100,13 @@ async function copy(text: string, message: string): Promise<void> {
     </div>
 
     <div v-else-if="!result" class="empty empty-inline">
-      <div class="empty-art"><i data-lucide="send" aria-hidden="true"></i></div>
+      <div class="empty-art"><Icon name="send" /></div>
       <p class="empty-body">{{ t('response.empty') }}</p>
     </div>
 
     <template v-else-if="!result.succeeded">
       <div class="empty empty-inline">
-        <div class="empty-art response-failed"><i data-lucide="circle-alert" aria-hidden="true"></i></div>
+        <div class="empty-art response-failed"><Icon name="circle-alert" /></div>
         <h3 class="empty-title">{{ result.failureMessage }}</h3>
         <p v-if="failureHelp" class="empty-body">{{ failureHelp }}</p>
 
@@ -130,10 +131,10 @@ async function copy(text: string, message: string): Promise<void> {
           <span v-if="result.reasonPhrase">{{ result.reasonPhrase }}</span>
         </span>
         <span class="response-meta tabular">
-          <i data-lucide="timer" aria-hidden="true"></i>{{ formatDuration(result.durationMs) }}
+          <Icon name="timer" />{{ formatDuration(result.durationMs) }}
         </span>
         <span class="response-meta tabular">
-          <i data-lucide="database" aria-hidden="true"></i>{{ size }}
+          <Icon name="database" />{{ size }}
         </span>
         <span v-if="result.attempts > 1" class="badge badge-warn">
           {{ t('response.attempts', result.attempts) }}
@@ -141,6 +142,10 @@ async function copy(text: string, message: string): Promise<void> {
         <span v-if="result.redirectChain.length" class="badge badge-idle">
           {{ t('response.redirects', result.redirectChain.length) }}
         </span>
+
+        <span class="grow"></span>
+        <slot name="actions" :body="result.body" :content-type="result.contentType"
+              :status-code="result.statusCode"></slot>
 
         <div class="segmented" role="group" :aria-label="t('response.view')">
           <button type="button" :aria-pressed="view === 'tree'" :disabled="!parsed" @click="view = 'tree'">
@@ -154,7 +159,7 @@ async function copy(text: string, message: string): Promise<void> {
 
       <div class="response-body">
         <p v-if="tooLargeForTree" class="response-notice">
-          <i data-lucide="info" aria-hidden="true"></i>{{ t('response.tooLarge') }}
+          <Icon name="info" />{{ t('response.tooLarge') }}
         </p>
 
         <div v-if="view === 'tree' && parsed !== undefined" class="json-sample json-viewer">
@@ -175,7 +180,7 @@ async function copy(text: string, message: string): Promise<void> {
     >
       <div class="menu-label mono">{{ menu.path }}</div>
       <button type="button" class="menu-item" role="menuitem" @click="copy(menu.path, t('response.pathCopied'))">
-        <i data-lucide="copy"></i>{{ t('response.copyPath') }}
+        <Icon name="copy" />{{ t('response.copyPath') }}
       </button>
       <button
         type="button"
@@ -183,10 +188,10 @@ async function copy(text: string, message: string): Promise<void> {
         role="menuitem"
         @click="copy(typeof menu.value === 'string' ? menu.value : JSON.stringify(menu.value), t('response.valueCopied'))"
       >
-        <i data-lucide="braces"></i>{{ t('response.copyValue') }}
+        <Icon name="braces" />{{ t('response.copyValue') }}
       </button>
       <button type="button" class="menu-item" role="menuitem" @click="emit('useValue', menu.path, menu.value); menu = null">
-        <i data-lucide="variable"></i>{{ t('response.saveAsVariable') }}
+        <Icon name="variable" />{{ t('response.saveAsVariable') }}
       </button>
     </div>
   </section>

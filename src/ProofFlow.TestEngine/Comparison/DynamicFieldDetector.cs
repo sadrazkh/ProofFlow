@@ -117,7 +117,7 @@ public static partial class DynamicFieldDetector
 
                 found.Add(new DynamicFieldSuggestion(
                     location.ToString(), reason, confidence,
-                    Propose(reason), node.ToJsonString()));
+                    Propose(reason), SemanticDiff.Render(node)));
                 break;
             }
         }

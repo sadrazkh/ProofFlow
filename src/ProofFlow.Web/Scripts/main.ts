@@ -7,6 +7,7 @@ import { watchForNewContent } from './lib/icons';
 import { flushServerToasts, mountToastDemos } from './lib/toast';
 import { island, mountIslands } from './lib/islands';
 import RequestLab from './islands/RequestLab.vue';
+import BaselineWorkbench from './islands/BaselineWorkbench.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -33,6 +34,7 @@ mountConfirmations();
 mountUnsavedGuard();
 // Registered before mounting, which is the only ordering that matters here.
 island('request-lab', RequestLab);
+island('baseline-workbench', BaselineWorkbench);
 
 mountIslands();
 mountSecretReveal();

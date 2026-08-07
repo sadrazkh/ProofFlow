@@ -1,0 +1,423 @@
+/*
+  Baselines: the diff, the rules that soften it, and the versions it produces.
+
+  The diff row is the tightest layout in the product — it has to hold a path, two values, a reason,
+  a rule badge and a checkbox inside thirty pixels, thirty thousand times over. Everything here is
+  written for that: fixed row heights the virtual list can multiply, no per-row shadows or
+  transitions, and colour applied to text and a marker rather than to whole-row backgrounds, which
+  at this density turn a response into a stripy blanket nobody can read.
+*/
+
+/* ============================================================================================== */
+/* Section headings shared by the rule builder and the suggestion list                             */
+/* ============================================================================================== */
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--ink);
+}
+.section-title svg { inline-size: 15px; block-size: 15px; color: var(--ink-muted); }
+
+.section-help {
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  line-height: var(--leading-relaxed);
+  max-inline-size: 72ch;
+}
+
+/* A label and its control on one line, for toolbars where a stacked field would double the height. */
+.field-inline {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+}
+.field-inline .field-label { margin: 0; white-space: nowrap; }
+
+/* ============================================================================================== */
+/* Workbench                                                                                       */
+/* ============================================================================================== */
+
+.workbench { display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+.workbench > .workbench-panel { align-self: stretch; }
+.workbench-panel { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.workbench-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+.workbench-foot { border-block-start: 1px solid var(--line); padding-block-start: var(--space-4); }
+
+.segment-count {
+  margin-inline-start: var(--space-2);
+  padding-inline: 5px;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  font-size: 10px;
+  line-height: 15px;
+  color: var(--ink-muted);
+}
+.segmented button[aria-pressed='true'] .segment-count {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.segmented button .status-warn { display: inline-flex; margin-inline-start: var(--space-2); }
+
+/* ============================================================================================== */
+/* Diff — summary bar                                                                              */
+/* ============================================================================================== */
+
+.diff { display: flex; flex-direction: column; overflow: hidden; }
+
+.diff-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+/*
+  A count that can be clicked. It looks like a chip and behaves like a jump, so it carries a
+  pointer and a focus ring rather than sitting there as a statistic.
+*/
+.diff-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-inline: var(--space-2);
+  block-size: 22px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-out);
+}
+.diff-chip:hover { border-color: currentColor; }
+
+.diff-chip.diff-added   { background: var(--diff-added-soft);   color: var(--diff-added-ink); }
+.diff-chip.diff-removed { background: var(--diff-removed-soft); color: var(--diff-removed-ink); }
+.diff-chip.diff-changed { background: var(--diff-changed-soft); color: var(--diff-changed-ink); }
+.diff-chip.diff-type    { background: var(--diff-type-soft);    color: var(--diff-type-ink); }
+.diff-chip.diff-order   { background: var(--diff-order-soft);   color: var(--diff-order-ink); }
+.diff-chip.diff-rule    { background: var(--diff-rule-soft);    color: var(--diff-rule-ink); }
+.diff-chip.diff-ignored { background: var(--diff-ignored-soft); color: var(--diff-ignored-ink); }
+
+.diff-nav { display: inline-flex; align-items: center; gap: var(--space-1); }
+.diff-nav .kbd { margin-inline-start: 2px; }
+
+/* ============================================================================================== */
+/* Diff — the virtual list                                                                         */
+/* ============================================================================================== */
+
+/* The height is set by the component from the row count, capped; this is only the fallback. */
+.diff-scroll {
+  overflow: auto;
+  max-block-size: 560px;
+  background: var(--surface);
+}
+.diff-scroll:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+
+.diff-spacer { position: relative; }
+.diff-rows { position: absolute; inset-block-start: 0; inset-inline: 0; will-change: transform; }
+
+.diff-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding-inline: var(--space-3);
+  /* The nesting the flat list gave up. 14px per level, capped by the path column's min-width. */
+  padding-inline-start: calc(var(--space-3) + var(--depth) * 14px);
+  font-size: var(--text-xs);
+  border-block-end: 1px solid var(--line-subtle);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.diff-row:hover { background: var(--surface-raised); }
+
+/*
+  Where n and p left the reader. An outline rather than a background, so it stays visible on a row
+  that already carries a category colour.
+*/
+.diff-row.is-cursor {
+  background: var(--diff-cursor);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+html[dir='rtl'] .diff-row.is-cursor { box-shadow: inset -2px 0 0 var(--accent); }
+
+.diff-marker {
+  inline-size: 12px;
+  flex: none;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+}
+
+.diff-path {
+  flex: 0 1 auto;
+  min-inline-size: 6ch;
+  max-inline-size: 34ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+  direction: ltr;
+  text-align: start;
+}
+
+.diff-old, .diff-new {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: ltr;
+  text-align: start;
+}
+.diff-old { color: var(--diff-removed-ink); text-decoration: line-through; text-decoration-thickness: 1px; }
+.diff-new { color: var(--diff-added-ink); }
+
+.diff-arrow { inline-size: 12px; block-size: 12px; flex: none; color: var(--ink-faint); }
+html[dir='rtl'] .diff-arrow { transform: scaleX(-1); }
+
+.diff-reason, .diff-ignored-note {
+  color: var(--ink-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.diff-rule-badge { flex: none; font-family: var(--font-mono); font-size: 10px; }
+.diff-accept { flex: none; display: inline-flex; }
+
+/* Per-category ink. Applied to the marker and the leaf, never as a full-row wash. */
+.diff-row.is-added    .diff-marker { color: var(--diff-added-marker); }
+.diff-row.is-removed  .diff-marker { color: var(--diff-removed-marker); }
+.diff-row.is-changed  .diff-marker { color: var(--diff-changed-marker); }
+.diff-row.is-typechanged .diff-marker { color: var(--diff-type-marker); }
+.diff-row.is-orderchanged .diff-marker { color: var(--diff-order-marker); }
+.diff-row.is-ruleviolation .diff-marker { color: var(--diff-rule-marker); }
+
+.diff-row.is-added    .diff-path { color: var(--diff-added-ink); }
+.diff-row.is-removed  .diff-path { color: var(--diff-removed-ink); }
+.diff-row.is-typechanged .diff-path { color: var(--diff-type-ink); }
+.diff-row.is-orderchanged .diff-path { color: var(--diff-order-ink); }
+
+/*
+  A rule violation is a rule that was written down and then broken, which is worse than a change
+  nobody predicted. It gets the only tinted row in the list.
+*/
+.diff-row.is-ruleviolation {
+  background: var(--diff-rule-soft);
+}
+.diff-row.is-ruleviolation .diff-path { color: var(--diff-rule-ink); font-weight: var(--weight-medium); }
+
+/* Ignored rows stay in the list, greyed. Removing them would hide what the rules are doing. */
+.diff-row.is-ignored { color: var(--diff-ignored-ink); }
+.diff-row.is-ignored .diff-path { color: var(--diff-ignored-ink); }
+
+.diff-row.is-unchanged .diff-path { color: var(--ink-muted); }
+
+.diff-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-3) var(--space-4);
+  border-block-start: 1px solid var(--line);
+  background: var(--surface-raised);
+}
+
+/* ============================================================================================== */
+/* Diff — side by side                                                                             */
+/* ============================================================================================== */
+
+@media (min-width: 900px) {
+  .diff.is-split .diff-path { flex: 0 0 26ch; max-inline-size: 26ch; }
+
+  .diff.is-split .diff-old,
+  .diff.is-split .diff-new {
+    flex: 1 1 0;
+    padding-inline: var(--space-2);
+    border-inline-start: 1px solid var(--line);
+  }
+  .diff.is-split .diff-old { text-decoration: none; }
+  .diff.is-split .diff-reason { display: none; }
+}
+
+/* ============================================================================================== */
+/* Rule builder                                                                                    */
+/* ============================================================================================== */
+
+.rule-builder { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.rule-table { inline-size: 100%; }
+.rule-table td { vertical-align: top; padding-block: var(--space-2); }
+
+.rule-enabled { inline-size: 34px; }
+.rule-path    { inline-size: 26%; }
+.rule-matcher { inline-size: 22%; }
+.rule-params  { inline-size: 20%; }
+.rule-note    { inline-size: auto; }
+.rule-actions { inline-size: 40px; text-align: end; }
+
+.rule-params { display: table-cell; }
+.rule-params .input { margin-block-end: var(--space-2); }
+.rule-params .input:last-child { margin-block-end: 0; }
+.input-number { inline-size: 10ch; font-variant-numeric: tabular-nums; }
+
+/*
+  The one-line explanation under each matcher. It is the difference between a dropdown of twenty
+  words and a dropdown somebody can choose from without reading the manual.
+*/
+.rule-hint {
+  margin-block-start: 4px;
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  line-height: var(--leading-normal);
+  max-inline-size: 34ch;
+}
+
+/* Not dimmed — it has to pass contrast like any other text — so it is italic instead. */
+.rule-noparams { font-size: var(--text-xs); color: var(--ink-subtle); font-style: italic; }
+
+/* ============================================================================================== */
+/* Suggestions                                                                                     */
+/* ============================================================================================== */
+
+.suggestions { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+
+.suggestion-list { display: flex; flex-direction: column; gap: var(--space-1); }
+
+.suggestion { border-radius: var(--radius-md); }
+.suggestion:hover { background: var(--surface-sunken); }
+
+.suggestion-label {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+.suggestion-label .checkbox { margin-block-start: 2px; flex: none; }
+
+.suggestion-body {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--space-3);
+  align-items: baseline;
+  min-inline-size: 0;
+}
+
+.suggestion-path {
+  grid-column: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.suggestion-reason {
+  grid-column: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+/* The value that triggered the suggestion. Evidence, so it is shown rather than described. */
+.suggestion-sample {
+  grid-column: 1 / -1;
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggestion-effect { grid-column: 1 / -1; font-size: var(--text-xs); color: var(--ink-subtle); }
+
+.suggestion-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-block-start: 1px solid var(--line);
+  padding-block-start: var(--space-3);
+}
+
+/* ============================================================================================== */
+/* Baseline list and detail                                                                        */
+/* ============================================================================================== */
+
+.baseline-layout {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1100px) {
+  .baseline-layout { grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
+}
+
+/*
+  The version history as a rail. Vertical rather than a table because the question people bring to
+  it is "which one is live and what came before", and a table answers "what are the columns".
+*/
+.version-rail { display: flex; flex-direction: column; }
+
+.version-item {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding-block: var(--space-3);
+}
+
+.version-mark {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  padding-block-start: 3px;
+}
+.version-mark svg { inline-size: 15px; block-size: 15px; }
+
+/* The line that makes it a timeline. Drawn on the marker so it stops at the last item. */
+.version-item:not(:last-child) .version-mark::after {
+  content: '';
+  position: absolute;
+  inset-block-start: 22px;
+  inset-block-end: calc(var(--space-3) * -1 - 3px);
+  inline-size: 1px;
+  background: var(--line);
+}
+
+.version-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.version-number { font-weight: var(--weight-semibold); font-size: var(--text-sm); }
+.version-meta { font-size: var(--text-xs); color: var(--ink-subtle); }
+.version-description { font-size: var(--text-sm); color: var(--ink-muted); margin-block-start: 2px; }
+
+.version-actions { display: flex; gap: var(--space-2); margin-block-start: var(--space-2); }
+
+.version-item.is-approved .version-mark svg { color: var(--pass); }
+.version-item.is-pendingapproval .version-mark svg { color: var(--warn); }
+.version-item.is-rejected .version-mark svg { color: var(--fail); }
+.version-item.is-superseded .version-mark svg,
+.version-item.is-draft .version-mark svg,
+.version-item.is-archived .version-mark svg { color: var(--ink-faint); }
+
+.version-rejection {
+  margin-block-start: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 2px solid var(--fail-border);
+  background: var(--fail-soft);
+  color: var(--fail-ink);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}

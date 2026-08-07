@@ -9,6 +9,9 @@ export default mergeConfig(
     test: {
       environment: 'happy-dom',
       include: ['Scripts/**/*.spec.ts'],
+      // Installs the real English catalogue, so a component that asks for a key nobody wrote
+      // renders the key and the assertion on its text fails.
+      setupFiles: ['Scripts/testing/catalogue.ts'],
       globals: true,
     },
   }),

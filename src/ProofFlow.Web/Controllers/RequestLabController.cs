@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Contracts.Requests;
+using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Infrastructure.Environments;
 using ProofFlow.Infrastructure.Persistence;
@@ -34,6 +35,7 @@ public sealed class RequestLabController(
     IHttpExecutor executor,
     IAuditLog audit,
     IClock clock,
+    ICurrentUser me,
     IStringLocalizer localizer) : Controller
 {
     [HttpGet("")]
@@ -62,7 +64,10 @@ public sealed class RequestLabController(
             ProjectId = projectId,
             ProjectName = project.Name,
             Environments = list,
-            CanRun = User.Identity?.IsAuthenticated == true,
+            CanRun = me.Can(Capability.RunTest),
+            // Checked here as well as on the endpoint. The button is hidden for somebody who
+            // cannot record one, because a control that always fails is worse than no control.
+            CanRecordBaseline = me.Can(Capability.RecordBaseline),
         });
     }
 

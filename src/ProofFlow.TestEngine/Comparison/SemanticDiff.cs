@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -19,7 +20,32 @@ public sealed class SemanticDiff(ComparisonRuleSet? rules = null)
 {
     public const int MaxDepth = 64;
 
+    /// <summary>
+    /// How a value is written out for a person to read.
+    ///
+    /// The relaxed encoder, and the name of it is worse than the thing. The default escapes every
+    /// character outside ASCII, so a Persian response renders in the diff as
+    /// <c>"یک"</c> and a timestamp's <c>+00:00</c> as <c>+00:00</c> — an entire
+    /// class of API made unreadable by the one product feature meant to make it readable.
+    ///
+    /// It is safe here because these strings are display values: they travel to the browser inside
+    /// a JSON field that the transport escapes properly on its own, and Vue renders them as text
+    /// content. Nothing writes them into markup or into a script.
+    /// </summary>
+    private static readonly JsonSerializerOptions Display = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
     private readonly ComparisonRuleSet _rules = rules ?? ComparisonRuleSet.Empty;
+
+    /// <summary>
+    /// One value, written the way it is shown to a person.
+    ///
+    /// Public because the dynamic-field detector shows samples too, and a sample that escapes
+    /// differently from the diff row beside it makes the two look like different values.
+    /// </summary>
+    public static string? Render(JsonNode? node) => node?.ToJsonString(Display);
 
     public static DiffResult Compare(JsonNode? expected, JsonNode? actual, ComparisonRuleSet? rules = null) =>
         new SemanticDiff(rules).Run(expected, actual);
@@ -302,7 +328,7 @@ public sealed class SemanticDiff(ComparisonRuleSet? rules = null)
 
     private static string? KeyOf(JsonNode? node, string key) =>
         node is JsonObject obj && obj.TryGetPropertyValue(key, out var value) && value is not null
-            ? value.ToJsonString()
+            ? Render(value)
             : null;
 
     /// <summary>Structural equality for pairing, ignoring key order inside objects.</summary>
@@ -337,8 +363,8 @@ public sealed class SemanticDiff(ComparisonRuleSet? rules = null)
         {
             Location = location,
             Kind = kind,
-            Expected = expected?.ToJsonString(),
-            Actual = actual?.ToJsonString(),
+            Expected = Render(expected),
+            Actual = Render(actual),
             Reason = reason,
             RulePath = rule?.Path,
             RuleKind = rule?.Kind,
