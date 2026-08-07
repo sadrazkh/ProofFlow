@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ProofFlow.Infrastructure.Persistence;
 
@@ -10,9 +11,11 @@ using ProofFlow.Infrastructure.Persistence;
 namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
 {
     [DbContext(typeof(SqliteProofFlowDbContext))]
-    partial class SqliteProofFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260807154716_Runs")]
+    partial class Runs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");

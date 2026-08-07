@@ -12,6 +12,7 @@ import DataSetEditor from './islands/DataSetEditor.vue';
 import ReviewQueue from './islands/ReviewQueue.vue';
 import RegressionWizard from './islands/RegressionWizard.vue';
 import ScenarioCanvas from './islands/ScenarioCanvas.vue';
+import RunConsole from './islands/RunConsole.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -43,6 +44,7 @@ island('dataset-editor', DataSetEditor);
 island('review-queue', ReviewQueue);
 island('regression-wizard', RegressionWizard);
 island('scenario-canvas', ScenarioCanvas);
+island('run-console', RunConsole);
 
 mountIslands();
 mountSecretReveal();

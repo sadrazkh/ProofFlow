@@ -61,7 +61,11 @@
   flex-wrap: wrap;
 }
 
-.canvas-surface { flex: 1 1 auto; min-block-size: 0; position: relative; }
+/*
+  Clipped. Without this a node past the right edge draws straight over the inspector — a card
+  hanging across a panel it has nothing to do with, and a click that lands on the wrong thing.
+*/
+.canvas-surface { flex: 1 1 auto; min-block-size: 0; position: relative; overflow: hidden; }
 
 /* Below the three-column width the palette and inspector stack above and below the drawing. */
 @media (max-width: 1099px) {

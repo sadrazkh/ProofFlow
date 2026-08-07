@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Application.Common;
 using ProofFlow.Domain.Authorization;
+using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Identity;
@@ -93,17 +94,20 @@ public sealed class DemoDataSeeder(
         var persian = (configuration["Demo:Culture"] ?? "fa")
             .StartsWith("fa", StringComparison.OrdinalIgnoreCase);
 
-        foreach (var project in DemoProjects)
+        foreach (var demo in DemoProjects)
         {
-            db.Projects.Add(new Project
+            var project = new Project
             {
                 WorkspaceId = workspace.Id,
-                Name = project.Name,
-                Slug = Slug.From(project.Name, "project"),
-                Description = persian ? project.Persian : project.English,
-                Accent = project.Accent,
+                Name = demo.Name,
+                Slug = Slug.From(demo.Name, "project"),
+                Description = persian ? demo.Persian : demo.English,
+                Accent = demo.Accent,
                 CreatedByUserId = user.Id,
-            });
+            };
+
+            db.Projects.Add(project);
+            Environments(workspace.Id, project);
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -112,6 +116,49 @@ public sealed class DemoDataSeeder(
         await users.UpdateAsync(user);
 
         logger.LogInformation("Seeded the demo workspace and signed-in account {Email}.", DemoEmail);
+    }
+
+    /// <summary>
+    /// Two environments per project, and a base URL that answers.
+    ///
+    /// Without one nothing in the demo can run: almost every scenario's first step reads
+    /// <c>{{environment.baseUrl}}</c>, and a workspace where the first test somebody presses Run on
+    /// fails with "environment has no value" teaches them the product is broken.
+    ///
+    /// Local points at this application's own fake API. It is on loopback, which the URL guard
+    /// refuses by default — so the environment says so explicitly, which is also the clearest place
+    /// anybody will ever see that setting demonstrated.
+    /// </summary>
+    private void Environments(Guid workspaceId, Project project)
+    {
+        var local = new ProjectEnvironment
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            Name = "Local",
+            Slug = "local",
+            BaseUrl = configuration["Demo:BaseUrl"] ?? "http://localhost:5290/fake",
+            Kind = EnvironmentKind.Local,
+            AllowPrivateNetwork = true,
+            SortOrder = 0,
+        };
+
+        // A second one, unreachable on purpose: the comparison between environments is what the
+        // product is for, and a workspace with one environment cannot show it. It is marked
+        // production so the guard rails around production are visible from the first screen.
+        var staging = new ProjectEnvironment
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            Name = "Staging",
+            Slug = "staging",
+            BaseUrl = "https://staging.example.test",
+            Kind = EnvironmentKind.Staging,
+            SortOrder = 1,
+        };
+
+        db.Environments.Add(local);
+        db.Environments.Add(staging);
     }
 
     /// <summary>

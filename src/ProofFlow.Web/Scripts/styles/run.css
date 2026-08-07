@@ -1,0 +1,433 @@
+/*
+  The run console.
+
+  Three things at once — a picture, a log and a shape — and the layout's job is to let somebody
+  glance between them without losing their place. So the graph and the timeline share one pane and
+  the log keeps its own: the log is what people read continuously, and a tab that hid it would be a
+  tab nobody presses.
+
+  Everything is a semantic token. The eight node states are the canvas's own, because watching a run
+  is watching the picture the test was drawn on.
+*/
+
+.run-console {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-block-size: 0;
+}
+
+/* ---- the head --------------------------------------------------------------------------------- */
+
+.run-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.run-figures {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  margin: 0;
+}
+
+.run-figures > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.run-figures dt {
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
+.run-figures dd {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: 600;
+  line-height: 1.1;
+  color: var(--ink);
+}
+
+/* A count of failures is worth colouring; a count of zero of them is not. */
+.run-figures > div.is-bad dd {
+  color: var(--fail-ink);
+}
+
+.run-live {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+  The tint carries it, and the border matches it.
+
+  There was a 3px stripe down the leading edge here. It was a fourth way of saying the same thing —
+  the badge above already says passed or failed in a dot, a colour and a word, and the sentence
+  itself says it in prose — and it was heavier than anything else in the product.
+*/
+.run-outcome {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--pass-border);
+  border-radius: var(--radius-md);
+  background: var(--pass-soft);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.run-outcome.is-bad {
+  border-color: var(--fail-border);
+  background: var(--fail-soft);
+}
+
+.run-tabs {
+  align-self: flex-start;
+}
+
+/* A block of shimmer while the first read is in flight, so the panes do not jump in underneath. */
+.run-skeleton {
+  block-size: 24rem;
+  border-radius: var(--radius-lg);
+}
+
+/* ---- the panes -------------------------------------------------------------------------------- */
+
+.run-panes {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+  min-block-size: 0;
+}
+
+@media (max-width: 1100px) {
+  .run-panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.run-graph,
+.run-timeline,
+.run-log {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.run-graph-bar,
+.run-timeline-bar,
+.run-log-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface-sunken);
+}
+
+.run-graph-bar h3,
+.run-timeline-bar h3,
+.run-log-bar h3 {
+  margin: 0;
+  font-weight: 600;
+}
+
+/* ---- the graph -------------------------------------------------------------------------------- */
+
+.run-graph-surface {
+  position: relative;
+  block-size: 30rem;
+  background: var(--canvas);
+}
+
+.run-graph-empty,
+.run-timeline-empty,
+.run-log-empty {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline: 0;
+  margin: 0;
+  text-align: center;
+}
+
+.run-timeline-empty,
+.run-log-empty {
+  position: static;
+  padding: var(--space-6) var(--space-4);
+}
+
+/* ---- the timeline ----------------------------------------------------------------------------- */
+
+.run-timeline-rows {
+  list-style: none;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  max-block-size: 26rem;
+  overflow-y: auto;
+}
+
+/* A button, because it does something. Styled back to a row, because it is one. */
+.run-timeline-row {
+  display: grid;
+  grid-template-columns: minmax(6rem, 12rem) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--space-3);
+
+  inline-size: 100%;
+  padding: 3px var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  text-align: start;
+  cursor: pointer;
+}
+
+.run-timeline-row:hover {
+  background: var(--surface-hover);
+}
+
+.run-timeline-row:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.run-timeline-name {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  font-size: var(--text-sm);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The track is the full width; the bars inside it are the durations. */
+.run-timeline-track {
+  display: flex;
+  gap: 2px;
+  block-size: 0.75rem;
+
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+/*
+  No transition on the width.
+
+  A bar's length is set once, when its step finishes. Animating it would put a layout pass on every
+  frame of that change — and a loop over two thousand rows is two thousand of them — to smooth a
+  transition nobody is looking at, because they are reading the log.
+*/
+.run-timeline-segment {
+  block-size: 100%;
+  border-radius: var(--radius-sm);
+  background: var(--running-border);
+}
+
+.run-timeline-segment.state-passed { background: var(--pass-border); }
+.run-timeline-segment.state-failed { background: var(--fail-border); }
+.run-timeline-segment.state-skipped { background: var(--gray-550); }
+.run-timeline-segment.state-cancelled { background: var(--gray-550); }
+.run-timeline-segment.state-running { background: var(--running-border); }
+
+/*
+  A superseded attempt is drawn hatched rather than in a different colour: it is the same colour of
+  news as its outcome, and the pattern says "this one did not count" without inventing a ninth
+  state.
+*/
+.run-timeline-segment.is-retry {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgb(255 255 255 / 0.35) 0 3px,
+    transparent 3px 6px
+  );
+}
+
+.run-timeline-figure {
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+  white-space: nowrap;
+}
+
+.run-timeline-verdict {
+  display: inline-flex;
+  color: var(--fail-ink);
+}
+
+.run-failures {
+  padding: var(--space-3);
+  border-block-start: 1px solid var(--line);
+}
+
+.run-failures h4 {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+
+.run-failure-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.run-failure {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  background: var(--fail-soft);
+  font-size: var(--text-sm);
+}
+
+.run-failure-step {
+  font-weight: 600;
+}
+
+.run-failure-values {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}
+
+/* ---- the log ---------------------------------------------------------------------------------- */
+
+/*
+  Fixed row height. Not a stylistic choice: the virtual window computes which rows are visible from
+  this number, and a variable height would mean measuring every row to know where any row starts —
+  the exact cost virtualising was meant to avoid. Changing it means changing ROW in RunLog.vue.
+*/
+.run-log {
+  --run-log-line: 22px;
+}
+
+.run-log-viewport {
+  position: relative;
+  block-size: 30rem;
+  overflow-y: auto;
+  background: var(--surface-sunken);
+}
+
+.run-log-viewport:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+.run-log-spacer {
+  position: relative;
+}
+
+.run-log-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+}
+
+.run-log-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+
+  block-size: var(--run-log-line);
+  padding-inline: var(--space-3);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--run-log-line);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.run-log-line:nth-child(even) {
+  background: var(--surface);
+}
+
+.run-log-time {
+  color: var(--ink-subtle);
+  flex: none;
+}
+
+/*
+  The level is a word as well as a colour. A log where warning and error differ only in orange and
+  red is a log one reader in twelve cannot triage.
+*/
+.run-log-level {
+  flex: none;
+  inline-size: 3.5rem;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-subtle);
+}
+
+.run-log-line.log-warning .run-log-level { color: var(--warn-ink); }
+.run-log-line.log-error .run-log-level { color: var(--fail-ink); }
+.run-log-line.log-info .run-log-level { color: var(--running-ink); }
+
+.run-log-line.log-warning { background: var(--warn-soft); }
+.run-log-line.log-error { background: var(--fail-soft); }
+
+.run-log-node {
+  flex: none;
+  max-inline-size: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink-muted);
+}
+
+.run-log-message {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--ink);
+}
+
+/* ---- the history table ------------------------------------------------------------------------ */
+
+.run-row-verdict {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/*
+  Seven columns do not fit a phone. The wrapper scrolls sideways, but a table whose duration is
+  half off the edge is a table somebody has to drag to read — so the two columns a phone reader
+  needs least go, and what is left answers "which test, did it pass, how long".
+*/
+@media (max-width: 640px) {
+  .run-column-wide {
+    display: none;
+  }
+}

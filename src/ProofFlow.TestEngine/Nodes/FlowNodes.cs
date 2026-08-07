@@ -90,11 +90,10 @@ public static class FlowNodes
                     Name = "limit", LabelKey = "nodeprop.limit", Kind = PropertyKind.Number,
                     HelpKey = "nodeprop.limit.help",
                 },
-                new()
-                {
-                    Name = "concurrency", LabelKey = "nodeprop.concurrency", Kind = PropertyKind.Number,
-                    Default = "4", HelpKey = "nodeprop.concurrency.help",
-                },
+
+                // No concurrency knob. Every step publishes under one {{steps.…}} scope, so two
+                // rows at once would read each other's responses. The place rows do run at once is
+                // the capture engine, where a row is a single request and nothing is shared.
             ],
         },
         new()

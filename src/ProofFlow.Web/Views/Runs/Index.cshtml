@@ -1,0 +1,97 @@
+@using ProofFlow.Domain.Runs
+@model RunListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.runs"]</h1>
+        <p class="page-subtitle">@T["run.empty.body"]</p>
+    </div>
+</div>
+
+@if (Model.Runs.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="history" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["run.empty.title"]</h2>
+            <p class="empty-body">@T["run.empty.body"]</p>
+            <div class="empty-actions">
+                <a class="btn btn-primary" href="/projects/@Model.ProjectId/scenarios">
+                    <i data-lucide="workflow" aria-hidden="true"></i>@T["nav.scenarios"]
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table table-hover">
+                <caption class="sr-only">@T["nav.runs"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["run.column.scenario"]</th>
+                    <th>@T["run.column.verdict"]</th>
+                    <th class="run-column-wide">@T["run.column.environment"]</th>
+                    <th>@T["run.column.checks"]</th>
+                    <th>@T["run.column.took"]</th>
+                    <th class="run-column-wide">@T["run.column.trigger"]</th>
+                    <th>@T["run.column.started"]</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var run in Model.Runs)
+                {
+                    var (badge, status) = run.Status switch
+                    {
+                        RunStatus.Passed => ("badge-pass", "status-pass"),
+                        RunStatus.Failed => ("badge-fail", "status-fail"),
+                        RunStatus.Errored => ("badge-warn", "status-warn"),
+                        RunStatus.Running => ("badge-running", "status-running"),
+                        _ => ("badge-idle", "status-idle"),
+                    };
+
+                    <tr>
+                        <td>
+                            <a href="/projects/@Model.ProjectId/runs/@run.Id" dir="auto">
+                                @(run.ScenarioName ?? T["run.title"].Value)
+                            </a>
+                        </td>
+                        <td>
+                            @* A dot, a colour and a word. A verdict told only in green and red is a
+                               verdict one reader in twelve cannot read. *@
+                            <span class="badge run-row-verdict @badge @status">
+                                <span class="status-dot" aria-hidden="true"></span>
+                                @T[$"run.status.{run.Status.ToString().ToLowerInvariant()}"]
+                            </span>
+                        </td>
+                        <td class="run-column-wide" dir="auto">@(run.EnvironmentName ?? "—")</td>
+                        <td class="tabular" dir="ltr">
+                            @if (run.AssertionsPassed + run.AssertionsFailed == 0)
+                            {
+                                @* An em dash, not a zero. "No checks ran" and "no checks passed"
+                                   are different facts and a zero says the wrong one. *@
+                                <span class="subtle">—</span>
+                            }
+                            else
+                            {
+                                <span>@run.AssertionsPassed</span>
+                                <span class="subtle">/</span>
+                                <span>@(run.AssertionsPassed + run.AssertionsFailed)</span>
+                            }
+                        </td>
+                        <td class="tabular" dir="ltr">
+                            @(run.DurationMs >= 1000
+                                ? $"{run.DurationMs / 1000:0.0}s"
+                                : $"{Math.Round(run.DurationMs)}ms")
+                        </td>
+                        <td class="run-column-wide">@T[$"run.trigger.{run.Trigger.ToString().ToLowerInvariant()}"]</td>
+                        <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(run.StartedAt))" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

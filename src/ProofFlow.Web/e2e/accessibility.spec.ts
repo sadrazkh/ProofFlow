@@ -43,6 +43,7 @@ const PROJECT_PAGES = [
   { name: 'captures', path: (id: string) => `/projects/${id}/captures` },
   { name: 'wizard', path: (id: string) => `/projects/${id}/wizard` },
   { name: 'scenarios', path: (id: string) => `/projects/${id}/scenarios` },
+  { name: 'runs', path: (id: string) => `/projects/${id}/runs` },
 ];
 
 let projectId: string | null = null;
@@ -160,6 +161,38 @@ for (const theme of ['light', 'dark'] as const) {
           await audit(page, `${target.name} (${language}/${theme})`);
         });
       }
+
+      /**
+       * The run console, with a finished run in it.
+       *
+       * The list page would measure an empty table. The console is where the dense markup is: a
+       * live region, a virtualised log, a read-only canvas and a timeline of coloured bars, and
+       * every one of those is a way to be unreadable.
+       */
+      test('run console', async ({ page }) => {
+        test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+        const id = await firstProject(page);
+        expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+        await page.goto(`${BASE}/projects/${id}/runs`, { waitUntil: 'networkidle' });
+
+        const first = await page.locator('td a[href*="/runs/"]').first()
+          .getAttribute('href').catch(() => null);
+
+        expect(first, 'there should be a run to audit — run e2e/demo-run.ts first').not.toBeNull();
+
+        await page.goto(`${BASE}${first}`, { waitUntil: 'networkidle' });
+        await page.waitForSelector('[data-island-mounted="true"]');
+        await page.waitForTimeout(900);
+
+        await audit(page, `run console (${language}/${theme})`);
+
+        // And the other half of the toggle, which is markup axe has not seen yet.
+        await page.locator('.run-tabs button').nth(1).click();
+        await page.waitForTimeout(500);
+        await audit(page, `run timeline (${language}/${theme})`);
+      });
 
       /**
        * The diff, with something in it.

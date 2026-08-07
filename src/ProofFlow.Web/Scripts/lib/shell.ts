@@ -246,7 +246,43 @@ export function mountConfirmations(): void {
 }
 
 function openConfirm(form: HTMLFormElement): void {
-  const phrase = form.dataset.confirmPhrase;
+  void confirmAction({
+    title: form.dataset.confirmTitle ?? t('action.confirm'),
+    body: form.dataset.confirm ?? '',
+    confirm: form.dataset.confirmAction ?? t('action.delete'),
+    phrase: form.dataset.confirmPhrase,
+  }).then((agreed) => {
+    if (!agreed) return;
+
+    form.dataset.confirmed = 'true';
+    form.requestSubmit();
+  });
+}
+
+export type Confirmation = {
+  title: string;
+  body: string;
+
+  /** The word on the button that does it. Always a verb, never "OK". */
+  confirm: string;
+
+  /**
+   * When set, the reader has to type it.
+   *
+   * What separates "yes, this project" from a reflexive Enter on a dialog that appeared where the
+   * reader expected the page.
+   */
+  phrase?: string;
+};
+
+/**
+ * Asks before something irreversible, and resolves to what the reader chose.
+ *
+ * One implementation for the markup-driven forms and for the islands. Two dialogs that looked
+ * almost the same would be two dialogs to keep accessible, and the second one always loses.
+ */
+export function confirmAction(options: Confirmation): Promise<boolean> {
+  const { phrase } = options;
   const overlay = document.createElement('div');
   overlay.className = 'overlay';
   overlay.setAttribute('role', 'dialog');
@@ -256,11 +292,11 @@ function openConfirm(form: HTMLFormElement): void {
     <div class="dialog">
       <div class="card-header">
         <div>
-          <div class="card-title">${escapeHtml(form.dataset.confirmTitle ?? t('action.confirm'))}</div>
+          <div class="card-title">${escapeHtml(options.title)}</div>
         </div>
       </div>
       <div class="card-body stack">
-        <p class="muted">${escapeHtml(form.dataset.confirm ?? '')}</p>
+        <p class="muted">${escapeHtml(options.body)}</p>
         ${phrase ? `
           <div class="field">
             <label class="field-label" for="pf-confirm-phrase">${escapeHtml(t('common.typeToConfirm', phrase))}</label>
@@ -270,7 +306,7 @@ function openConfirm(form: HTMLFormElement): void {
       <div class="card-footer">
         <button type="button" class="btn btn-secondary" data-confirm-cancel>${escapeHtml(t('action.cancel'))}</button>
         <button type="button" class="btn btn-danger" data-confirm-accept ${phrase ? 'disabled' : ''}>
-          ${escapeHtml(form.dataset.confirmAction ?? t('action.delete'))}
+          ${escapeHtml(options.confirm)}
         </button>
       </div>
     </div>`;
@@ -283,19 +319,26 @@ function openConfirm(form: HTMLFormElement): void {
   field?.addEventListener('input', () => { accept.disabled = field.value.trim() !== phrase; });
   (field ?? accept).focus();
 
-  const close = () => { overlay.remove(); document.body.style.overflow = ''; };
-  overlay.querySelector('[data-confirm-cancel]')?.addEventListener('click', close);
-  overlay.addEventListener('click', (event) => { if (event.target === overlay) close(); });
-  overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(); });
-
-  accept.addEventListener('click', () => {
-    form.dataset.confirmed = 'true';
-    close();
-    form.requestSubmit();
-  });
-
   document.body.style.overflow = 'hidden';
   document.dispatchEvent(new CustomEvent('proofflow:content-changed'));
+
+  return new Promise<boolean>((resolve) => {
+    let settled = false;
+
+    const close = (agreed: boolean) => {
+      if (settled) return;
+      settled = true;
+
+      overlay.remove();
+      document.body.style.overflow = '';
+      resolve(agreed);
+    };
+
+    overlay.querySelector('[data-confirm-cancel]')?.addEventListener('click', () => close(false));
+    overlay.addEventListener('click', (event) => { if (event.target === overlay) close(false); });
+    overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(false); });
+    accept.addEventListener('click', () => close(true));
+  });
 }
 
 function escapeHtml(value: string): string {

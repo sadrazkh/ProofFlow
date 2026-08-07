@@ -31,6 +31,20 @@ public sealed class FixedWorkspaceScope(Guid workspaceId) : IWorkspaceScope
 }
 
 /// <summary>
+/// The workspace a piece of background work is acting for.
+///
+/// Scoped, and set once when the scope is made — before anything that reads it is resolved. It
+/// exists because the tenant boundary is a query filter and the worker has no request to take a
+/// tenant from: without this, a background run reads zero rows, does nothing, and reports success.
+/// </summary>
+public sealed class BackgroundWorkspace
+{
+    public Guid? WorkspaceId { get; private set; }
+
+    public void ActFor(Guid workspaceId) => WorkspaceId = workspaceId;
+}
+
+/// <summary>
 /// The identity background work acts as. Holds every capability, because it is not a person and
 /// there is nothing to withhold from it — but it is never authenticated, so the audit trail
 /// records it as "system" rather than attributing its actions to whoever last signed in.

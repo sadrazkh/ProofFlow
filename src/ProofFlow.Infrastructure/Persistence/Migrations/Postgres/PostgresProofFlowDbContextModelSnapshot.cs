@@ -921,6 +921,314 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("Projects", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Runs.AssertionResult", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Actual")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("Expected")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<Guid>("NodeRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Passed")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("Soft")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Target")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NodeRunId", "Passed");
+
+                    b.ToTable("AssertionResults", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.NodeRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempt")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<double>("DurationMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<string>("FailureMessage")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Iteration")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("NodeId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodeKey")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("NodeName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("OutputJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TakenPort")
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)");
+
+                    b.Property<Guid>("TestRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestRunId", "NodeId");
+
+                    b.HasIndex("TestRunId", "SortOrder");
+
+                    b.ToTable("NodeRuns", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.RunArtifact", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Content")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid?>("NodeRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SizeBytes")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TestRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestRunId", "NodeRunId");
+
+                    b.ToTable("RunArtifacts", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.RunEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DataJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("NodeId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NodeName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("TestRunId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TestRunId", "Level");
+
+                    b.HasIndex("TestRunId", "Sequence")
+                        .IsUnique();
+
+                    b.ToTable("RunEvents", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.TestRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AssertionsFailed")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("AssertionsPassed")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("CancelledByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DataSetVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DefinitionJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<double>("DurationMs")
+                        .HasColumnType("double precision");
+
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Outcome")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ScenarioId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ScenarioVersionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("StartedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("StartedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StepsFailed")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("StepsRun")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DataSetVersionId");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("ProjectId", "CreatedAt");
+
+                    b.HasIndex("ScenarioId", "CreatedAt");
+
+                    b.HasIndex("WorkspaceId", "Status");
+
+                    b.ToTable("TestRuns", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Scenarios.ScenarioVersion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1613,6 +1921,70 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Navigation("Workspace");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Runs.AssertionResult", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Runs.NodeRun", "NodeRun")
+                        .WithMany("Assertions")
+                        .HasForeignKey("NodeRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("NodeRun");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.NodeRun", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Runs.TestRun", "Run")
+                        .WithMany("Nodes")
+                        .HasForeignKey("TestRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.RunEvent", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Runs.TestRun", "Run")
+                        .WithMany("Events")
+                        .HasForeignKey("TestRunId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Run");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.TestRun", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Data.DataSetVersion", "DataSetVersion")
+                        .WithMany()
+                        .HasForeignKey("DataSetVersionId");
+
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId");
+
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scenarios.TestScenario", "Scenario")
+                        .WithMany()
+                        .HasForeignKey("ScenarioId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("DataSetVersion");
+
+                    b.Navigation("Environment");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Scenario");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Scenarios.ScenarioVersion", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Scenarios.TestScenario", "Scenario")
@@ -1743,6 +2115,18 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
             modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>
                 {
                     b.Navigation("Variables");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.NodeRun", b =>
+                {
+                    b.Navigation("Assertions");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Runs.TestRun", b =>
+                {
+                    b.Navigation("Events");
+
+                    b.Navigation("Nodes");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Scenarios.ScenarioVersion", b =>

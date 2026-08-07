@@ -1,0 +1,38 @@
+@using System.Text.Json
+@model RunConsoleViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        runId = Model.RunId,
+        canCancel = Model.CanCancel,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 dir="auto">@Model.ScenarioName</h1>
+        <p class="muted">@T["run.title"]</p>
+    </div>
+
+    <div class="row">
+        <a class="btn btn-ghost btn-sm" href="/projects/@Model.ProjectId/runs">
+            <i data-lucide="history" aria-hidden="true"></i>@T["nav.runs"]
+        </a>
+        <a class="btn btn-secondary btn-sm"
+           href="/projects/@Model.ProjectId/scenarios/@Model.ScenarioId">
+            <i data-lucide="workflow" aria-hidden="true"></i>@T["nav.scenarios"]
+        </a>
+    </div>
+</div>
+
+@*
+    The island carries a skeleton in the shape it becomes. Without one the header, the tabs and two
+    tall panes all arrive at once and push the page down under the reader's cursor.
+*@
+<div data-island="run-console" data-props="@props">
+    <div class="run-console">
+        <div class="skeleton" style="block-size: 68px; border-radius: var(--radius-lg);"></div>
+        <div class="skeleton run-skeleton"></div>
+    </div>
+</div>

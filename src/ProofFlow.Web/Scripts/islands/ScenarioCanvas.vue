@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, shallowRef, watch, type Ref } from 'vue';
 import { VueFlow, useVueFlow, type Connection, type Edge, type Node } from '@vue-flow/core';
 import { Background } from '@vue-flow/background';
 import { MiniMap } from '@vue-flow/minimap';
@@ -134,6 +134,11 @@ async function loadGraph(): Promise<void> {
     nodes.value = graph.nodes.map(toFlowNode);
     edges.value = graph.edges.map(toFlowEdge);
     loaded.value = true;
+
+    // Fitted with a ceiling on the zoom. A scenario of one node fitted without one opens at 2×,
+    // where a 216px card fills half the surface and the next node somebody adds lands off it.
+    await nextTick();
+    fitView({ maxZoom: 1, padding: 0.2 });
 
     await validate();
   } catch (error) {
@@ -336,7 +341,44 @@ function add(key: string, at?: { x: number; y: number }): void {
   }];
 
   selectedId.value = id;
+
+  // Brought into view. Placed 280px along, a new node can land past the edge of the surface or
+  // under the inspector that just opened for it — and a palette click that appears to do nothing
+  // is the one thing a palette must never do.
+  void reveal(id);
   void validate();
+}
+
+/**
+ * Scrolls a node into the visible part of the canvas.
+ *
+ * Only when it is not already there: a canvas that jumped on every addition would make placing
+ * five nodes in a row into five involuntary pans.
+ */
+async function reveal(id: string): Promise<void> {
+  await nextTick();
+
+  const node = findNode(id);
+  const surface = document.querySelector('.canvas-surface');
+  if (!node || !surface) return;
+
+  const bounds = surface.getBoundingClientRect();
+  const inspector = document.querySelector('.inspector')?.getBoundingClientRect();
+
+  // The inspector sits over the surface, so the visible width ends where it begins.
+  const visible = inspector && inspector.width > 0
+    ? { width: Math.max(0, bounds.width - inspector.width), height: bounds.height }
+    : { width: bounds.width, height: bounds.height };
+
+  const at = project({ x: bounds.left, y: bounds.top });
+  const far = project({ x: bounds.left + visible.width, y: bounds.top + visible.height });
+
+  const inside = node.position.x >= at.x
+    && node.position.x + (node.dimensions?.width ?? 216) <= far.x
+    && node.position.y >= at.y
+    && node.position.y + (node.dimensions?.height ?? 64) <= far.y;
+
+  if (!inside) fitView({ nodes: [id], duration: 200, maxZoom: 1 });
 }
 
 function duplicate(): void {
@@ -354,6 +396,7 @@ function duplicate(): void {
   }];
 
   selectedId.value = id;
+  void reveal(id);
   void validate();
 }
 
@@ -640,7 +683,6 @@ watch(nodes, () => { if (loaded.value) dirty.value = true; }, { deep: true });
           :snap-grid="[16, 16]"
           :min-zoom="0.2"
           :max-zoom="2"
-          fit-view-on-init
           @node-click="selectedId = $event.node.id"
           @pane-click="selectedId = null"
         >
@@ -675,7 +717,7 @@ watch(nodes, () => { if (loaded.value) dirty.value = true; }, { deep: true });
           </button>
           <button type="button" class="btn btn-ghost btn-icon btn-sm has-tip"
                   :data-tip="t('canvas.fitView')" :aria-label="t('canvas.fitView')"
-                  @click="fitView()">
+                  @click="fitView({ maxZoom: 1, padding: 0.2 })">
             <Icon name="maximize" />
           </button>
         </div>

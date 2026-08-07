@@ -61,6 +61,16 @@ public static class DependencyInjection
         services.AddScoped<Capture.CaptureService>();
         services.AddScoped<Data.DataSetService>();
         services.AddScoped<Scenarios.ScenarioGraphService>();
+        services.AddScoped<Runs.RunService>();
+        services.AddSingleton<Runs.ScenarioGraphSnapshots>();
+
+        // Scoped, and set by whatever starts a piece of background work before anything that reads
+        // it is resolved. A request never sets it, so a request is never able to act as the system.
+        services.AddScoped<Tenancy.BackgroundWorkspace>();
+
+        // The queue is a singleton because it outlives any one run; the worker is the only reader.
+        services.AddSingleton<Runs.IRunQueue, Runs.ChannelRunQueue>();
+        services.AddHostedService<Runs.RunWorker>();
 
         return services;
     }

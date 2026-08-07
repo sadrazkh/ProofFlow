@@ -396,3 +396,85 @@ resolves to nothing.
 
 **A node's summary line is a URL for most nodes and a translated sentence for the rest.** Forcing
 monospace and left-to-right onto both made the Persian ones read backwards.
+
+---
+
+## Phase F — The runner · **done**
+
+A scenario that actually runs, watched while it happens, and readable afterwards.
+
+| | |
+|---|---|
+| Engine | Iterative walk over the graph — branch, switch, skip, group, repeat, while, for-each, for-each-row, retry, poll, try/catch, cleanup, parallel, rate-limit, break, continue |
+| Every node does something | All 72 catalogue types have behaviour: 54 executors and 18 handled by the runner. A test holds the two halves against the catalogue and fails if a type is added with nothing behind it |
+| Bounded | 200,000 steps, 32 levels of nesting, a required ceiling on every loop. An unbounded test is a build agent that stops answering |
+| Expressions | A comparison language, not a scripting one — deliberately, because this runs other people's tests on somebody else's machine |
+| Record | `TestRun` keeps the graph it ran as a snapshot; node runs are per (node, iteration, attempt); events are sequenced rows, not a text blob |
+| Live | SignalR per run, with a full read on connect and on reconnect — the console opens the same way on a run from last month and one that started two seconds ago |
+| Worker | A bounded channel and a background service, one run at a time, cancellable, pinned to the run's workspace |
+| Console | The graph with each step's state on it, a virtualised log that follows the tail until you scroll away, and a timeline of duration-length bars with retry segments |
+| Verified | `e2e/demo-run.ts` presses Run on the canvas, waits for a verdict, and refuses to report if the run never finishes |
+| Tests | 426 passing — 338 unit, 47 integration, 41 component; 85 accessibility checks, 216 screenshots |
+
+### Five decisions worth recording
+
+**A node that silently does nothing is worse than one that fails.** Twenty-eight of the seventy-two
+palette types had no behaviour when the phase started: a scenario using them would come back green
+having tested nothing, and nobody re-reads a green run. `Every_node_on_the_palette_does_something`
+now fails the build if that happens again.
+
+**A retried step that eventually worked did work.** The superseded attempt stays in the log and the
+timeline — flaky detection in a later phase reads it from there — but it does not decide the run.
+Otherwise the retry node would be a way of turning a flaky test into a slow failing one.
+
+**Parallel branches really run at once, and the state is behind one lock.** What that does not
+promise is that a step in one branch can read a step in another; that is a race in any test runner,
+and the answer is not to write scenarios that way. Written down rather than left to be discovered.
+
+**The run keeps its own copy of the graph.** The first thing anybody does after a failing run is
+edit the scenario, and a report that changes when the test changes is not a report. An integration
+test edits the scenario through the real save path and asserts the run is unmoved.
+
+**`flow.forEachRow` has no concurrency setting.** It had one, and the runner cannot honour it: every
+step publishes under one `{{steps.…}}` scope, so two rows at once would read each other's responses.
+The knob was removed rather than left to do nothing. Rows do run concurrently in the capture engine,
+where a row is one request and nothing is shared.
+
+### What the run and the audit caught
+
+**Enums were going over the wire as numbers.** The console dropped every log line and rendered an
+empty graph, silently — `LEVELS.indexOf(1)` is -1, and `(3).toLowerCase()` throws mid-render. Both
+DTOs now carry words, the hub serialises enums as strings, and the one place that still converts
+warns rather than throwing.
+
+**A failed run had an empty log.** A step that failed before it could log anything — an address that
+would not resolve — left a red badge and a blank console. Every failure and every check now reaches
+the log.
+
+**The demo seed created no environments at all**, so the first thing anybody pressed Run on failed
+with "environment has no value". Each demo project now gets a Local pointing at the built-in fake
+API and a Staging that is deliberately unreachable.
+
+**The canvas did not clip**, so a node past the right edge drew straight over the inspector — and
+could not be clicked, because the inspector was on top of it.
+
+**A one-node scenario opened at 2× zoom**, which made the next node somebody added land off the
+surface. Fitting now has a ceiling, and a newly added node is brought into view.
+
+**`.run-timeline-bar` named both the header strip and the duration bars**, so the header came out
+painted in the running colour. The same collision as `.palette` in the last phase.
+
+**Seven columns do not fit a phone.** The run history dropped two on narrow screens rather than
+leaving the duration half off the edge.
+
+**"Run from this node" is not built**, and is carried to Phase H rather than faked: it needs a
+start-node override in the engine and the rerun trigger that phase builds anyway.
+
+### Known debt, carried to Phase L
+
+**The engine's prose is English.** Run outcomes, log lines and assertion descriptions are written in
+the engine, which knows nothing about languages — so on a Persian console the banner reads
+"Everything that was checked held." next to Persian labels. The fix is the treatment the graph
+validator already had: a code and its arguments from the engine, the sentence from the web layer.
+It is not done piecemeal on purpose — half of it would give a banner that is Persian for the common
+cases and English whenever a step failed, which reads as broken rather than untranslated.

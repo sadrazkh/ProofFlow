@@ -263,6 +263,12 @@ Audit شده؛ ماتریس Screenshot کامل.
 - Timeline: نوار افقی هر Node با طول=مدت؛ Retry = بخش‌های تکراری با شکاف؛ کلیک = پرش به Log.
 - Cancel با Confirm ساده؛ «Run from this node» از منوی راست‌کلیک Node.
 
+> **وضعیت اجرا (فاز F):** همه موارد بالا انجام شد، با دو تفاوت که آگاهانه‌اند:
+> Layout به‌جای «گراف بالا / Log پایین» به‌صورت «گراف یا Timeline در یک ستون، Log در ستون کنار»
+> درآمد — Log چیزی است که آدم پیوسته می‌خواند و نباید پشت یک Tab پنهان شود. «Run from this node»
+> انجام نشد و به فاز H منتقل شد: به Override نقطهٔ شروع در موتور و به `RunTrigger.Rerun` وابسته است
+> که همان‌جا ساخته می‌شود. کلیک روی سطر Timeline، Log را روی همان Node فیلتر می‌کند.
+
 ### D-G — Matrix چندمحیطی (جفت فاز G)
 
 - جدول: سطر=سناریو/Sample، ستون=Environment؛ سلول = نقطه+کلمه + مدت؛ کلیک = جزئیات.
@@ -325,7 +331,7 @@ Pixel-diff در CI برای صفحات پایدار؛ مستندات کاربر 
 - [x] **D-C — انجام شد** (Diff، Rule Builder، پیشنهادها، چرخهٔ نسخه‌ها)
 - [x] **D-D — انجام شد** (ویرایشگر Dataset، Review Queue، Wizard نه‌گامی)
 - [x] **D-E — انجام شد** (Canvas، Palette، Inspector، Undo/Redo)
-- [ ] D-F
+- [x] **D-F — انجام شد** (Run Console: گراف زنده، Log مجازی، Timeline، Cancel)
 - [ ] D-G
 - [ ] D-H
 - [ ] D-I

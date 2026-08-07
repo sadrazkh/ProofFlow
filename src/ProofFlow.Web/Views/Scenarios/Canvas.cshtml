@@ -36,6 +36,36 @@
 
     <span class="grow"></span>
 
+    @* Running is the point of having drawn the thing, so the button is on the canvas rather than
+       one navigation away. A POST with the token: starting a run reaches somebody else's API. *@
+    @if (Model.CanRun)
+    {
+        <form method="post" action="/projects/@Model.ProjectId/runs/start" class="row">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="scenarioId" value="@Model.Scenario.Id" />
+
+            @* Which environment, said out loud. A run against production because that happened to
+               be first in a list is the mistake this product exists to prevent. *@
+            @if (Model.Environments.Count > 0)
+            {
+                <label class="sr-only" for="run-environment">@T["run.column.environment"]</label>
+                <select class="select" id="run-environment" name="environmentId">
+                    @foreach (var environment in Model.Environments)
+                    {
+                        <option value="@environment.Id"
+                                selected="@(environment.Id == Model.Scenario.EnvironmentId)">
+                            @environment.Name@(environment.IsProduction ? " ●" : "")
+                        </option>
+                    }
+                </select>
+            }
+
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i data-lucide="play" aria-hidden="true"></i>@T["run.start"]
+            </button>
+        </form>
+    }
+
     @if (Model.CanEdit)
     {
         <form method="post" action="/projects/@Model.ProjectId/scenarios/@Model.Scenario.Id/publish">

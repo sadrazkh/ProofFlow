@@ -1,3 +1,5 @@
+using ProofFlow.Infrastructure.Runs;
+using ProofFlow.Infrastructure.Tenancy;
 using System.Globalization;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.DataProtection;
@@ -30,8 +32,18 @@ builder.Logging.AddSimpleConsole(options =>
 // The scope and the current user come first: AddProofFlowInfrastructure builds a DbContext that
 // takes IWorkspaceScope in its constructor, and the tenant filter is not something to default.
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ICurrentUser, HttpCurrentUser>();
-builder.Services.AddScoped<IWorkspaceScope, HttpWorkspaceScope>();
+// Background work sets BackgroundWorkspace before it resolves anything; a request leaves it unset
+// and gets the request's own identity. One registration, two callers, no way for a URL to reach the
+// system scope.
+builder.Services.AddScoped<ICurrentUser>(sp =>
+    sp.GetRequiredService<BackgroundWorkspace>().WorkspaceId is { } workspace
+        ? new SystemUser(workspace)
+        : ActivatorUtilities.CreateInstance<HttpCurrentUser>(sp));
+
+builder.Services.AddScoped<IWorkspaceScope>(sp =>
+    sp.GetRequiredService<BackgroundWorkspace>().WorkspaceId is { } workspace
+        ? new FixedWorkspaceScope(workspace)
+        : new HttpWorkspaceScope(sp.GetRequiredService<ICurrentUser>()));
 builder.Services.AddProofFlowInfrastructure(builder.Configuration);
 
 // ---- identity -----------------------------------------------------------------------------------
@@ -124,7 +136,12 @@ builder.Services.AddControllersWithViews()
     .AddDataAnnotationsLocalization(options =>
         options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(string.Empty, string.Empty));
 
-builder.Services.AddSignalR();
+// Enums as words on the wire. A run status that arrives as 3 is a status the console cannot read
+// and does not complain about — it simply shows nothing, which is the worst way for this to fail.
+builder.Services.AddSignalR().AddJsonProtocol(options =>
+    options.PayloadSerializerOptions.Converters.Add(
+        new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddScoped<IRunWatchers, SignalRRunWatchers>();
 
 // The fake API is a development convenience: something for the request builder to point at
 // on a laptop with no internet. Registered unconditionally because the service is inert
@@ -265,6 +282,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapControllers();
 app.MapControllerRoute("default", "{controller=Dashboard}/{action=Index}/{id?}");
+app.MapHub<RunHub>(RunHub.Path);
 
 await app.RunAsync();
 return 0;
