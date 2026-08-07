@@ -2,6 +2,13 @@
 
 What works today, and what does not. Updated at the end of every phase.
 
+> **Start here each session.** The work is driven by two plans that live in this repository:
+> [plan/00-master-plan.md](plan/00-master-plan.md) (architecture and the functional phases A–M) and
+> [plan/01-design-plan.md](plan/01-design-plan.md) (the design analysis, the design contract, and a
+> design item-set per phase, D-0 through D-M). A session picks the current phase from this file,
+> takes its items from **both** plans — D-0 first while it is still open — and follows the
+> execution protocol in section 0 of the design plan.
+
 The brief this is built against is large — thirteen phases, seventy-odd node types, a semantic diff
 engine, a graph canvas, scheduling, CI integration, a private runner agent. Rather than build all of
 it thinly, each phase ends with something that genuinely runs and is tested, so any point on this
