@@ -62,7 +62,7 @@
 .btn-soft { background: var(--accent-soft); color: var(--accent-ink); }
 .btn-soft:hover { background: var(--accent-soft-hover); }
 
-.btn-danger { background: var(--fail); color: #fff; }
+.btn-danger { background: var(--danger-surface); color: var(--danger-on); }
 .btn-danger:hover { filter: brightness(0.92); }
 
 .btn-sm { block-size: 28px; padding: 0 var(--space-3); font-size: var(--text-xs); border-radius: var(--radius-sm); }
@@ -93,7 +93,7 @@ html[dir='rtl'] .btn .icon-forward { transform: scaleX(-1); }
   gap: var(--space-2);
 }
 
-.field-optional { color: var(--ink-faint); font-weight: var(--weight-normal); }
+.field-optional { color: var(--ink-subtle); font-weight: var(--weight-normal); }
 
 .field-hint { font-size: var(--text-xs); color: var(--ink-subtle); line-height: var(--leading-normal); }
 
@@ -124,7 +124,9 @@ html[dir='rtl'] .btn .icon-forward { transform: scaleX(-1); }
 
 .textarea { padding: var(--space-2) var(--space-3); block-size: auto; min-block-size: 84px; resize: vertical; line-height: var(--leading-normal); }
 
-.input::placeholder, .textarea::placeholder { color: var(--ink-faint); }
+/* Placeholders are read, so they take the readable step of the ramp rather than the
+   decorative one. */
+.input::placeholder, .textarea::placeholder { color: var(--ink-subtle); }
 
 .input:hover, .textarea:hover, .select:hover { border-color: var(--ink-faint); }
 
@@ -391,7 +393,7 @@ html[dir='rtl'] .skeleton { animation-direction: reverse; }
 
 .menu {
   position: absolute;
-  z-index: 40;
+  z-index: var(--z-menu);
   min-inline-size: 200px;
   padding: var(--space-1);
   background: var(--surface-raised);
@@ -416,13 +418,13 @@ html[dir='rtl'] .skeleton { animation-direction: reverse; }
 .menu-item.is-danger { color: var(--fail-ink); }
 .menu-item.is-danger svg { color: var(--fail); }
 .menu-separator { block-size: 1px; background: var(--line); margin: var(--space-1) 0; }
-.menu-label { padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--text-2xs); color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+.menu-label { padding: var(--space-2) var(--space-3) var(--space-1); font-size: var(--text-2xs); color: var(--ink-subtle); text-transform: uppercase; letter-spacing: 0.06em; }
 html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
 
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: var(--z-overlay);
   background: rgba(23, 21, 40, 0.45);
   backdrop-filter: blur(2px);
   display: grid;
@@ -445,7 +447,7 @@ html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
   position: fixed;
   inset-block-end: var(--space-5);
   inset-inline-end: var(--space-5);
-  z-index: 80;
+  z-index: var(--z-toast);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -539,15 +541,15 @@ html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
   inset-inline-start: 50%;
   transform: translateX(-50%) translateY(3px);
   padding: var(--space-1) var(--space-2);
-  background: var(--gray-900);
-  color: var(--gray-0);
+  background: var(--tip-bg);
+  color: var(--tip-ink);
   font-size: var(--text-2xs);
   white-space: nowrap;
   border-radius: var(--radius-sm);
   opacity: 0;
   pointer-events: none;
   transition: opacity var(--motion-fast) var(--ease-out), transform var(--motion-fast) var(--ease-out);
-  z-index: 50;
+  z-index: var(--z-tooltip);
 }
 html[dir='rtl'] .has-tip::after { transform: translateX(50%) translateY(3px); }
 .has-tip:hover::after, .has-tip:focus-visible::after {
@@ -608,6 +610,8 @@ html[dir='rtl'] .has-tip:hover::after, html[dir='rtl'] .has-tip:focus-visible::a
 
 .muted  { color: var(--ink-muted); }
 .subtle { color: var(--ink-subtle); }
+/* .faint is for marks, not for sentences: it sits below the text contrast threshold on
+   purpose. Text that has to be read uses .subtle. */
 .faint  { color: var(--ink-faint); }
 .text-xs { font-size: var(--text-xs); }
 .text-sm { font-size: var(--text-sm); }

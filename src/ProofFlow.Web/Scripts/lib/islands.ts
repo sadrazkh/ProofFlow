@@ -35,17 +35,35 @@ export function mountIslands(root: ParentNode = document): void {
     root.querySelectorAll<HTMLElement>(`[data-island="${name}"]`).forEach((element) => {
       if (element.dataset.islandMounted === 'true') return;
       try {
+        // Vue's mount() empties the element, so the placeholder has to go first — and it has to be
+        // measured before that, so the region does not collapse to nothing between the two.
+        reserveHeight(element);
         mount(element);
+        element.style.removeProperty('min-block-size');
       } catch (error) {
-        // One island failing must not take the rest of the page with it. The region stays as the
-        // server rendered it, which for most of them is a usable read-only view.
+        // One island failing must not take the rest of the page with it. The placeholder stays
+        // where it is, and `data-island-failed` gives the page something to style.
         console.error(`Island "${name}" failed to mount.`, error);
         element.dataset.islandFailed = 'true';
+        element.style.removeProperty('min-block-size');
       }
     });
   }
 
   document.dispatchEvent(new CustomEvent('proofflow:content-changed'));
+}
+
+/**
+ * Holds the space the placeholder was occupying until the component has rendered into it.
+ *
+ * The contract is that every `data-island` ships with server-rendered skeleton markup the same
+ * shape as what replaces it. Without this, mounting empties the element to zero height for one
+ * frame and everything below jumps — which on the canvas and the diff viewer, the two biggest
+ * islands in this application, means the whole page moving under a reader's cursor.
+ */
+function reserveHeight(element: HTMLElement): void {
+  const height = element.getBoundingClientRect().height;
+  if (height > 0) element.style.minBlockSize = `${Math.round(height)}px`;
 }
 
 function readProps(element: HTMLElement): Record<string, unknown> {

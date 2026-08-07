@@ -57,6 +57,52 @@ the real queries against SQLite.
 
 ---
 
+## D-0 — Design corrections · **done**
+
+The eleven items from section 3 of the [design plan](plan/01-design-plan.md), taken before the
+Phase B interface so the components it needs are settled first.
+
+| | |
+|---|---|
+| Dates | Jalali in Persian, Gregorian in English, the reader's own time zone, relative under a week |
+| Audit | Signing in is recorded — the translation key had been sitting unused |
+| Reference | `/design` renders every component, development only, and is in the screenshot matrix |
+| Stacking | A named z-index scale; no raw integers left in any stylesheet |
+| Tooltips | Semantic tokens instead of a hard-coded near-black that was invisible in dark mode |
+| Islands | Mounting reserves the placeholder's height, so nothing jumps when a component appears |
+| Keyboard | The palette is a real combobox; menus take arrow keys and return focus on Escape |
+| Icons | Raster sizes generated from the one SVG, plus a web manifest |
+| Seed | Demo descriptions in the configured language rather than English inside a Persian panel |
+| Gate | axe on every page, both themes, both languages — 33 checks, wired into CI |
+
+**Four real bugs surfaced, three of them by the new gate.**
+
+`aria-pressed` was being written onto `<html>`. The pre-paint theme script marked the document with
+`data-theme-choice`, the same attribute name the theme buttons use to declare their value, so
+`querySelectorAll('[data-theme-choice]')` matched the document element. Two meanings under one
+name; they have two names now.
+
+Five colours failed contrast, and the interesting one is `--ink-faint` at 2.63:1. Raising it to
+pass 4.5:1 would have required a value indistinguishable from `--ink-subtle`, collapsing the bottom
+of the ramp — so the role split instead: `--ink-faint` is now for disabled controls and decorative
+marks, which the standard exempts, and everything a person reads moved up a step. The destructive
+button was white on red in both themes: 4.21:1 light, 2.97:1 dark. It has its own pair now.
+
+**The `/design` page rendered completely unstyled and the accessibility suite still passed.** A
+frontend rebuild changes Vite's hashed filenames; `ViteManifest` read the manifest once at startup,
+so the running application kept serving files that no longer existed. Unstyled HTML is black on
+white, which passes every contrast rule there is — a green gate for the worst possible reason. The
+manifest now reloads on change in development, and the suite refuses to audit a page whose
+stylesheet is missing.
+
+**And the suite was auditing the wrong pages.** It signed in once per test — twenty times against
+an endpoint rate-limited to twelve a minute. Eight were refused, and a refused sign-in leaves the
+browser on the sign-in page, so eight tests audited *that* and reported it under the name of a page
+they never opened. All eight passed. There is one sign-in for the whole run now, and every test
+asserts which page it is actually on before measuring anything.
+
+---
+
 ## Phase B — Environments, secrets, HTTP execution · **engine done, interface next**
 
 ### Done and tested
@@ -87,8 +133,9 @@ SQLite refuses to `ORDER BY` a `DateTimeOffset` (found in Phase A, recorded here
 class of problem will recur): the two providers disagree, and only running the real queries on both
 finds it.
 
-### Not built yet
+### Not built yet — this is what comes next
 
-The interface for all of the above — environment and secret screens, the request builder, and the
+The interface for all of the above: environment and secret screens, the request builder, and the
 response viewer you can click a field in. The engine underneath them is complete and tested, so
-these are views over working machinery rather than new mechanism.
+these are views over working machinery rather than new mechanism. The design for them is
+**D-B** in the [design plan](plan/01-design-plan.md).

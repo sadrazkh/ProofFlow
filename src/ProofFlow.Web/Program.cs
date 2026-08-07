@@ -125,6 +125,9 @@ builder.Services.AddControllersWithViews()
 
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<ViteManifest>();
+// Scoped: it reads the request's culture and time-zone cookie, and caches the resolved zone for
+// the life of the request so a page with fifty timestamps looks it up once.
+builder.Services.AddScoped<Dates>();
 builder.Services.AddScoped<WorkspaceContextFilter>();
 builder.Services.AddScoped<ProofFlow.Web.Infrastructure.Seeding.DemoDataSeeder>();
 builder.Services.AddAntiforgery(options =>

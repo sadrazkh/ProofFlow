@@ -11,8 +11,13 @@ namespace ProofFlow.Web.Infrastructure;
 /// </summary>
 public sealed class ViteManifest
 {
-    private readonly Dictionary<string, ManifestEntry> _entries;
     private readonly ILogger<ViteManifest> _logger;
+    private readonly string _path;
+    private readonly bool _reloadOnChange;
+    private readonly Lock _gate = new();
+
+    private Dictionary<string, ManifestEntry> _entries;
+    private DateTime _loadedStamp;
 
     public ViteManifest(IWebHostEnvironment environment, IConfiguration configuration, ILogger<ViteManifest> logger)
     {
@@ -22,16 +27,21 @@ public sealed class ViteManifest
             && configuration.GetValue("Vite:UseDevServer", false);
         DevServerUrl = configuration["Vite:DevServerUrl"] ?? "http://localhost:5173";
 
-        var path = Path.Combine(environment.WebRootPath ?? "wwwroot", "build", "manifest.json");
-        _entries = Load(path, logger);
+        _path = Path.Combine(environment.WebRootPath ?? "wwwroot", "build", "manifest.json");
+
+        // Vite writes new hashed filenames on every build. Read once, the running application keeps
+        // pointing at files that no longer exist, and every page renders unstyled with no error —
+        // which is not merely inconvenient: an unstyled page passes an automated contrast audit
+        // trivially, so it turns the accessibility gate green for the worst possible reason.
+        _reloadOnChange = environment.IsDevelopment();
+
+        _entries = Load();
 
         if (_entries.Count == 0 && !UseDevServer)
         {
-            // Say it once, loudly, at startup. The alternative is a page that renders with no
-            // styling and no explanation, which people debug for an hour.
             logger.LogWarning(
                 "No Vite manifest at {Path}. The interface will render unstyled until `npm run build` " +
-                "has been executed in src/ProofFlow.Web.", path);
+                "has been executed in src/ProofFlow.Web.", _path);
         }
     }
 
@@ -45,6 +55,8 @@ public sealed class ViteManifest
     /// <summary>The script and stylesheet URLs for one entry point, already prefixed with /build/.</summary>
     public (string? Script, IReadOnlyList<string> Styles) Resolve(string entry)
     {
+        ReloadIfChanged();
+
         if (!_entries.TryGetValue(entry, out var manifestEntry))
             return (null, []);
 
@@ -75,18 +87,54 @@ public sealed class ViteManifest
             CollectCss(import, into, depth + 1);
     }
 
-    private static Dictionary<string, ManifestEntry> Load(string path, ILogger logger)
+    /// <summary>
+    /// Picks up a rebuild between requests, in development only.
+    ///
+    /// Compares the file's write time rather than watching it: a watcher would fire while Vite is
+    /// still writing and read a half-flushed file, and the cost of a stat per page render is
+    /// nothing next to a developer wondering why their CSS change did nothing.
+    /// </summary>
+    private void ReloadIfChanged()
+    {
+        if (!_reloadOnChange) return;
+
+        DateTime stamp;
+        try
+        {
+            stamp = File.GetLastWriteTimeUtc(_path);
+        }
+        catch (IOException)
+        {
+            return;
+        }
+
+        if (stamp == _loadedStamp) return;
+
+        lock (_gate)
+        {
+            if (stamp == _loadedStamp) return;
+            _entries = Load();
+            _logger.LogInformation("Reloaded the Vite manifest after a rebuild.");
+        }
+    }
+
+    private Dictionary<string, ManifestEntry> Load()
     {
         try
         {
-            if (!File.Exists(path)) return [];
+            if (!File.Exists(_path)) return [];
 
-            var json = File.ReadAllText(path);
+            // Stamped before the read, not after: if Vite writes again while this read is in
+            // flight, the older stamp means the next request reloads rather than trusting a
+            // partially-written file it already cached.
+            _loadedStamp = File.GetLastWriteTimeUtc(_path);
+
+            var json = File.ReadAllText(_path);
             return JsonSerializer.Deserialize<Dictionary<string, ManifestEntry>>(json, Options) ?? [];
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "The Vite manifest at {Path} could not be read.", path);
+            _logger.LogError(ex, "The Vite manifest at {Path} could not be read.", _path);
             return [];
         }
     }

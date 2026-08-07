@@ -1,9 +1,10 @@
 import './app.css';
 
 import { initTranslations } from './lib/i18n';
+import { reportTimeZone } from './lib/timezone';
 import { mountThemeControls } from './lib/theme';
 import { watchForNewContent } from './lib/icons';
-import { flushServerToasts } from './lib/toast';
+import { flushServerToasts, mountToastDemos } from './lib/toast';
 import { mountIslands } from './lib/islands';
 import {
   mountSidebar,
@@ -21,6 +22,7 @@ import {
  * subscribes to the change event they raise.
  */
 initTranslations();
+reportTimeZone();
 mountThemeControls();
 mountSidebar();
 mountMenus();
@@ -28,5 +30,6 @@ mountCommandPalette();
 mountConfirmations();
 mountUnsavedGuard();
 mountIslands();
+mountToastDemos();
 flushServerToasts();
 watchForNewContent();

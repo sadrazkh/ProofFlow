@@ -69,6 +69,18 @@ a {
 }
 a:hover { color: var(--accent-hover); }
 
+/*
+  A link surrounded by prose is underlined.
+  Colour alone is not a distinction anyone can rely on, and against muted body text the accent
+  measures 1.67:1 — nowhere near the 3:1 that would let colour carry it. Navigation, buttons and
+  cards are exempt: they are not inside a sentence, so there is nothing to distinguish them from.
+*/
+p > a, li > a, .field-hint > a, .empty-body > a {
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
+}
+
 code, pre, kbd, samp, .mono {
   font-family: var(--font-mono);
   font-size: 0.9em;
@@ -147,7 +159,7 @@ table { border-collapse: collapse; width: 100%; }
   position: absolute;
   inset-block-start: var(--space-2);
   inset-inline-start: var(--space-2);
-  z-index: 100;
+  z-index: var(--z-skip);
   padding: var(--space-2) var(--space-4);
   background: var(--accent);
   color: var(--accent-on);

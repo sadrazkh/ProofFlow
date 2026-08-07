@@ -188,6 +188,49 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
 }
 .form-summary-error svg { inline-size: 15px; block-size: 15px; flex: none; margin-block-start: 1px; }
 
+/* ---- design reference (development only) ----------------------------------------------------- */
+
+.swatch-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+}
+
+.swatch { display: flex; align-items: center; gap: var(--space-2); }
+
+/* A checked ground behind every chip, so a transparent or near-white token is visibly one rather
+   than looking like a missing swatch. */
+.swatch-chip {
+  inline-size: 30px;
+  block-size: 30px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-strong);
+  background-image:
+    linear-gradient(45deg, var(--surface-sunken) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--surface-sunken) 25%, transparent 25%);
+  background-size: 8px 8px;
+}
+
+.swatch-name { font-size: var(--text-xs); color: var(--ink-muted); }
+
+.json-sample {
+  margin: 0;
+  padding: var(--space-4);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  overflow-x: auto;
+}
+
+.design-two-up {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
 /* ---- error page ----------------------------------------------------------------------------- */
 
 .error-page {

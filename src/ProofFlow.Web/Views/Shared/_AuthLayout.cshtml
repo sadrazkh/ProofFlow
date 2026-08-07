@@ -15,7 +15,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>@(ViewData["Title"] is string t && t.Length > 0 ? $"{t} · ProofFlow" : "ProofFlow")</title>
     <meta name="theme-color" content="#f9f8fc" />
+    @* SVG first for browsers that take it; the PNG is the fallback for the ones that still do not,
+       and the manifest carries the sizes an installed app needs. *@
     <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="~/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="~/apple-touch-icon.png" />
+    <link rel="manifest" href="~/manifest.webmanifest" />
     @if (Vite.UseDevServer)
     {
         <script type="module" src="@(Vite.DevServerUrl)/@@vite/client"></script>
@@ -30,7 +35,7 @@
             var choice = localStorage.getItem('proofflow-theme') || 'system';
             var dark = choice === 'dark' || (choice === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
             document.documentElement.classList.toggle('dark', dark);
-            document.documentElement.dataset.themeChoice = choice;
+            document.documentElement.dataset.theme = choice;
         })();
     </script>
 </head>

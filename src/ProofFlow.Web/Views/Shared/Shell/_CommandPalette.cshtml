@@ -12,23 +12,33 @@
         <div class="palette-backdrop" data-palette-backdrop
              style="position: absolute; inset: 0;"></div>
         <div class="palette" style="position: relative;">
+            @*
+                The combobox pattern: focus stays in the input while the highlighted row is named
+                by aria-activedescendant. Moving real focus onto each row instead would take the
+                caret out of the field, so typing a second character would go nowhere.
+            *@
             <div class="palette-input-row">
                 <i data-lucide="search" aria-hidden="true"></i>
                 <input class="palette-input" data-palette-input type="text"
-                       placeholder="@T["nav.searchHint"]" aria-label="@T["nav.search"]" autocomplete="off" />
+                       placeholder="@T["nav.searchHint"]" aria-label="@T["nav.search"]" autocomplete="off"
+                       role="combobox" aria-expanded="true" aria-controls="pf-palette-list"
+                       aria-autocomplete="list" />
                 <span class="kbd">Esc</span>
             </div>
-            <div class="palette-list">
+            <div class="palette-list" id="pf-palette-list" role="listbox" aria-label="@T["nav.search"]">
+                @{ var index = 0; }
                 @foreach (var entry in entries)
                 {
                     <a class="menu-item" data-palette-item href="@entry.Path"
+                       id="pf-palette-@index" role="option" aria-selected="false" tabindex="-1"
                        data-search="@T[entry.LabelKey] @entry.Path">
                         <i data-lucide="@entry.Icon" aria-hidden="true"></i>
                         <span class="grow">@T[entry.LabelKey]</span>
-                        <span class="text-xs faint mono">@entry.Path</span>
+                        <span class="text-xs subtle mono">@entry.Path</span>
                     </a>
+                    index++;
                 }
-                <div class="palette-empty hidden" data-palette-empty>@T["nav.noResults"]</div>
+                <div class="palette-empty hidden" data-palette-empty role="status">@T["nav.noResults"]</div>
             </div>
         </div>
     </div>

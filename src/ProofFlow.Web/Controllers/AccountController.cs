@@ -24,6 +24,7 @@ public sealed class AccountController(
     SignInManager<ProofFlowUser> signIn,
     ProofFlowDbContext db,
     IClock clock,
+    IAuditLog audit,
     IStringLocalizer localizer,
     ILogger<AccountController> logger) : Controller
 {
@@ -68,6 +69,10 @@ public sealed class AccountController(
         await users.UpdateAsync(user);
 
         await IssueCookieAsync(user, model.RememberMe);
+
+        // After the principal is in place, so the entry lands in the right workspace with the
+        // right actor rather than being dropped as unscoped.
+        await audit.RecordAsync(new AuditEntry("user.signedIn"), HttpContext.RequestAborted);
 
         return SafeRedirect(model.ReturnUrl);
     }
@@ -200,7 +205,13 @@ public sealed class AccountController(
         }
 
         await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, identity,
-            new Microsoft.AspNetCore.Authentication.AuthenticationProperties { IsPersistent = rememberMe });
+            new AuthenticationProperties { IsPersistent = rememberMe });
+
+        // SignInAsync writes the cookie for the *next* request; it does not change who this one is
+        // running as. Without this line, anything after sign-in still sees an anonymous principal —
+        // which is why the audit entry for signing in used to be dropped for having no workspace,
+        // and why the tenant filter would have returned nothing to any query that followed.
+        HttpContext.User = identity;
     }
 
     private Task<bool> AnyUserExistsAsync() => db.Users.AnyAsync();

@@ -85,15 +85,23 @@ public sealed class DemoDataSeeder(
             JoinedAt = clock.UtcNow,
         });
 
-        foreach (var (name, description, accent) in DemoProjects)
+        // Demo content is data, not interface text, so it cannot come from the translation
+        // catalogue and switch with the reader — a project description is a column. It is seeded
+        // in one language, and which one is a setting rather than an assumption, because English
+        // paragraphs sitting inside a Persian panel is exactly the failure the whole localisation
+        // effort exists to prevent.
+        var persian = (configuration["Demo:Culture"] ?? "fa")
+            .StartsWith("fa", StringComparison.OrdinalIgnoreCase);
+
+        foreach (var project in DemoProjects)
         {
             db.Projects.Add(new Project
             {
                 WorkspaceId = workspace.Id,
-                Name = name,
-                Slug = Slug.From(name, "project"),
-                Description = description,
-                Accent = accent,
+                Name = project.Name,
+                Slug = Slug.From(project.Name, "project"),
+                Description = persian ? project.Persian : project.English,
+                Accent = project.Accent,
                 CreatedByUserId = user.Id,
             });
         }
@@ -106,10 +114,22 @@ public sealed class DemoDataSeeder(
         logger.LogInformation("Seeded the demo workspace and signed-in account {Email}.", DemoEmail);
     }
 
-    private static readonly (string Name, string Description, string Accent)[] DemoProjects =
+    /// <summary>
+    /// The names stay in English — they are the names of systems, and a team testing an API called
+    /// "Catalog API" calls it that in either language. Only the prose is translated.
+    /// </summary>
+    private static readonly DemoProject[] DemoProjects =
     [
-        ("Catalog API", "Products, categories and the dynamic fields a category defines.", "violet"),
-        ("Orders API", "Checkout, payment callbacks and order history.", "teal"),
-        ("Identity API", "Sign-in, token refresh and the endpoints behind them.", "amber"),
+        new("Catalog API", "violet",
+            English: "Products, categories and the dynamic fields a category defines.",
+            Persian: "محصولات، دسته‌ها، و فیلدهای پویایی که هر دسته تعریف می‌کند."),
+        new("Orders API", "teal",
+            English: "Checkout, payment callbacks and order history.",
+            Persian: "تسویه، بازگشت‌های پرداخت، و تاریخچه سفارش."),
+        new("Identity API", "amber",
+            English: "Sign-in, token refresh and the endpoints behind them.",
+            Persian: "ورود، تازه‌سازی توکن، و Endpointهای پشت آن‌ها."),
     ];
+
+    private sealed record DemoProject(string Name, string Accent, string English, string Persian);
 }

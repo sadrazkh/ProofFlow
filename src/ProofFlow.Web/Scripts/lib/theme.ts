@@ -25,14 +25,16 @@ export function apply(choice: ThemeChoice): void {
   const dark = resolve(choice) === 'dark';
 
   root.classList.toggle('dark', dark);
-  root.dataset.themeChoice = choice;
+  // data-theme on the document, data-theme-choice on the buttons. They meant different things
+  // under one name, so the button selector below matched <html> and gave it aria-pressed.
+  root.dataset.theme = choice;
 
   // The address bar and the task switcher take their colour from this. Left unchanged, a dark
   // page gets a white chrome bar above it on mobile.
   document.querySelector('meta[name="theme-color"]')
     ?.setAttribute('content', dark ? '#100e1d' : '#f9f8fc');
 
-  document.querySelectorAll<HTMLElement>('[data-theme-choice]').forEach((button) => {
+  document.querySelectorAll<HTMLElement>('button[data-theme-choice]').forEach((button) => {
     button.setAttribute('aria-pressed', String(button.dataset.themeChoice === choice));
   });
 }
@@ -56,7 +58,7 @@ export function csrfToken(): string {
 export function mountThemeControls(): void {
   apply(currentChoice());
 
-  document.querySelectorAll<HTMLElement>('[data-theme-choice]').forEach((button) => {
+  document.querySelectorAll<HTMLElement>('button[data-theme-choice]').forEach((button) => {
     button.addEventListener('click', () => {
       const choice = button.dataset.themeChoice as ThemeChoice | undefined;
       if (choice) setChoice(choice);

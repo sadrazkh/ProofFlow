@@ -62,6 +62,28 @@ export function toast(message: string, kind: ToastKind = 'info', timeoutMs?: num
 }
 
 /**
+ * The buttons on the design reference that raise one of each kind.
+ *
+ * Lives here rather than in a script tag on that page so the reference shows the *real* toast,
+ * built by the real function — a demo with its own copy of the markup is a demo that stops
+ * matching. Finds nothing and returns on every other page.
+ */
+export function mountToastDemos(): void {
+  document.querySelectorAll<HTMLElement>('[data-design-toast]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const kind = (button.dataset.designToast ?? 'info') as ToastKind;
+      const messages: Record<ToastKind, string> = {
+        success: 'Project «Orders API» is ready.',
+        error: 'The request did not reach the server. Nothing was changed.',
+        warn: 'Two baselines are waiting for approval.',
+        info: 'Nothing has run in this project yet.',
+      };
+      toast(messages[kind], kind);
+    });
+  });
+}
+
+/**
  * Messages the server left for us in the layout, shown once on load.
  *
  * Carried through TempData so a redirect-after-post can still say what happened — the page that

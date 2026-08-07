@@ -28,7 +28,9 @@
   --gray-200: #e1dfed;
   --gray-300: #cbc8dc;
   --gray-400: #9c98b4;
+  --gray-450: #85819d;   /* readable on the dark code well, still dimmer than --gray-400 */
   --gray-500: #726e8c;
+  --gray-550: #6b6784;   /* the readable floor: 4.8:1 even on --surface-sunken */
   --gray-600: #56526e;
   --gray-700: #3f3b55;
   --gray-800: #2a2740;
@@ -74,6 +76,7 @@
 
   /* Order changed */
   --teal-100: #cffaf1; --teal-300: #5fe9d0; --teal-500: #14a08a; --teal-600: #0d7d6d;
+  --teal-700: #0a6659;
 
   /* ---- primitives · geometry ------------------------------------------------------------- */
   --radius-xs: 4px;
@@ -137,6 +140,28 @@
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
 
+  /* ---- primitives · stacking ------------------------------------------------------------- */
+  /*
+    One ordered scale, named for what sits at each level rather than numbered at the call site.
+
+    Stacking is the thing that decays silently: someone needs a panel above a menu, writes 45, and
+    six months later nobody can say what 45 was supposed to be below. Naming the layers means the
+    question "can this go above that?" is answered by reading two lines here instead of grepping
+    for integers. The gaps are deliberate — a new layer squeezes in without renumbering the rest.
+
+    This matters more from here on than it did: the canvas, its minimap, the node inspector and a
+    live run console are all coming, and every one of them stacks against something.
+  */
+  --z-sticky: 20;      /* the top bar, pinned while the page scrolls under it */
+  --z-backdrop: 25;    /* the dimmer behind the mobile sidebar */
+  --z-sidebar: 30;     /* above its own backdrop */
+  --z-menu: 40;        /* dropdowns, anchored to a trigger */
+  --z-tooltip: 50;     /* above menus: a tip can describe a menu item */
+  --z-overlay: 60;     /* modal dialogs and their dimmer */
+  --z-palette: 70;     /* the command palette outranks a dialog it can be opened over */
+  --z-toast: 80;       /* nothing may cover a message about what just happened */
+  --z-skip: 100;       /* the skip link, reachable from anywhere, above everything */
+
   /* ======================================================================================== */
   /* SEMANTICS · light                                                                        */
   /* ======================================================================================== */
@@ -153,10 +178,26 @@
   --line-strong: var(--gray-300);   /* borders that must be seen: inputs, dividers under headers */
   --line-subtle: var(--gray-150);   /* hairlines between table rows */
 
-  --ink:         var(--gray-900);   /* body text and headings */
-  --ink-muted:   var(--gray-600);   /* secondary text, still comfortably readable */
-  --ink-subtle:  var(--gray-500);   /* labels, timestamps, help text */
-  --ink-faint:   var(--gray-400);   /* placeholders and disabled text only */
+  /*
+    The ink ramp, with the contrast each step is allowed to be used at.
+    Measured against --canvas; the numbers hold on --surface too, which is lighter.
+
+    --ink-faint is the one worth explaining. It used to be --gray-400, which measures 2.63:1 —
+    below even the 3:1 floor for non-text. Raising it to pass 4.5:1 would have required
+    #767289, which is --ink-subtle to within a rounding error, so the bottom of the ramp would
+    have collapsed into the step above it.
+
+    So the role split instead of the number moving to meet it: --ink-faint is for things WCAG
+    does not hold to the text threshold — disabled controls, and marks that carry no information
+    on their own like a breadcrumb chevron — and it sits at 3.26:1, which clears the 1.4.11
+    non-text floor. Anything a person actually reads uses --ink-subtle, which is 4.59:1.
+
+    Placeholder text moved with that rule. A placeholder is read.
+  */
+  --ink:         var(--gray-900);   /* 12.9:1 — body text and headings */
+  --ink-muted:   var(--gray-600);   /* 7.0:1  — secondary text */
+  --ink-subtle:  var(--gray-550);   /* 4.8:1  — labels, timestamps, help text, placeholders */
+  --ink-faint:   #8b87a3;           /* 3.3:1  — disabled controls and decorative marks only */
   --ink-inverse: var(--gray-0);
 
   --accent:         var(--violet-600);
@@ -170,6 +211,14 @@
 
   --focus-ring: var(--violet-400);
 
+  /*
+    Tooltips invert against the page in both themes, so they need their own pair rather than
+    borrowing --ink/--surface. Naming them is what keeps the tip legible in dark mode, where the
+    hard-coded near-black it used to use sat flat against an almost-equally-dark page.
+  */
+  --tip-bg: var(--gray-900);
+  --tip-ink: var(--gray-0);
+
   /* Status. Each has a solid, a soft background, a border and a readable ink. */
   --pass:        var(--green-600);
   --pass-soft:   var(--green-50);
@@ -180,6 +229,10 @@
   --fail-soft:   var(--red-50);
   --fail-border: var(--red-200);
   --fail-ink:    var(--red-700);
+  /* The solid destructive button. Darker than --fail, because --fail is tuned to read *as* a
+     colour beside text, not to carry white text on top of it. */
+  --danger-surface: var(--red-600);
+  --danger-on:      #ffffff;
 
   --warn:        var(--amber-500);
   --warn-soft:   var(--amber-50);
@@ -210,16 +263,16 @@
   --diff-type-ink:      var(--fuchsia-600);
   --diff-type-marker:   var(--fuchsia-500);
   --diff-order-soft:    var(--teal-100);
-  --diff-order-ink:     var(--teal-600);
+  --diff-order-ink:     var(--teal-700);
   --diff-order-marker:  var(--teal-500);
-  --diff-ignored-ink:   var(--gray-400);
+  --diff-ignored-ink:   var(--gray-500);
 
   /* JSON syntax, used by the response viewer and every payload preview. */
   --json-key:     var(--violet-700);
   --json-string:  var(--green-700);
   --json-number:  var(--sky-700);
   --json-boolean: var(--fuchsia-600);
-  --json-null:    var(--gray-500);
+  --json-null:    var(--gray-550);
   --json-punct:   var(--gray-400);
 
   /* The workflow canvas. Named separately because the canvas is its own surface with its own
@@ -256,7 +309,7 @@
   --ink:         #ebe9f5;
   --ink-muted:   #a9a4c2;
   --ink-subtle:  #8b86a5;
-  --ink-faint:   #6a6584;
+  --ink-faint:   #7d789a;           /* 4.6:1 on canvas — the dark ramp has room the light one did not */
   --ink-inverse: var(--gray-950);
 
   /* One step lighter than the light-mode accent: --violet-600 on near-black vibrates. */
@@ -271,6 +324,11 @@
 
   --focus-ring: var(--violet-300);
 
+  /* Lifted well clear of the page: on a near-black ground a near-black tip is a rectangle of
+     nothing with text on it. */
+  --tip-bg: var(--gray-300);
+  --tip-ink: var(--gray-950);
+
   --pass:        var(--green-400);
   --pass-soft:   rgba(18, 163, 92, 0.15);
   --pass-border: rgba(52, 200, 120, 0.32);
@@ -280,6 +338,10 @@
   --fail-soft:   rgba(224, 62, 85, 0.15);
   --fail-border: rgba(239, 107, 124, 0.34);
   --fail-ink:    var(--red-300);
+  /* Dark inverts the pairing: the red is light here, so the label goes dark. White on it is
+     2.97:1 — worse than the light theme it was copied from. */
+  --danger-surface: var(--red-400);
+  --danger-on:      var(--gray-950);
 
   --warn:        var(--amber-300);
   --warn-soft:   rgba(239, 143, 1, 0.15);
@@ -311,14 +373,14 @@
   --diff-order-soft:    rgba(20, 160, 138, 0.18);
   --diff-order-ink:     var(--teal-300);
   --diff-order-marker:  var(--teal-300);
-  --diff-ignored-ink:   var(--gray-500);
+  --diff-ignored-ink:   var(--gray-400);
 
   --json-key:     var(--violet-300);
   --json-string:  var(--green-300);
   --json-number:  var(--sky-300);
   --json-boolean: var(--fuchsia-300);
-  --json-null:    var(--gray-500);
-  --json-punct:   var(--gray-600);
+  --json-null:    var(--gray-400);
+  --json-punct:   var(--gray-450);
 
   --canvas-bg:     var(--gray-950);
   --canvas-dot:    #302c48;

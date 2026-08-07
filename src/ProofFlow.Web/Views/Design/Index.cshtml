@@ -1,0 +1,398 @@
+@{
+    Layout = "_Layout";
+}
+@*
+    Every component the design system defines, rendered once.
+
+    Deliberately written with the same markup a real page would use, not a simplified version:
+    a reference that diverges from usage is worse than no reference, because it looks authoritative.
+*@
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Design system</h1>
+        <p class="page-subtitle">
+            Every component, in one place. Development only. Change a token, look here first.
+        </p>
+    </div>
+    <div class="page-actions">
+        <div class="segmented" role="group" aria-label="Appearance">
+            <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+            <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+            <button type="button" data-theme-choice="system" aria-pressed="false">System</button>
+        </div>
+    </div>
+</div>
+
+<div class="stack-6">
+
+    <!-- ── colour ─────────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">Semantic colour</h2>
+                <p class="card-subtitle">The only names a component may use. Primitives stay in tokens.css.</p>
+            </div>
+        </div>
+        <div class="card-body stack">
+            <div class="swatch-grid">
+                @foreach (var (name, token) in new[]
+                {
+                    ("canvas", "--canvas"), ("surface", "--surface"), ("surface-sunken", "--surface-sunken"),
+                    ("surface-raised", "--surface-raised"), ("surface-hover", "--surface-hover"),
+                    ("line", "--line"), ("line-strong", "--line-strong"), ("accent", "--accent"),
+                    ("accent-soft", "--accent-soft"), ("pass", "--pass"), ("fail", "--fail"),
+                    ("warn", "--warn"), ("running", "--running"), ("idle", "--idle"),
+                })
+                {
+                    <div class="swatch">
+                        <span class="swatch-chip" style="background: var(@token);"></span>
+                        <span class="swatch-name mono">@name</span>
+                    </div>
+                }
+            </div>
+
+            <div>
+                <h3 class="text-sm semibold" style="margin-block-end: var(--space-2);">Ink</h3>
+                <div class="stack-2">
+                    <p style="color: var(--ink);">ink — body text and headings</p>
+                    <p style="color: var(--ink-muted);">ink-muted — secondary, still comfortably readable</p>
+                    <p style="color: var(--ink-subtle);">ink-subtle — labels, timestamps, help text</p>
+                    <p class="subtle">ink-subtle also carries placeholders, which are read.</p>
+                    <label class="field-label" for="d-ink-faint">
+                        ink-faint — disabled controls and decorative marks only
+                    </label>
+                    <input class="input" id="d-ink-faint" value="Disabled, and exempt from the text contrast rule" disabled />
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-sm semibold" style="margin-block-end: var(--space-2);">
+                    Difference categories
+                </h3>
+                <p class="field-hint" style="margin-block-end: var(--space-3);">
+                    Six, because "changed" alone does not tell a reader whether the API broke.
+                </p>
+                <div class="row wrap" style="gap: var(--space-2);">
+                    @foreach (var (label, soft, ink) in new[]
+                    {
+                        ("Added", "--diff-added-soft", "--diff-added-ink"),
+                        ("Removed", "--diff-removed-soft", "--diff-removed-ink"),
+                        ("Changed", "--diff-changed-soft", "--diff-changed-ink"),
+                        ("Type changed", "--diff-type-soft", "--diff-type-ink"),
+                        ("Order changed", "--diff-order-soft", "--diff-order-ink"),
+                    })
+                    {
+                        <span class="badge" style="background: var(@soft); color: var(@ink); border-color: currentColor;">@label</span>
+                    }
+                    <span class="badge" style="color: var(--diff-ignored-ink); border-color: var(--line);">Ignored</span>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-sm semibold" style="margin-block-end: var(--space-2);">JSON</h3>
+                <pre class="json-sample"><span style="color: var(--json-punct);">{</span>
+  <span style="color: var(--json-key);">"id"</span><span style="color: var(--json-punct);">:</span> <span style="color: var(--json-number);">21289</span><span style="color: var(--json-punct);">,</span>
+  <span style="color: var(--json-key);">"name"</span><span style="color: var(--json-punct);">:</span> <span style="color: var(--json-string);">"Study A"</span><span style="color: var(--json-punct);">,</span>
+  <span style="color: var(--json-key);">"active"</span><span style="color: var(--json-punct);">:</span> <span style="color: var(--json-boolean);">true</span><span style="color: var(--json-punct);">,</span>
+  <span style="color: var(--json-key);">"deletedAt"</span><span style="color: var(--json-punct);">:</span> <span style="color: var(--json-null);">null</span>
+<span style="color: var(--json-punct);">}</span></pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── buttons ────────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">Buttons</h2></div>
+        <div class="card-body stack">
+            <div class="row wrap">
+                <button class="btn btn-primary">Primary</button>
+                <button class="btn btn-secondary">Secondary</button>
+                <button class="btn btn-ghost">Ghost</button>
+                <button class="btn btn-soft">Soft</button>
+                <button class="btn btn-danger">Danger</button>
+                <button class="btn btn-primary" disabled>Disabled</button>
+            </div>
+            <div class="row wrap">
+                <button class="btn btn-secondary btn-sm">Small</button>
+                <button class="btn btn-secondary">Default</button>
+                <button class="btn btn-secondary btn-lg">Large</button>
+            </div>
+            <div class="row wrap">
+                <button class="btn btn-primary"><i data-lucide="play" aria-hidden="true"></i>With icon</button>
+                <button class="btn btn-secondary">Forward<i class="icon-forward" data-lucide="arrow-right" aria-hidden="true"></i></button>
+                @* Icon-only always carries both an aria-label and a visible tip — the rule the
+                   design contract states, demonstrated rather than described. *@
+                <button class="btn btn-secondary btn-icon has-tip" data-tip="Run this scenario" aria-label="Run this scenario">
+                    <i data-lucide="play" aria-hidden="true"></i>
+                </button>
+                <button class="btn btn-ghost btn-icon has-tip" data-tip="More" aria-label="More">
+                    <i data-lucide="ellipsis" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── form fields ────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">Form fields</h2></div>
+        <div class="card-body">
+            <div class="design-two-up">
+                <div class="field">
+                    <label class="field-label" for="d-text">Label</label>
+                    <input class="input" id="d-text" placeholder="Placeholder" />
+                    <p class="field-hint">Help text sits under the field it belongs to.</p>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="d-error">
+                        With an error <span class="field-optional">· optional</span>
+                    </label>
+                    <input class="input" id="d-error" value="not-an-email" aria-invalid="true" />
+                    <p class="field-error" role="alert">
+                        <i data-lucide="circle-alert" aria-hidden="true"></i>
+                        <span>That does not look like an email address.</span>
+                    </p>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="d-mono">Monospace (URLs, JSON paths)</label>
+                    <input class="input input-mono" id="d-mono" value="{{environment.baseUrl}}/api/v2/studies" />
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="d-select">Select</label>
+                    <select class="select" id="d-select">
+                        <option>GET</option><option>POST</option><option>DELETE</option>
+                    </select>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="d-area">Textarea</label>
+                    <textarea class="textarea" id="d-area" rows="3"></textarea>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="d-disabled">Disabled</label>
+                    <input class="input" id="d-disabled" value="Read only" disabled />
+                </div>
+            </div>
+
+            <div style="margin-block-start: var(--space-4);">
+                <label class="check-row">
+                    <input class="checkbox" type="checkbox" checked />
+                    <span class="check-row-text">
+                        <span class="check-row-title">Reach private networks</span>
+                        <span class="check-row-hint">Off by default. Only for an environment on your own network.</span>
+                    </span>
+                </label>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── status ─────────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">Status and badges</h2>
+                <p class="card-subtitle">Never colour alone — a dot plus a word.</p>
+            </div>
+        </div>
+        <div class="card-body stack">
+            <div class="row wrap" style="gap: var(--space-4);">
+                <span class="status status-pass"><span class="status-dot"></span>Passed</span>
+                <span class="status status-fail"><span class="status-dot"></span>Failed</span>
+                <span class="status status-warn"><span class="status-dot"></span>Unstable</span>
+                <span class="status status-running"><span class="status-dot"></span>Running</span>
+                <span class="status status-idle"><span class="status-dot"></span>Not started</span>
+            </div>
+            <div class="row wrap">
+                <span class="badge badge-pass"><i data-lucide="circle-check"></i>Approved</span>
+                <span class="badge badge-fail"><i data-lucide="circle-alert"></i>Rejected</span>
+                <span class="badge badge-warn">Pending approval</span>
+                <span class="badge badge-running">Running</span>
+                <span class="badge badge-idle">Draft</span>
+                <span class="badge badge-accent">Superseded</span>
+            </div>
+            <div class="row wrap" style="gap: var(--space-2); align-items: center;">
+                <span class="avatar">D</span>
+                <span class="avatar avatar-lg">P</span>
+                <span class="kbd">Ctrl</span><span class="kbd">K</span>
+                <span class="mono text-xs">$.items[*].updatedAt</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── tabs and segmented ─────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">Tabs and segmented control</h2></div>
+        <div class="card-body stack">
+            <div>
+                <div class="tabs" role="tablist">
+                    <a class="tab is-active" role="tab" aria-selected="true" href="#d-tabs">Query</a>
+                    <a class="tab" role="tab" aria-selected="false" href="#d-tabs">Headers</a>
+                    <a class="tab" role="tab" aria-selected="false" href="#d-tabs">Body</a>
+                    <a class="tab" role="tab" aria-selected="false" href="#d-tabs">Authentication</a>
+                </div>
+                <p class="field-hint" id="d-tabs" style="padding-block-start: var(--space-3);">
+                    Tabs navigate between panels of one thing.
+                </p>
+            </div>
+            <div>
+                <div class="segmented" role="group" aria-label="View">
+                    <button type="button" aria-pressed="true">Tree</button>
+                    <button type="button" aria-pressed="false">Raw</button>
+                    <button type="button" aria-pressed="false">Side by side</button>
+                </div>
+                <p class="field-hint" style="padding-block-start: var(--space-2);">
+                    Segmented switches how one thing is shown. It does not navigate.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── table ──────────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">Table</h2></div>
+        <div class="table-wrap">
+            <table class="table table-hover">
+                <thead>
+                <tr>
+                    <th>Scenario</th><th>Environment</th><th>Status</th>
+                    <th class="numeric">Duration</th><th>When</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>Create and clean up a product</td>
+                    <td><span class="badge badge-idle">Staging</span></td>
+                    <td><span class="status status-pass"><span class="status-dot"></span>Passed</span></td>
+                    <td class="numeric">1.24s</td>
+                    <td class="subtle">
+                        <partial name="Pieces/_Timestamp" model="@(new TimestampView(DateTimeOffset.UtcNow.AddMinutes(-4)))" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Fetch every study by id</td>
+                    <td><span class="badge badge-warn">Production</span></td>
+                    <td><span class="status status-fail"><span class="status-dot"></span>Failed</span></td>
+                    <td class="numeric">3.10s</td>
+                    <td class="subtle">
+                        <partial name="Pieces/_Timestamp" model="@(new TimestampView(DateTimeOffset.UtcNow.AddHours(-5)))" />
+                    </td>
+                </tr>
+                <tr>
+                    <td>Login and authorised request</td>
+                    <td><span class="badge badge-idle">Local</span></td>
+                    <td><span class="status status-running"><span class="status-dot"></span>Running</span></td>
+                    <td class="numeric">—</td>
+                    <td class="subtle">
+                        <partial name="Pieces/_Timestamp" model="@(new TimestampView(DateTimeOffset.UtcNow.AddDays(-9)))" />
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- ── states ─────────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">Empty and loading</h2>
+                <p class="card-subtitle">Both are designed, not left to chance.</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="design-two-up">
+                <div class="card">
+                    <div class="empty empty-inline">
+                        <div class="empty-art"><i data-lucide="folder-open" aria-hidden="true"></i></div>
+                        <h3 class="empty-title">No projects yet</h3>
+                        <p class="empty-body">A project holds the environments, scenarios and baselines for one system under test.</p>
+                        <div class="empty-actions">
+                            <button class="btn btn-primary"><i data-lucide="plus" aria-hidden="true"></i>Create your first project</button>
+                        </div>
+                    </div>
+                </div>
+
+                @* The shape a skeleton has to take: the same geometry as the content that replaces
+                   it, so nothing moves when the island mounts. *@
+                <div class="card card-pad">
+                    <div class="row" style="gap: var(--space-3); align-items: flex-start;">
+                        <div class="skeleton" style="inline-size: 34px; block-size: 34px; border-radius: var(--radius-md); flex: none;"></div>
+                        <div class="grow stack-2">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text" style="inline-size: 70%;"></div>
+                        </div>
+                    </div>
+                    <div class="row" style="gap: var(--space-4); margin-block-start: var(--space-4);">
+                        <div class="skeleton skeleton-text" style="inline-size: 80px;"></div>
+                        <div class="skeleton skeleton-text" style="inline-size: 80px;"></div>
+                        <div class="skeleton skeleton-text" style="inline-size: 80px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── overlays ───────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">Menus, dialogs and messages</h2></div>
+        <div class="card-body stack">
+            <div class="row wrap">
+                <div data-menu-root style="position: relative;">
+                    <button type="button" class="btn btn-secondary" data-menu-trigger aria-expanded="false">
+                        Open a menu<i data-lucide="chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <div class="menu hidden" data-menu style="inset-block-start: calc(100% + 6px); inset-inline-start: 0;">
+                        <div class="menu-label">Actions</div>
+                        <button type="button" class="menu-item"><i data-lucide="play"></i>Run</button>
+                        <button type="button" class="menu-item"><i data-lucide="copy"></i>Duplicate</button>
+                        <div class="menu-separator"></div>
+                        <button type="button" class="menu-item is-danger"><i data-lucide="trash-2"></i>Delete</button>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-secondary" data-design-toast="success">Success message</button>
+                <button type="button" class="btn btn-secondary" data-design-toast="error">Error message</button>
+                <button type="button" class="btn btn-secondary" data-design-toast="warn">Warning</button>
+                <button type="button" class="btn btn-secondary" data-design-toast="info">Information</button>
+            </div>
+
+            @* GET, so accepting the dialog simply reloads this page. The point is the dialog. *@
+            <form method="get" action="/design"
+                  data-confirm="Every environment, scenario, baseline and run in «Orders API» goes with it. This cannot be undone."
+                  data-confirm-title="Delete this project?"
+                  data-confirm-action="Delete"
+                  data-confirm-phrase="Orders API">
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="trash-2" aria-hidden="true"></i>Irreversible, with a typed phrase
+                </button>
+            </form>
+
+            <div class="form-summary-error">
+                <i data-lucide="circle-alert" aria-hidden="true"></i>
+                <span>A summary error, for the ones that belong to no single field.</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── typography ─────────────────────────────────────────────────────────────────────── -->
+    <section class="card">
+        <div class="card-header"><h2 class="card-title">Typography</h2></div>
+        <div class="card-body stack-2">
+            <h1 class="page-title">Page title</h1>
+            <h2 class="text-lg semibold">Section heading</h2>
+            <p>Body text at the application's reading size, in whichever script the page is in.</p>
+            <p class="muted">Muted — secondary information.</p>
+            <p class="subtle text-xs">Subtle and small — labels and metadata.</p>
+            <p class="mono text-xs">Monospace, forced left-to-right: GET /api/v2/studies/21289 → 200 in 124ms</p>
+            <p class="tabular">Tabular figures: 1234567890</p>
+        </div>
+    </section>
+</div>
+
+@* The toast buttons are wired by mountToastDemos() in the shared bundle, which finds nothing and
+   returns immediately on every other page. *@

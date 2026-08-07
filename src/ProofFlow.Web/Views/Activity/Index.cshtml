@@ -46,10 +46,8 @@ else
                         </td>
                         <td>@(label.IsResourceNotFound ? row.ActionKey : (object)label)</td>
                         <td class="muted truncate" dir="auto">@row.TargetLabel</td>
-                        <td class="subtle tabular">
-                            <time datetime="@row.OccurredAt.UtcDateTime.ToString("O")">
-                                @row.OccurredAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-                            </time>
+                        <td class="subtle">
+                            <partial name="Pieces/_Timestamp" model="@(new TimestampView(row.OccurredAt))" />
                         </td>
                     </tr>
                 }

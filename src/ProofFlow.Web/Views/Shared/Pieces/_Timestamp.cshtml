@@ -1,0 +1,16 @@
+@model TimestampView
+@inject Dates Dates
+@{
+    var relative = Dates.Relative(Model.When);
+    var absolute = Dates.Absolute(Model.When);
+    var primary = Model.PreferRelative ? relative : absolute;
+
+    // The tip carries the other half. Whichever form is on screen, the one that is not is a hover
+    // away — and the zone is named when it is only an assumption, because a time that might be
+    // half a day out should not look like a fact.
+    var secondary = Model.PreferRelative && primary != absolute ? absolute : relative;
+    var tip = Dates.ZoneIsAssumed ? $"{secondary} · UTC" : $"{secondary} · {Dates.ZoneLabel}";
+}
+@* datetime is always UTC ISO-8601, whatever the reader is shown — so a timestamp copied out of
+   here into a ticket means one thing everywhere. *@
+<time class="has-tip tabular" datetime="@Dates.Iso(Model.When)" data-tip="@tip" tabindex="0">@primary</time>

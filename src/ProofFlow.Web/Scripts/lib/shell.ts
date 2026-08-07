@@ -61,6 +61,16 @@ export function mountMenus(): void {
     const menu = root.querySelector<HTMLElement>('[data-menu]');
     if (!trigger || !menu) continue;
 
+    // A menu is a menu to a screen reader too, and its items are menuitems. Without the roles the
+    // whole thing announces as a stack of links that happens to be on screen.
+    menu.setAttribute('role', 'menu');
+    trigger.setAttribute('aria-haspopup', 'true');
+    menu.querySelectorAll<HTMLElement>('.menu-item').forEach((item) => {
+      item.setAttribute('role', 'menuitem');
+      // Reachable by the arrow keys below, not by Tab: Tab should step past the whole menu.
+      if (!item.hasAttribute('tabindex')) item.setAttribute('tabindex', '-1');
+    });
+
     trigger.addEventListener('click', (event) => {
       event.stopPropagation();
       const opening = menu.classList.contains('hidden');
@@ -70,11 +80,23 @@ export function mountMenus(): void {
       if (opening) menu.querySelector<HTMLElement>('.menu-item')?.focus();
     });
 
+    trigger.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+      event.preventDefault();
+      if (menu.classList.contains('hidden')) trigger.click();
+      const items = menu.querySelectorAll<HTMLElement>('.menu-item');
+      (event.key === 'ArrowDown' ? items[0] : items[items.length - 1])?.focus();
+    });
+
     menu.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       closeAll();
+      // Back to where the keyboard was. Without this the caret is left at the top of the document
+      // and the next Tab starts the page over.
       trigger.focus();
     });
+
+    bindMenuKeys(menu);
   }
 
   document.addEventListener('click', () => closeAll());
@@ -102,10 +124,29 @@ export function mountCommandPalette(): void {
 
   const paint = (index: number) => {
     const shown = visible();
-    if (shown.length === 0) { selected = 0; return; }
+
+    if (shown.length === 0) {
+      selected = 0;
+      // Nothing highlighted means nothing to announce. Leaving a stale id here points a screen
+      // reader at a row that is filtered out and no longer on screen.
+      input?.removeAttribute('aria-activedescendant');
+      items.forEach((item) => item.setAttribute('aria-selected', 'false'));
+      return;
+    }
+
     selected = (index + shown.length) % shown.length;
-    shown.forEach((item, i) => item.classList.toggle('is-selected', i === selected));
-    shown[selected]?.scrollIntoView({ block: 'nearest' });
+
+    shown.forEach((item, i) => {
+      const active = i === selected;
+      item.classList.toggle('is-selected', active);
+      item.setAttribute('aria-selected', String(active));
+    });
+
+    // Focus never leaves the input, so this is the only thing telling a screen reader which row
+    // the arrow keys are on.
+    const current = shown[selected];
+    if (current?.id) input?.setAttribute('aria-activedescendant', current.id);
+    current?.scrollIntoView({ block: 'nearest' });
   };
 
   const open = (isOpen: boolean) => {
@@ -148,10 +189,41 @@ export function mountCommandPalette(): void {
       case 'Escape': open(false); break;
       case 'ArrowDown': event.preventDefault(); paint(selected + 1); break;
       case 'ArrowUp': event.preventDefault(); paint(selected - 1); break;
+      case 'Home': event.preventDefault(); paint(0); break;
+      case 'End': event.preventDefault(); paint(visible().length - 1); break;
       case 'Enter':
         event.preventDefault();
         visible()[selected]?.click();
         break;
+    }
+  });
+}
+
+/**
+ * Arrow-key navigation inside an open menu.
+ *
+ * A dropdown that can only be walked with Tab leaks focus out of itself on the last item, which
+ * puts the caret somewhere behind the still-open menu — the point at which a keyboard user has to
+ * reach for the mouse. Escape already returned focus to the trigger; these are the rest of the
+ * keys the pattern requires.
+ */
+function bindMenuKeys(menu: HTMLElement): void {
+  menu.addEventListener('keydown', (event) => {
+    const items = Array.from(menu.querySelectorAll<HTMLElement>('.menu-item:not([disabled])'))
+      .filter((item) => item.offsetParent !== null);
+    if (items.length === 0) return;
+
+    const current = items.indexOf(document.activeElement as HTMLElement);
+    const move = (to: number) => {
+      event.preventDefault();
+      items[(to + items.length) % items.length]?.focus();
+    };
+
+    switch (event.key) {
+      case 'ArrowDown': move(current + 1); break;
+      case 'ArrowUp': move(current - 1); break;
+      case 'Home': move(0); break;
+      case 'End': move(items.length - 1); break;
     }
   });
 }

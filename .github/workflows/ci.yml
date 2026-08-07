@@ -108,6 +108,67 @@ jobs:
             exit 1
           fi
 
+  accessibility:
+    name: Accessibility
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: src/ProofFlow.Web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/ProofFlow.Web
+        run: npm ci
+
+      - name: Build the frontend
+        working-directory: src/ProofFlow.Web
+        run: npm run build
+
+      - name: Install the browser
+        working-directory: src/ProofFlow.Web
+        run: npx playwright install --with-deps chromium
+
+      # Started explicitly rather than through Playwright's webServer, so a migration failure or a
+      # missing bundle reports itself as a startup failure instead of as a browser timeout.
+      - name: Start the application
+        working-directory: src/ProofFlow.Web
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+          ASPNETCORE_URLS: http://localhost:5290
+          Demo__Seed: 'true'
+          Demo__Password: ${{ github.run_id }}-axe-only-never-deployed
+        run: |
+          dotnet run --no-launch-profile > /tmp/proofflow.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:5290/healthz > /dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "::error::The application did not become healthy."
+          cat /tmp/proofflow.log
+          exit 1
+
+      - name: axe
+        working-directory: src/ProofFlow.Web
+        env:
+          PROOFFLOW_PASSWORD: ${{ github.run_id }}-axe-only-never-deployed
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: src/ProofFlow.Web/playwright-report
+          retention-days: 7
+
   lint:
     name: Translations and formatting
     runs-on: ubuntu-latest
