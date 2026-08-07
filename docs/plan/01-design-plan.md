@@ -324,7 +324,7 @@ Pixel-diff در CI برای صفحات پایدار؛ مستندات کاربر 
 - [x] **D-B — انجام شد** (محیط‌ها، Secretها، Request Builder، Response Viewer)
 - [x] **D-C — انجام شد** (Diff، Rule Builder، پیشنهادها، چرخهٔ نسخه‌ها)
 - [x] **D-D — انجام شد** (ویرایشگر Dataset، Review Queue، Wizard نه‌گامی)
-- [ ] D-E
+- [x] **D-E — انجام شد** (Canvas، Palette، Inspector، Undo/Redo)
 - [ ] D-F
 - [ ] D-G
 - [ ] D-H

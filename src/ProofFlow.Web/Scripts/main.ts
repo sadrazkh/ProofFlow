@@ -11,6 +11,7 @@ import BaselineWorkbench from './islands/BaselineWorkbench.vue';
 import DataSetEditor from './islands/DataSetEditor.vue';
 import ReviewQueue from './islands/ReviewQueue.vue';
 import RegressionWizard from './islands/RegressionWizard.vue';
+import ScenarioCanvas from './islands/ScenarioCanvas.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -41,6 +42,7 @@ island('baseline-workbench', BaselineWorkbench);
 island('dataset-editor', DataSetEditor);
 island('review-queue', ReviewQueue);
 island('regression-wizard', RegressionWizard);
+island('scenario-canvas', ScenarioCanvas);
 
 mountIslands();
 mountSecretReveal();

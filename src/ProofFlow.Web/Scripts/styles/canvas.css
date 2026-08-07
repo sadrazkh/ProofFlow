@@ -1,0 +1,344 @@
+/*
+  The canvas.
+
+  Three columns that do not move: a palette to take things from, the drawing, and a form for
+  whatever is selected. The drawing is the page — the shell's ordinary padding would take a third
+  of the height it needs — so this is one of the few places with its own page class.
+
+  Everything a node is made of carries its meaning twice. The state ring is a colour and a shape;
+  a failure socket is a diamond and red; a group is an icon and a hue. One reader in twelve cannot
+  separate the red from the green, and this is the screen where that matters most.
+*/
+
+@import '@vue-flow/core/dist/style.css';
+@import '@vue-flow/core/dist/theme-default.css';
+@import '@vue-flow/minimap/dist/style.css';
+
+/* ============================================================================================== */
+/* The three columns                                                                               */
+/* ============================================================================================== */
+
+/* The canvas needs the height the page chrome would otherwise take. */
+.page-canvas { padding: 0; max-inline-size: none; }
+
+.canvas-page-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface);
+}
+.canvas-title {
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  /* The topbar and this page's own bar; the rest is the drawing. */
+  block-size: calc(100dvh - var(--topbar-height, 56px) - 49px);
+  overflow: hidden;
+}
+
+@media (min-width: 1100px) {
+  .canvas-shell { grid-template-columns: 260px minmax(0, 1fr) 320px; }
+}
+
+.canvas-main { display: flex; flex-direction: column; min-inline-size: 0; }
+
+.canvas-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-block-end: 1px solid var(--line);
+  background: var(--surface);
+  flex-wrap: wrap;
+}
+
+.canvas-surface { flex: 1 1 auto; min-block-size: 0; position: relative; }
+
+/* Below the three-column width the palette and inspector stack above and below the drawing. */
+@media (max-width: 1099px) {
+  .canvas-shell { block-size: auto; }
+  .canvas-surface { block-size: 60vh; }
+  .node-palette, .inspector { max-block-size: 320px; }
+}
+
+/* ============================================================================================== */
+/* Palette                                                                                         */
+/* ============================================================================================== */
+
+.node-palette {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-inline-end: 1px solid var(--line);
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.node-palette-search { position: relative; display: flex; align-items: center; }
+.node-palette-search svg {
+  position: absolute;
+  inset-inline-start: var(--space-2);
+  color: var(--ink-subtle);
+  pointer-events: none;
+}
+.node-palette-search .input { padding-inline-start: 30px; }
+
+.node-palette-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+.node-palette-group-head:hover { background: var(--surface-sunken); color: var(--ink); }
+
+.node-palette-list { display: flex; flex-direction: column; gap: 1px; }
+
+.node-palette-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  inline-size: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  text-align: start;
+  cursor: grab;
+}
+.node-palette-item:hover:not(:disabled) { background: var(--surface-sunken); }
+.node-palette-item:active:not(:disabled) { cursor: grabbing; }
+.node-palette-item:disabled { cursor: default; }
+
+.node-palette-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  flex: none;
+  border-radius: var(--radius-sm);
+}
+
+.node-palette-text { display: flex; flex-direction: column; gap: 1px; min-inline-size: 0; }
+.node-palette-title { font-size: var(--text-xs); color: var(--ink); }
+.node-palette-summary {
+  font-size: 11px;
+  color: var(--ink-subtle);
+  line-height: var(--leading-normal);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/*
+  A hue per group, used on the palette chip and the node's icon.
+
+  Five hues that are distinguishable from each other and from the six diff categories, because both
+  appear in this product and a reader should not have to remember which palette they are looking at.
+*/
+.is-core    { background: var(--accent-soft);  color: var(--accent-ink); }
+.is-data    { background: var(--running-soft); color: var(--running-ink); }
+.is-testing { background: var(--pass-soft);    color: var(--pass-ink); }
+.is-flow    { background: var(--warn-soft);    color: var(--warn-ink); }
+.is-auth    { background: var(--diff-type-soft); color: var(--diff-type-ink); }
+
+/* ============================================================================================== */
+/* Node card                                                                                       */
+/* ============================================================================================== */
+
+.wf-node {
+  position: relative;
+  inline-size: 216px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--canvas-node);
+  box-shadow: var(--shadow-sm);
+  font-size: var(--text-xs);
+}
+.wf-node.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft), var(--shadow-md); }
+.wf-node.has-error { border-color: var(--fail-border); }
+.wf-node.is-disabled { opacity: 0.55; }
+
+.wf-head { display: flex; align-items: center; gap: var(--space-2); }
+
+.wf-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  flex: none;
+  border-radius: var(--radius-sm);
+}
+.wf-node.is-core    .wf-icon { background: var(--accent-soft);  color: var(--accent-ink); }
+.wf-node.is-data    .wf-icon { background: var(--running-soft); color: var(--running-ink); }
+.wf-node.is-testing .wf-icon { background: var(--pass-soft);    color: var(--pass-ink); }
+.wf-node.is-flow    .wf-icon { background: var(--warn-soft);    color: var(--warn-ink); }
+.wf-node.is-auth    .wf-icon { background: var(--diff-type-soft); color: var(--diff-type-ink); }
+
+.wf-name {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--weight-medium);
+  color: var(--ink);
+}
+
+.wf-mark { display: inline-flex; color: var(--ink-subtle); flex: none; }
+
+.wf-summary {
+  margin-block-start: 2px;
+  color: var(--ink-subtle);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+}
+/* A value somebody typed — an address, a path, a condition. Technical, so mono and left to right. */
+.wf-summary.is-literal { font-family: var(--font-mono); }
+
+.wf-problems { margin-block-start: var(--space-2); }
+.wf-problem {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 11px;
+  line-height: var(--leading-normal);
+}
+.wf-problem.is-error { color: var(--fail-ink); }
+.wf-problem.is-warning { color: var(--warn-ink); }
+
+/*
+  The state ring: a bar down the leading edge, coloured and shaped.
+
+  Eight states, and the four that are not idle each get a distinct treatment — a solid bar, a
+  pulsing one, a dashed one — so the difference survives a greyscale print and a colour-blind
+  reader.
+*/
+.wf-state {
+  position: absolute;
+  inset-block: 6px;
+  inset-inline-start: 0;
+  inline-size: 3px;
+  border-start-start-radius: var(--radius-lg);
+  border-end-start-radius: var(--radius-lg);
+  background: var(--idle);
+}
+.state-idle      .wf-state { background: var(--idle); }
+.state-running   .wf-state { background: var(--running); animation: pulse 1.6s var(--ease-in-out) infinite; }
+.state-passed    .wf-state { background: var(--pass); }
+.state-failed    .wf-state { background: var(--fail); inline-size: 5px; }
+.state-skipped   .wf-state { background: repeating-linear-gradient(
+                               180deg, var(--idle) 0 4px, transparent 4px 8px); }
+.state-waiting   .wf-state { background: repeating-linear-gradient(
+                               180deg, var(--running) 0 3px, transparent 3px 6px); }
+.state-retrying  .wf-state { background: var(--warn); animation: pulse 1s var(--ease-in-out) infinite; }
+.state-cancelled .wf-state { background: var(--ink-faint); }
+
+/* ============================================================================================== */
+/* Ports                                                                                           */
+/* ============================================================================================== */
+
+.wf-port {
+  inline-size: 10px;
+  block-size: 10px;
+  border: 2px solid var(--canvas-node);
+  background: var(--canvas-edge);
+}
+
+/* Control is a circle, data is a square: the two kinds of edge mean different things. */
+.wf-port.is-control { border-radius: var(--radius-full); }
+.wf-port.is-data { border-radius: 2px; background: var(--running); }
+
+/* A failure path is a diamond as well as red — the question asked while dragging, not hovering. */
+.wf-port.is-failure {
+  background: var(--fail);
+  border-radius: 1px;
+  transform: rotate(45deg);
+}
+
+.wf-port.is-required { box-shadow: 0 0 0 2px var(--fail-soft); }
+
+.wf-port.type-secret { background: var(--diff-type-ink); }
+.wf-port.type-response { background: var(--accent); }
+
+/* ============================================================================================== */
+/* Vue Flow, wearing this product's tokens                                                         */
+/* ============================================================================================== */
+
+.vue-flow { background: var(--canvas-bg); }
+.vue-flow__edge-path { stroke: var(--canvas-edge); stroke-width: 1.6; }
+.vue-flow__edge.selected .vue-flow__edge-path { stroke: var(--canvas-edge-active); stroke-width: 2.2; }
+.vue-flow__edge.is-failure .vue-flow__edge-path { stroke: var(--fail); stroke-dasharray: 4 3; }
+.vue-flow__connection-path { stroke: var(--canvas-edge-active); stroke-width: 2; }
+.vue-flow__selection { background: var(--canvas-selection); border: 1px solid var(--accent); }
+
+.canvas-controls {
+  position: absolute;
+  inset-block-end: var(--space-4);
+  inset-inline-start: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-raised, 5);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+.canvas-controls .btn { border-radius: 0; }
+.canvas-controls .btn + .btn { border-block-start: 1px solid var(--line); }
+
+.vue-flow__minimap {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+/* The element Vue Flow paints into carries its own background, so the token has to go there. */
+.vue-flow__minimap svg, .vue-flow__minimap { background-color: var(--surface); }
+.vue-flow__minimap-mask { fill: var(--canvas-selection); }
+
+/* ============================================================================================== */
+/* Inspector                                                                                       */
+/* ============================================================================================== */
+
+.inspector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-inline-start: 1px solid var(--line);
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.inspector-head { display: flex; align-items: center; gap: var(--space-2); }
+.inspector-name { font-weight: var(--weight-medium); }
+
+.inspector-body { flex: 1 1 auto; }
+
+.inspector-problems { display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--text-xs); }
+.inspector-problems li { display: flex; align-items: flex-start; gap: 5px; }
+.inspector-problems .is-error { color: var(--fail-ink); }
+.inspector-problems .is-warning { color: var(--warn-ink); }
+
+.inspector-foot { border-block-start: 1px solid var(--line); padding-block-start: var(--space-3); }

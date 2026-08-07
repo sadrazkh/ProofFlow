@@ -1,6 +1,9 @@
 import {
   createIcons,
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Ban, Bell, Boxes, Braces, Bug,
+  ArrowDownUp, Binary, BrushCleaning, Cookie, FileCheck, Fingerprint, Flag, Gauge, KeySquare,
+  ListCheck, ListOrdered, LogIn, MessageSquare, MousePointerClick, OctagonX, Paperclip, Quote,
+  Redo2, Regex, RotateCw, Shuffle, Sigma, SkipForward, Split, Type, Undo2, 
   CalendarClock, Camera, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ClipboardPaste,
   ChevronsUpDown,
@@ -8,7 +11,7 @@ import {
   Copy, Database, Diff, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileJson, FilePlus2,
   Filter, FlaskConical, FolderOpen, GitBranch, GitCompareArrows, Globe, Hash, History,
   Inbox, Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
-  Lock, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
+  Lock, LogOut, Maximize, Menu, Minus, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
   RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck,
   SlidersHorizontal, Sparkles, Square, SquareStack, Sun, Table2, Tag, Target, Timer,
   TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, WandSparkles, Waypoints,
@@ -25,6 +28,9 @@ import {
  */
 const used = {
   Activity, ArrowLeft, ArrowRight, ArrowUpRight, Ban, Bell, Boxes, Braces, Bug,
+  ArrowDownUp, Binary, BrushCleaning, Cookie, FileCheck, Fingerprint, Flag, Gauge, KeySquare,
+  ListCheck, ListOrdered, LogIn, MessageSquare, MousePointerClick, OctagonX, Paperclip, Quote,
+  Redo2, Regex, RotateCw, Shuffle, Sigma, SkipForward, Split, Type, Undo2, 
   CalendarClock, Camera, Check, CheckCheck, ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ClipboardPaste,
   ChevronsUpDown,
@@ -32,7 +38,7 @@ const used = {
   Copy, Database, Diff, Download, Ellipsis, ExternalLink, Eye, EyeOff, FileJson, FilePlus2,
   Filter, FlaskConical, FolderOpen, GitBranch, GitCompareArrows, Globe, Hash, History,
   Inbox, Info, KeyRound, Languages, LayoutDashboard, LayoutGrid, Lightbulb, Link2, ListChecks, Loader,
-  Lock, LogOut, Menu, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
+  Lock, LogOut, Maximize, Menu, Minus, Monitor, Moon, PanelLeftClose, PanelLeftOpen, Pause, Pencil, Play, Plus,
   RefreshCw, Repeat, RotateCcw, Rows3, Save, Search, Send, Settings, Shield, ShieldAlert, ShieldCheck,
   SlidersHorizontal, Sparkles, Square, SquareStack, Sun, Table2, Tag, Target, Timer,
   TrendingUp, Trash2, TriangleAlert, Upload, User, Users, Variable, WandSparkles, Waypoints,

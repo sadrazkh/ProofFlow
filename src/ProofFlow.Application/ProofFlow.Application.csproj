@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ProofFlow.Domain\ProofFlow.Domain.csproj" />
     <ProjectReference Include="..\ProofFlow.Contracts\ProofFlow.Contracts.csproj" />
+    <ProjectReference Include="..\ProofFlow.TestEngine\ProofFlow.TestEngine.csproj" />
   </ItemGroup>
 
   <ItemGroup>

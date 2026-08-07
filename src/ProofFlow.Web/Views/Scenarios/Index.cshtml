@@ -1,0 +1,92 @@
+@model ScenarioListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.scenarios"]</h1>
+        <p class="page-subtitle">@T["scenario.subtitle"]</p>
+    </div>
+    @if (Model.CanEdit)
+    {
+        <div class="page-actions">
+            <a class="btn btn-primary" href="/projects/@Model.ProjectId/scenarios/new">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["scenario.new"]
+            </a>
+        </div>
+    }
+</div>
+
+@if (Model.Scenarios.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="workflow" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["scenario.empty.title"]</h2>
+            <p class="empty-body">@T["scenario.empty.body"]</p>
+            @if (Model.CanEdit)
+            {
+                <div class="empty-actions">
+                    <a class="btn btn-primary" href="/projects/@Model.ProjectId/scenarios/new">
+                        <i data-lucide="plus" aria-hidden="true"></i>@T["scenario.new"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table">
+                <caption class="sr-only">@T["nav.scenarios"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["scenario.steps"]</th>
+                    <th>@T["common.status"]</th>
+                    <th>@T["common.updated"]</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var scenario in Model.Scenarios)
+                {
+                    <tr>
+                        <td>
+                            <a href="/projects/@Model.ProjectId/scenarios/@scenario.Id" dir="auto">@scenario.Name</a>
+                            @if (!string.IsNullOrWhiteSpace(scenario.Description))
+                            {
+                                <p class="text-xs subtle" dir="auto">@scenario.Description</p>
+                            }
+                        </td>
+                        <td class="tabular">@scenario.NodeCount</td>
+                        <td>
+                            <div class="row" style="gap: var(--space-2);">
+                                @* Three separate facts, and none of them implies another: a scenario can
+                                   be published and since edited into an invalid draft. *@
+                                @if (scenario.IsPublished)
+                                {
+                                    <span class="badge badge-pass">
+                                        <i data-lucide="circle-check" aria-hidden="true"></i>@T["scenario.published.badge"]
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-idle">@T["scenario.draft"]</span>
+                                }
+
+                                @if (scenario.IsValid == false)
+                                {
+                                    <span class="badge badge-fail">
+                                        <i data-lucide="circle-alert" aria-hidden="true"></i>@T["scenario.hasErrors"]
+                                    </span>
+                                }
+                            </div>
+                        </td>
+                        <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(scenario.UpdatedAt))" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

@@ -335,3 +335,64 @@ inset accent bar was always the primary marker.
 `/stable` takes no input and `/volatile` changes every call. `/fake/records/{id}` was added for
 exactly this: an answer that varies by input and by nothing else, so a sweep reporting one
 difference has found a real one.
+
+---
+
+## Phase E — The canvas · **done**
+
+A test drawn as a picture of what happens, and a picture that knows when it is not a test yet.
+
+| | |
+|---|---|
+| Node catalogue | 72 types across Core, Data, Checks, Flow and Access — as data in five files, not seventy classes |
+| Typed sockets | Control edges say "then"; data edges say "this value goes there". A mismatch is refused mid-drag |
+| Graph storage | `WorkflowNode` and `WorkflowConnection` as rows in a `ScenarioVersion` — diffable, indexable, versionable |
+| Validation | Twelve checks: no start, two starts, duplicate names, missing properties, dangling and mistyped edges, unreachable steps, cycles |
+| Canvas | Vue Flow wearing the product's tokens; node anatomy with an eight-state ring, group hue, and diamond failure sockets |
+| Inspector | The form for any node, built from its specification — including which fields to hide until they apply |
+| Keyboard | `Ctrl+Z`/`Y`, `Ctrl+S`, `Ctrl+D`, `Ctrl+A`, `Delete`, with an undo counter in the bar |
+| Verified | `e2e/demo-canvas.ts` draws a scenario through the interface — palette, drags, typed properties — until the validator says "Ready to run" |
+| Tests | 365 passing — 285 unit, 39 integration, 41 component; 77 accessibility checks, 204 screenshots |
+
+### Four decisions worth recording
+
+**Seventy node types as data, not seventy classes.** The brief forbids hard-coding them in one file
+and the better reason is what it buys: the canvas draws any node it is given, the inspector builds
+its form from the specification, and adding one is a record in one file rather than a class, a form,
+a palette entry and a switch case.
+
+**Flow runs left to right even in Persian.** A flowchart's direction is a convention people already
+hold, not a reading direction — mirroring it would make every diagram in every document about this
+product wrong. The palette, the inspector and every word on a node are localised; the arrows are
+not. Visible in the Persian screenshots.
+
+**Type compatibility is narrow, and asymmetric for credentials.** `Any` widens both ways and nothing
+else does — a Number that quietly becomes Text is a test comparing "200" with 200 and passing. A
+`Secret` satisfies `Any` but nothing satisfies `Secret`, so a token can be passed along and a plain
+string cannot be mistaken for one. Stated twice, on the server and in the browser, with a test on
+each side using the same table.
+
+**Every credential is a named reference, never a text box.** A password typed into a property would
+be stored in the graph, exported with it, and visible in a screenshot of the canvas. A test walks
+the catalogue looking for any property whose name suggests a credential and is not a `SecretRef`.
+
+### What the run and the audit caught
+
+**The validator was returning English prose.** It read fine until it appeared on a Persian canvas
+next to Persian labels. Nothing in the engine knows about languages — correctly — so it now returns
+a code and its arguments, and the web layer builds the sentence. Data-type names are localised too:
+"produces a number and expects a response" only works if all four words are in one language.
+
+**`.palette` was already taken by the command palette**, so the node palette inherited a dialog's
+radius, shadow and 60vh cap and floated in the middle of its column.
+
+**Vue Flow's zoom controls ship with no accessible name** — three buttons a screen reader calls
+"button", which axe reports as critical. Replaced with our own, labelled.
+
+**New nodes were laid down 24 pixels apart on a 216-pixel card**, so every one buried the last.
+
+**The minimap painted every node black**: it draws onto a canvas element, where a CSS variable
+resolves to nothing.
+
+**A node's summary line is a URL for most nodes and a translated sentence for the rest.** Forcing
+monospace and left-to-right onto both made the Persian ones read backwards.

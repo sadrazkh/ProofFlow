@@ -65,6 +65,7 @@ const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
   { name: 'dataset-new', path: (id) => `/projects/${id}/datasets/new` },
   { name: 'captures', path: (id) => `/projects/${id}/captures` },
   { name: 'wizard', path: (id) => `/projects/${id}/wizard` },
+  { name: 'scenarios', path: (id) => `/projects/${id}/scenarios` },
 ];
 
 type Combination = { language: 'fa' | 'en'; theme: 'light' | 'dark'; viewport: Viewport };

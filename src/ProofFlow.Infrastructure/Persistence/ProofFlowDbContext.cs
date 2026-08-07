@@ -6,6 +6,7 @@ using ProofFlow.Domain.Auditing;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Capture;
 using ProofFlow.Domain.Data;
+using ProofFlow.Domain.Scenarios;
 using ProofFlow.Domain.Common;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
@@ -55,6 +56,11 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<DataSetRow> DataSetRows => Set<DataSetRow>();
     public DbSet<CaptureSession> CaptureSessions => Set<CaptureSession>();
     public DbSet<CaptureSample> CaptureSamples => Set<CaptureSample>();
+    public DbSet<TestSuite> TestSuites => Set<TestSuite>();
+    public DbSet<TestScenario> Scenarios => Set<TestScenario>();
+    public DbSet<ScenarioVersion> ScenarioVersions => Set<ScenarioVersion>();
+    public DbSet<WorkflowNode> WorkflowNodes => Set<WorkflowNode>();
+    public DbSet<WorkflowConnection> WorkflowConnections => Set<WorkflowConnection>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

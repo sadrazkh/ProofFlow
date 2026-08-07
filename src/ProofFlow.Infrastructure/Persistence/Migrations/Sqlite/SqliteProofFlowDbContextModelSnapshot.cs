@@ -945,6 +945,288 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("Projects", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.ScenarioVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CanvasJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsValid")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Number")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("PublishedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ScenarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ValidationJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScenarioId", "Number")
+                        .IsUnique();
+
+                    b.HasIndex("ScenarioId", "Status");
+
+                    b.ToTable("ScenarioVersions", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.TestScenario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("DraftVersionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PublishedVersionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("TestSuiteId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("TestSuiteId");
+
+                    b.HasIndex("ProjectId", "TestSuiteId");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("TestScenarios", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.TestSuite", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArchivedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("WorkspaceId", "ProjectId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("TestSuites", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.WorkflowConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("FromNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FromPort")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ScenarioVersionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ToNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ToPort")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FromNodeId");
+
+                    b.HasIndex("ToNodeId");
+
+                    b.HasIndex("ScenarioVersionId", "ToNodeId");
+
+                    b.HasIndex("ScenarioVersionId", "FromNodeId", "FromPort", "ToNodeId", "ToPort")
+                        .IsUnique();
+
+                    b.ToTable("WorkflowConnections", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.WorkflowNode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Disabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ParentNodeId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PropertiesJson")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ScenarioVersionId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("X")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("Y")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentNodeId");
+
+                    b.HasIndex("ScenarioVersionId", "Name")
+                        .IsUnique();
+
+                    b.HasIndex("ScenarioVersionId", "ParentNodeId");
+
+                    b.ToTable("WorkflowNodes", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Tagging.Tag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1374,6 +1656,91 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Navigation("Workspace");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.ScenarioVersion", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Scenarios.TestScenario", "Scenario")
+                        .WithMany("Versions")
+                        .HasForeignKey("ScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Scenario");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.TestScenario", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId");
+
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scenarios.TestSuite", "Suite")
+                        .WithMany()
+                        .HasForeignKey("TestSuiteId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Environment");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("Suite");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.TestSuite", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.WorkflowConnection", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Scenarios.WorkflowNode", null)
+                        .WithMany()
+                        .HasForeignKey("FromNodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scenarios.ScenarioVersion", "Version")
+                        .WithMany("Connections")
+                        .HasForeignKey("ScenarioVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scenarios.WorkflowNode", null)
+                        .WithMany()
+                        .HasForeignKey("ToNodeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Version");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.WorkflowNode", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Scenarios.WorkflowNode", null)
+                        .WithMany()
+                        .HasForeignKey("ParentNodeId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("ProofFlow.Domain.Scenarios.ScenarioVersion", "Version")
+                        .WithMany("Nodes")
+                        .HasForeignKey("ScenarioVersionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Version");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Tagging.TagAssignment", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Tagging.Tag", "Tag")
@@ -1419,6 +1786,18 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
             modelBuilder.Entity("ProofFlow.Domain.Environments.ProjectEnvironment", b =>
                 {
                     b.Navigation("Variables");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.ScenarioVersion", b =>
+                {
+                    b.Navigation("Connections");
+
+                    b.Navigation("Nodes");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scenarios.TestScenario", b =>
+                {
+                    b.Navigation("Versions");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Workspaces.Workspace", b =>

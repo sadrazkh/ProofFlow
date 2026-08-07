@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using FluentAssertions;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.TestEngine.Comparison;
+using ProofFlow.TestEngine.Nodes;
 
 namespace ProofFlow.Tests;
 
@@ -149,6 +150,51 @@ public class TranslationCompletenessTests
             .ToArray();
 
         missing.Should().BeEmpty("missing: {0}", string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// Every node type, port, property and option the catalogue names has a string.
+    ///
+    /// Seventy node types is seventy titles, seventy summaries and some hundreds of labels between
+    /// them, and none of it is written in the markup — the palette asks for
+    /// <c>node.{key}.title</c> at render time, so a missing one is a palette entry reading
+    /// "node.flow.pollUntil.title" and nothing else complaining.
+    /// </summary>
+    [Fact]
+    public void Every_node_type_can_be_read()
+    {
+        var english = Flatten("en.json");
+        var missing = new SortedSet<string>(StringComparer.Ordinal);
+
+        void Want(string key)
+        {
+            if (!english.ContainsKey(key)) missing.Add(key);
+        }
+
+        foreach (var spec in NodeCatalogue.All)
+        {
+            Want(spec.TitleKey);
+            Want(spec.SummaryKey);
+
+            foreach (var port in spec.Inputs.Concat(spec.Outputs))
+            {
+                Want(port.LabelKey);
+                Want($"portType.{port.Type}");
+            }
+
+            foreach (var property in spec.Properties)
+            {
+                Want(property.LabelKey);
+                if (property.HelpKey is { } help) Want(help);
+
+                foreach (var option in property.Options) Want($"option.{option}");
+            }
+        }
+
+        foreach (var group in Enum.GetNames<NodeGroup>()) Want($"nodeGroup.{group}");
+
+        missing.Should().BeEmpty("the canvas renders these keys at run time: {0}",
+            string.Join(", ", missing));
     }
 
     private static HashSet<string> Placeholders(string value)

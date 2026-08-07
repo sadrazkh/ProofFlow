@@ -60,6 +60,7 @@ public static class DependencyInjection
         services.AddScoped<Baselines.BaselineService>();
         services.AddScoped<Capture.CaptureService>();
         services.AddScoped<Data.DataSetService>();
+        services.AddScoped<Scenarios.ScenarioGraphService>();
 
         return services;
     }

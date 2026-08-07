@@ -1,0 +1,71 @@
+@using System.Text.Json
+@model ScenarioCanvasViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        scenarioId = Model.Scenario.Id,
+        environments = Model.Environments.Select(e => new
+        {
+            id = e.Id, name = e.Name, isProduction = e.IsProduction,
+        }),
+        canEdit = Model.CanEdit,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+@* The canvas is the page. Its own bar rather than the usual page-head, because the drawing needs
+   the height that a heading and a subtitle would take. *@
+<div class="canvas-page-bar">
+    <a class="btn btn-ghost btn-icon btn-sm has-tip"
+       data-tip="@T["nav.scenarios"]"
+       aria-label="@T["nav.scenarios"]"
+       href="/projects/@Model.ProjectId/scenarios">
+        <i data-lucide="arrow-left" class="icon-forward" aria-hidden="true"></i>
+    </a>
+
+    <h1 class="canvas-title" dir="auto">@Model.Scenario.Name</h1>
+
+    @if (Model.Scenario.PublishedVersionId is not null)
+    {
+        <span class="badge badge-pass">@T["scenario.published.badge"]</span>
+    }
+    else
+    {
+        <span class="badge badge-idle">@T["scenario.draft"]</span>
+    }
+
+    <span class="grow"></span>
+
+    @if (Model.CanEdit)
+    {
+        <form method="post" action="/projects/@Model.ProjectId/scenarios/@Model.Scenario.Id/publish">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-secondary btn-sm">
+                <i data-lucide="upload" aria-hidden="true"></i>@T["scenario.publish"]
+            </button>
+        </form>
+    }
+</div>
+
+@*
+    The island carries its own skeleton in the three-column shape it becomes, so the page does not
+    jump when Vue takes over — which on a full-height canvas would move everything.
+*@
+<div data-island="scenario-canvas" data-props="@props">
+    <div class="canvas-shell">
+        <div class="node-palette">
+            <div class="skeleton" style="block-size: 32px;"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text"></div>
+            <div class="skeleton skeleton-text"></div>
+        </div>
+        <div class="canvas-main">
+            <div class="skeleton" style="block-size: 44px;"></div>
+            <div class="skeleton grow" style="min-block-size: 400px;"></div>
+        </div>
+        <div class="inspector">
+            <div class="skeleton" style="block-size: 32px;"></div>
+        </div>
+    </div>
+</div>

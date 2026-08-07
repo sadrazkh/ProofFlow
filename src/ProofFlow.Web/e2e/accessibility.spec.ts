@@ -42,6 +42,7 @@ const PROJECT_PAGES = [
   { name: 'new data set', path: (id: string) => `/projects/${id}/datasets/new` },
   { name: 'captures', path: (id: string) => `/projects/${id}/captures` },
   { name: 'wizard', path: (id: string) => `/projects/${id}/wizard` },
+  { name: 'scenarios', path: (id: string) => `/projects/${id}/scenarios` },
 ];
 
 let projectId: string | null = null;
@@ -225,6 +226,36 @@ for (const theme of ['light', 'dark'] as const) {
           'the queue should have samples to audit').toBeGreaterThan(0);
 
         await audit(page, `review queue (${language}/${theme})`);
+      });
+
+      /**
+       * The canvas with a graph on it.
+       *
+       * The densest screen in the product: five group hues, eight state marks, typed sockets and a
+       * form built from a specification. An empty canvas would audit almost nothing, so this finds
+       * a scenario with steps in it and refuses to report if there are none.
+       */
+      test('canvas', async ({ page }) => {
+        test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+        const id = await firstProject(page);
+        expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+        await page.goto(`${BASE}/projects/${id}/scenarios`, { waitUntil: 'networkidle' });
+        const href = await page.locator('td a[href*="/scenarios/"]').first()
+          .getAttribute('href').catch(() => null);
+
+        test.skip(!href, 'No scenario drawn. Run e2e/demo-canvas.ts first.');
+
+        await page.goto(`${BASE}${href}`, { waitUntil: 'networkidle' });
+        await assertOn(page, href!);
+        await page.waitForSelector('[data-island-mounted="true"]');
+        await page.waitForSelector('.wf-node');
+
+        expect(await page.locator('.wf-node').count(),
+          'the canvas should have steps to audit').toBeGreaterThan(1);
+
+        await audit(page, `canvas (${language}/${theme})`);
       });
     });
   }
