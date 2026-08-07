@@ -50,6 +50,18 @@ const PAGES: Target[] = [
   { name: 'design', path: '/design', auth: true },
 ];
 
+/**
+ * Pages that live inside a project, so their address is only known once a project exists.
+ *
+ * Discovered rather than hard-coded: the demo seed makes new ids on every fresh database, and a
+ * matrix that silently captured a 404 under the right filename would be worse than one that
+ * skipped them.
+ */
+const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
+  { name: 'environments', path: (id) => `/projects/${id}/environments` },
+  { name: 'request', path: (id) => `/projects/${id}/request` },
+];
+
 type Combination = { language: 'fa' | 'en'; theme: 'light' | 'dark'; viewport: Viewport };
 
 async function newContext(
@@ -88,7 +100,9 @@ async function newContext(
  * silently skipped. Reusing one session is both faster and the thing that stops this script from
  * testing the rate limiter instead of the interface.
  */
-async function establishSession(browser: Browser): Promise<StorageState | undefined> {
+async function establishSession(browser: Browser): Promise<
+  { state: StorageState; projectId: string | null } | undefined
+> {
   if (!PASSWORD) return undefined;
 
   const context = await browser.newContext();
@@ -100,11 +114,19 @@ async function establishSession(browser: Browser): Promise<StorageState | undefi
   await page.click('button[type="submit"]');
   await page.waitForLoadState('networkidle');
 
-  const signedIn = !page.url().includes('sign-in');
-  const state = signedIn ? await context.storageState() : undefined;
+  if (page.url().includes('sign-in')) {
+    await context.close();
+    return undefined;
+  }
+
+  const state = await context.storageState();
+
+  await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle' });
+  const href = await page.locator('a.project-card').first().getAttribute('href').catch(() => null);
+  const projectId = href?.split('/').pop() ?? null;
 
   await context.close();
-  return state;
+  return { state, projectId };
 }
 
 async function capture(page: Page, target: Target, combination: Combination): Promise<void> {
@@ -146,7 +168,7 @@ async function main(): Promise<void> {
         // A second, separate context for everything behind a session, seeded with the one
         // sign-in rather than repeating it.
         if (session) {
-          const authed = await newContext(browser, combination, session);
+          const authed = await newContext(browser, combination, session.state);
           const authedPage = await authed.newPage();
 
           for (const target of PAGES.filter((p) => p.auth)) {
@@ -154,9 +176,21 @@ async function main(): Promise<void> {
             shots++;
           }
 
+          if (session.projectId) {
+            for (const target of PROJECT_PAGES) {
+              await capture(
+                authedPage,
+                { name: target.name, path: target.path(session.projectId), auth: true },
+                combination);
+              shots++;
+            }
+          } else {
+            skipped += PROJECT_PAGES.length;
+          }
+
           await authed.close();
         } else {
-          skipped += PAGES.filter((p) => p.auth).length;
+          skipped += PAGES.filter((p) => p.auth).length + PROJECT_PAGES.length;
         }
       }
     }

@@ -1,0 +1,105 @@
+@model EnvironmentsPageViewModel
+@{
+    var selected = Model.Selected;
+    var selectedId = selected?.Id;
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.environments"]</h1>
+        <p class="page-subtitle">@T["environment.subtitle"]</p>
+    </div>
+    @if (Model.CanManage)
+    {
+        <div class="page-actions">
+            <a class="btn btn-primary" href="#new-environment">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["environment.new"]
+            </a>
+        </div>
+    }
+</div>
+
+@if (Model.Environments.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="globe" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["environment.empty.title"]</h2>
+            <p class="empty-body">@T["environment.empty.body"]</p>
+        </div>
+    </div>
+}
+
+<div class="master-detail">
+    @* Selection lives in the query string, so this is a real URL: linkable, back-buttonable, and
+       rendered whole by the server rather than assembled after load. *@
+    <nav class="master" aria-label="@T["nav.environments"]">
+        @foreach (var environment in Model.Environments)
+        {
+            var isCurrent = environment.Id == selectedId;
+            <a class="master-item @(isCurrent ? "is-active" : "")"
+               href="/projects/@Model.ProjectId/environments?selected=@environment.Id"
+               @(isCurrent ? "aria-current=true" : "")>
+                <div class="row-between" style="gap: var(--space-2);">
+                    <span class="semibold truncate" dir="auto">@environment.Name</span>
+                    <partial name="_KindBadge" model="environment" />
+                </div>
+                <div class="master-item-url mono truncate">@(environment.BaseUrl ?? T["environment.noBaseUrl"].Value)</div>
+                <div class="row text-2xs subtle" style="gap: var(--space-3);">
+                    <span><span class="tabular">@environment.VariableCount</span> @T["nav.variables"]</span>
+                    <span><span class="tabular">@environment.SecretCount</span> @T["environment.secrets"]</span>
+                    @if (environment.AllowPrivateNetwork)
+                    {
+                        <span class="has-tip" data-tip="@T["environment.privateNetwork.hint"]">
+                            <i data-lucide="shield" aria-hidden="true" style="inline-size:12px;block-size:12px;"></i>
+                        </span>
+                    }
+                </div>
+            </a>
+        }
+    </nav>
+
+    <div class="detail stack-6">
+        @if (selected is not null)
+        {
+            <partial name="_Form" model="selected" view-data="@(new ViewDataDictionary(ViewData) { ["ProjectId"] = Model.ProjectId, ["CanManage"] = Model.CanManage })" />
+            <partial name="_Variables" model="Model" />
+            <partial name="_Secrets" model="Model" />
+        }
+
+        @if (Model.CanManage)
+        {
+            <section class="card" id="new-environment">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">@T["environment.new"]</h2>
+                        <p class="card-subtitle">@T["environment.newHint"]</p>
+                    </div>
+                </div>
+                <form method="post" action="/projects/@Model.ProjectId/environments" class="card-body row wrap"
+                      style="gap: var(--space-3); align-items: flex-end;">
+                    @Html.AntiForgeryToken()
+                    <div class="field grow" style="min-inline-size: 200px;">
+                        <label class="field-label" for="new-env-name">@T["common.name"]</label>
+                        <input class="input" id="new-env-name" name="Name" required placeholder="Staging" />
+                    </div>
+                    <div class="field" style="min-inline-size: 160px;">
+                        <label class="field-label" for="new-env-kind">@T["environment.kind"]</label>
+                        <select class="select" id="new-env-kind" name="Kind">
+                            @foreach (var kind in EnvironmentFormViewModel.Kinds)
+                            {
+                                <option value="@kind">@T[$"environment.kind_{kind}"]</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="field grow" style="min-inline-size: 240px;">
+                        <label class="field-label" for="new-env-url">@T["environment.baseUrl"]</label>
+                        <input class="input input-mono" id="new-env-url" name="BaseUrl"
+                               placeholder="https://staging.example.com" />
+                    </div>
+                    <button type="submit" class="btn btn-primary">@T["action.create"]</button>
+                </form>
+            </section>
+        }
+    </div>
+</div>

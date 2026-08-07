@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.FakeApi;
 using ProofFlow.Infrastructure;
 using ProofFlow.Infrastructure.Identity;
 using ProofFlow.Infrastructure.Persistence;
@@ -124,6 +125,11 @@ builder.Services.AddControllersWithViews()
         options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(string.Empty, string.Empty));
 
 builder.Services.AddSignalR();
+
+// The fake API is a development convenience: something for the request builder to point at
+// on a laptop with no internet. Registered unconditionally because the service is inert
+// until its endpoints are mapped, and those are mapped only in development below.
+builder.Services.AddFakeApi();
 builder.Services.AddSingleton<ViteManifest>();
 // Scoped: it reads the request's culture and time-zone cookie, and caches the resolved zone for
 // the life of the request so a page with fifty timestamps looks it up once.
@@ -245,6 +251,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapGet("/healthz", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
+
+if (app.Environment.IsDevelopment())
+{
+    // Deliberately not behind authentication: it stands in for somebody else's API, and
+    // an environment pointed at it should have to authenticate the way it would against a
+    // real one — which is the point of its own bearer-token endpoints.
+    app.MapFakeApi().AllowAnonymous();
+}
 
 app.MapControllers();
 app.MapControllerRoute("default", "{controller=Dashboard}/{action=Index}/{id?}");

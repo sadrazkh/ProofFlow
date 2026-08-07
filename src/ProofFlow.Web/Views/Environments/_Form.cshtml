@@ -1,0 +1,148 @@
+@model EnvironmentFormViewModel
+@{
+    var projectId = (Guid)ViewData["ProjectId"]!;
+    var canManage = (bool)ViewData["CanManage"]!;
+    var action = $"/projects/{projectId}/environments/{Model.Id}";
+}
+
+<form method="post" action="@action" class="card" novalidate data-guard-unsaved>
+    @Html.AntiForgeryToken()
+
+    <div class="card-header">
+        <div>
+            <h2 class="card-title" dir="auto">@Model.Name</h2>
+            <p class="card-subtitle mono">@(Model.BaseUrl ?? T["environment.noBaseUrl"].Value)</p>
+        </div>
+        @if (canManage)
+        {
+            <button type="submit" class="btn btn-primary">@T["action.save"]</button>
+        }
+    </div>
+
+    <fieldset class="card-body stack" style="border: 0; padding: var(--space-5); margin: 0;" @(canManage ? null : "disabled")>
+        <legend class="sr-only">@T["nav.environments"]</legend>
+
+        <div class="design-two-up">
+            <div class="field">
+                <label class="field-label" for="env-name">@T["common.name"]</label>
+                <input class="input" id="env-name" name="Name" value="@Model.Name" required />
+                <partial name="Pieces/_FieldError" model="@("Name")" />
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="env-kind">@T["environment.kind"]</label>
+                <select class="select" id="env-kind" name="Kind">
+                    @foreach (var kind in EnvironmentFormViewModel.Kinds)
+                    {
+                        <option value="@kind" selected="@(Model.Kind == kind)">@T[$"environment.kind_{kind}"]</option>
+                    }
+                </select>
+                <p class="field-hint">@T["environment.kindHint"]</p>
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="field-label" for="env-base">@T["environment.baseUrl"]</label>
+            <input class="input input-mono" id="env-base" name="BaseUrl" value="@Model.BaseUrl"
+                   placeholder="https://staging.example.com" />
+            <p class="field-hint">@T["environment.baseUrlHint"]</p>
+            <partial name="Pieces/_FieldError" model="@("BaseUrl")" />
+        </div>
+
+        <h3 class="text-sm semibold" style="margin-block-start: var(--space-2);">@T["environment.limits"]</h3>
+        <div class="design-two-up">
+            <div class="field">
+                <label class="field-label" for="env-timeout">@T["environment.timeout"]</label>
+                <input class="input tabular" id="env-timeout" name="TimeoutSeconds" type="number" min="1" max="600"
+                       value="@Model.TimeoutSeconds" />
+                <partial name="Pieces/_FieldError" model="@("TimeoutSeconds")" />
+            </div>
+            <div class="field">
+                <label class="field-label" for="env-redirects">@T["environment.maxRedirects"]</label>
+                <input class="input tabular" id="env-redirects" name="MaxRedirects" type="number" min="0" max="20"
+                       value="@Model.MaxRedirects" />
+                <p class="field-hint">@T["environment.maxRedirectsHint"]</p>
+                <partial name="Pieces/_FieldError" model="@("MaxRedirects")" />
+            </div>
+            <div class="field">
+                <label class="field-label" for="env-size">@T["environment.maxResponse"]</label>
+                <input class="input tabular" id="env-size" name="MaxResponseKilobytes" type="number" min="1"
+                       max="262144" value="@Model.MaxResponseKilobytes" />
+                <partial name="Pieces/_FieldError" model="@("MaxResponseKilobytes")" />
+            </div>
+            <div class="field">
+                <label class="field-label" for="env-proxy">
+                    @T["environment.proxy"] <span class="field-optional">· @T["common.optional"]</span>
+                </label>
+                <input class="input input-mono" id="env-proxy" name="ProxyUrl" value="@Model.ProxyUrl"
+                       placeholder="http://proxy.internal:8080" />
+            </div>
+        </div>
+
+        <div class="field">
+            <label class="field-label" for="env-hosts">@T["environment.allowedHosts"]</label>
+            <textarea class="textarea input-mono" id="env-hosts" name="AllowedHosts" rows="3"
+                      placeholder="api.example.com&#10;*.trusted.dev">@Model.AllowedHosts</textarea>
+            <p class="field-hint">@T["environment.allowedHostsHint"]</p>
+        </div>
+
+        @*
+            The three switches that change what this environment is allowed to do. Each carries its
+            consequence on the line below it rather than in a tooltip: a tooltip is not read before
+            the click, and these are the settings where being read afterwards is too late.
+        *@
+        <section class="danger-switches">
+            <h3 class="text-sm semibold">@T["environment.reach"]</h3>
+
+            <label class="check-row">
+                <input class="checkbox" type="checkbox" name="AllowPrivateNetwork" value="true"
+                       checked="@Model.AllowPrivateNetwork" />
+                <span class="check-row-text">
+                    <span class="check-row-title">@T["environment.privateNetwork"]</span>
+                    <span class="check-row-hint">@T["environment.privateNetwork.hint"]</span>
+                </span>
+            </label>
+
+            <label class="check-row">
+                <input class="checkbox" type="checkbox" name="AllowInvalidCertificate" value="true"
+                       checked="@Model.AllowInvalidCertificate" />
+                <span class="check-row-text">
+                    <span class="check-row-title">@T["environment.invalidCertificate"]</span>
+                    <span class="check-row-hint">@T["environment.invalidCertificate.hint"]</span>
+                </span>
+            </label>
+
+            <label class="check-row">
+                <input class="checkbox" type="checkbox" name="IsProduction" value="true"
+                       checked="@Model.IsProduction" />
+                <span class="check-row-text">
+                    <span class="check-row-title">@T["environment.isProduction"]</span>
+                    <span class="check-row-hint">@T["environment.isProduction.hint"]</span>
+                </span>
+            </label>
+        </section>
+    </fieldset>
+
+    @if (canManage)
+    {
+        <div class="card-footer" style="justify-content: space-between;">
+            <span></span>
+            <button type="submit" class="btn btn-primary">@T["action.save"]</button>
+        </div>
+    }
+</form>
+
+@if (canManage)
+{
+    <form method="post" action="/projects/@projectId/environments/@Model.Id/delete"
+          data-confirm="@T["environment.deleteBody", Model.Name]"
+          data-confirm-title="@T["environment.deleteTitle"]"
+          data-confirm-action="@T["action.delete"]"
+          data-confirm-phrase="@Model.Name"
+          style="display: flex; justify-content: flex-end;">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-ghost btn-sm" style="color: var(--fail-ink);">
+            <i data-lucide="trash-2" aria-hidden="true"></i>@T["environment.delete"]
+        </button>
+    </form>
+}

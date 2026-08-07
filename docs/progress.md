@@ -133,9 +133,51 @@ SQLite refuses to `ORDER BY` a `DateTimeOffset` (found in Phase A, recorded here
 class of problem will recur): the two providers disagree, and only running the real queries on both
 finds it.
 
-### Not built yet — this is what comes next
+### The interface · **done**
 
-The interface for all of the above: environment and secret screens, the request builder, and the
-response viewer you can click a field in. The engine underneath them is complete and tested, so
-these are views over working machinery rather than new mechanism. The design for them is
-**D-B** in the [design plan](plan/01-design-plan.md).
+| | |
+|---|---|
+| Environments | Master-detail with the selection in the query string, so the page is a real URL |
+| Reach | The three settings that widen it are grouped, each with its consequence on the line below |
+| Variables | Project-wide or per-environment, shown in the reference form people paste |
+| Secrets | Encrypted, listed as four characters, revealed only with the capability and always audited |
+| Request | Verb chip, live reference checking, query and header tables, real sending |
+| Response | Status, duration, size; a clickable JSON tree; a designed state for every failure kind |
+| Fake API | Moved to `src/` and hosted by the web application in development |
+
+**It genuinely runs.** A request built in the browser reaches the fake API through an environment
+and comes back as a 200 with a browsable tree. A reference that does not exist is marked red as it
+is typed and refused by the server before a socket opens, naming the reference and why.
+
+Note on where the fake API lives: it moved from `tests/` to `src/` because the web application
+hosts it in development. The brief asks for a demo that runs with no internet and no second
+terminal, and a project under `tests/` that ships in the dev experience was mislabelled.
+
+### Four things worth recording
+
+**The production cookie policy is real, and the tests were signing in over plain HTTP.** Outside
+development the session cookie is marked Secure, so it is never offered over `http://` — the tests
+signed in successfully and arrived at the next page anonymous. They run over `https://localhost`
+now, which keeps the production policy under test rather than switching the host to development to
+dodge it.
+
+**Icons vanished whenever Vue re-rendered.** The icon pass ran on insertion and on an explicit
+event, neither of which fires when a component re-renders its own markup — so the response
+viewer's failure state shipped with an empty circle. A mutation observer, batched to one pass per
+frame, covers every island now.
+
+**No built-in role separates storing a secret from reading one.** `ManageSecret` and `ViewSecret`
+are distinct capabilities and are checked separately, but Owner and Admin hold both and nobody else
+holds either. That is defensible — a test designer writing production tokens into environments is
+not something to enable by default — and the separation becomes reachable when custom roles arrive
+in Phase I.
+
+**Placeholders cannot be dimmed to distinguish them.** They are text and must meet the same
+contrast, which in a borderless key/value table made every example look like a value already
+entered. They are italic instead.
+
+### Not built yet
+
+Assertions, baselines and the diff engine — Phase C, with **D-C** as its design. The response
+viewer's click menu offers only what exists today (copy the path, copy the value, use it in a
+header); the four options that need a baseline are absent rather than present and disabled.

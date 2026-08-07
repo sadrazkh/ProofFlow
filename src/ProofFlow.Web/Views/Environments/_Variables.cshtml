@@ -1,0 +1,98 @@
+@model EnvironmentsPageViewModel
+@{
+    var selectedId = Model.Selected!.Id;
+}
+<section class="card">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">@T["nav.variables"]</h2>
+            <p class="card-subtitle">@T["variable.subtitle"]</p>
+        </div>
+    </div>
+
+    @if (Model.Variables.Count == 0)
+    {
+        <div class="empty empty-inline">
+            <div class="empty-art"><i data-lucide="variable" aria-hidden="true"></i></div>
+            <p class="empty-body">@T["variable.empty.body"]</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["variable.value"]</th>
+                    <th>@T["variable.scope"]</th>
+                    <th class="numeric"><span class="sr-only">@T["action.delete"]</span></th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var variable in Model.Variables)
+                {
+                    <tr>
+                        @* The reference, not the bare name — this is the form people paste into a
+                           request, so showing anything else means they retype it. *@
+                        <td class="mono">{{vars.@variable.Name}}</td>
+                        <td class="mono truncate" style="max-inline-size: 30ch;" dir="auto">@variable.Value</td>
+                        <td>
+                            @if (variable.IsInherited)
+                            {
+                                <span class="badge badge-idle has-tip" data-tip="@T["variable.inherited.hint"]">
+                                    @T["variable.inherited"]
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge badge-accent">@Model.Selected!.Name</span>
+                            }
+                        </td>
+                        <td class="numeric">
+                            @if (Model.CanManage)
+                            {
+                                <form method="post"
+                                      action="/projects/@Model.ProjectId/environments/variables/@variable.Id/delete?selected=@selectedId"
+                                      data-confirm="@T["variable.deleteBody", variable.Name]"
+                                      data-confirm-title="@T["variable.deleteTitle"]"
+                                      data-confirm-action="@T["action.delete"]">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-ghost btn-icon btn-sm has-tip"
+                                            data-tip="@T["action.delete"]" aria-label="@T["action.delete"]">
+                                        <i data-lucide="trash-2" aria-hidden="true"></i>
+                                    </button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    @if (Model.CanManage)
+    {
+        <form method="post" action="/projects/@Model.ProjectId/environments/variables" class="card-footer"
+              style="justify-content: flex-start; flex-wrap: wrap; align-items: flex-end;">
+            @Html.AntiForgeryToken()
+            <div class="field" style="min-inline-size: 160px;">
+                <label class="field-label" for="var-name">@T["common.name"]</label>
+                <input class="input input-mono" id="var-name" name="Name" required placeholder="pageSize" />
+            </div>
+            <div class="field grow" style="min-inline-size: 200px;">
+                <label class="field-label" for="var-value">@T["variable.value"]</label>
+                <input class="input input-mono" id="var-value" name="Value" placeholder="25" />
+            </div>
+            <div class="field" style="min-inline-size: 180px;">
+                <label class="field-label" for="var-scope">@T["variable.scope"]</label>
+                <select class="select" id="var-scope" name="EnvironmentId">
+                    <option value="@selectedId">@Model.Selected!.Name</option>
+                    <option value="">@T["variable.allEnvironments"]</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary">@T["variable.add"]</button>
+        </form>
+    }
+</section>

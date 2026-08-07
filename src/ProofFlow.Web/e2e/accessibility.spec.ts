@@ -31,6 +31,26 @@ const AUTHENTICATED = [
 ];
 
 /**
+ * Pages inside a project. Their address depends on a project existing, so it is discovered once
+ * and shared — a hard-coded id would pass by auditing a 404 page.
+ */
+const PROJECT_PAGES = [
+  { name: 'environments', path: (id: string) => `/projects/${id}/environments` },
+  { name: 'request lab', path: (id: string) => `/projects/${id}/request` },
+];
+
+let projectId: string | null = null;
+
+async function firstProject(page: Page): Promise<string | null> {
+  if (projectId) return projectId;
+
+  await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle' });
+  const href = await page.locator('a.project-card').first().getAttribute('href').catch(() => null);
+  projectId = href?.split('/').pop() ?? null;
+  return projectId;
+}
+
+/**
  * Refuses to audit a page whose stylesheet did not load.
  *
  * This is not paranoia — it happened. A frontend rebuild changes Vite's hashed filenames, the
@@ -114,6 +134,23 @@ for (const theme of ['light', 'dark'] as const) {
 
           await page.goto(`${BASE}${target.path}`, { waitUntil: 'networkidle' });
           await assertOn(page, target.path);
+          await audit(page, `${target.name} (${language}/${theme})`);
+        });
+      }
+
+      for (const target of PROJECT_PAGES) {
+        test(target.name, async ({ page }) => {
+          test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+          const id = await firstProject(page);
+          expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+          const path = target.path(id!);
+          await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' });
+          await assertOn(page, path);
+          // The request lab is an island: give it a frame to mount before measuring, or the audit
+          // is of the skeleton rather than the component.
+          await page.waitForTimeout(500);
           await audit(page, `${target.name} (${language}/${theme})`);
         });
       }

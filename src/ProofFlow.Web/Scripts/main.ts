@@ -5,7 +5,9 @@ import { reportTimeZone } from './lib/timezone';
 import { mountThemeControls } from './lib/theme';
 import { watchForNewContent } from './lib/icons';
 import { flushServerToasts, mountToastDemos } from './lib/toast';
-import { mountIslands } from './lib/islands';
+import { island, mountIslands } from './lib/islands';
+import RequestLab from './islands/RequestLab.vue';
+import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
   mountMenus,
@@ -29,7 +31,11 @@ mountMenus();
 mountCommandPalette();
 mountConfirmations();
 mountUnsavedGuard();
+// Registered before mounting, which is the only ordering that matters here.
+island('request-lab', RequestLab);
+
 mountIslands();
+mountSecretReveal();
 mountToastDemos();
 flushServerToasts();
 watchForNewContent();

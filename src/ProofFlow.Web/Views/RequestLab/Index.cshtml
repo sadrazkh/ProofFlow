@@ -1,0 +1,58 @@
+@using System.Text.Json
+@model RequestLabViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        environments = Model.Environments.Select(e => new
+        {
+            id = e.Id, name = e.Name, baseUrl = e.BaseUrl, isProduction = e.IsProduction,
+        }),
+        canRun = Model.CanRun,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["request.title"]</h1>
+        <p class="page-subtitle">@T["request.subtitle"]</p>
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/environments">
+            <i data-lucide="globe" aria-hidden="true"></i>@T["nav.environments"]
+        </a>
+    </div>
+</div>
+
+@if (Model.Environments.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="globe" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["request.noEnvironments.title"]</h2>
+            <p class="empty-body">@T["request.noEnvironments.body"]</p>
+            <div class="empty-actions">
+                <a class="btn btn-primary" href="/projects/@Model.ProjectId/environments">
+                    <i data-lucide="plus" aria-hidden="true"></i>@T["environment.new"]
+                </a>
+            </div>
+        </div>
+    </div>
+}
+
+@*
+    The first real island. The skeleton inside it is not decoration: mountIslands measures the
+    element before Vue empties it and holds that height, so nothing below jumps when the component
+    takes over. Server-rendered, so the shape is there before any script runs.
+*@
+<div data-island="request-lab" data-props="@props">
+    <div class="card card-pad stack">
+        <div class="row" style="gap: var(--space-3);">
+            <div class="skeleton" style="inline-size: 90px; block-size: 34px;"></div>
+            <div class="skeleton grow" style="block-size: 34px;"></div>
+            <div class="skeleton" style="inline-size: 140px; block-size: 34px;"></div>
+        </div>
+        <div class="skeleton skeleton-text" style="inline-size: 40%;"></div>
+        <div class="skeleton" style="block-size: 180px;"></div>
+    </div>
+</div>

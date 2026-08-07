@@ -1,0 +1,14 @@
+@model EnvironmentSummary
+@{
+    // Production is the only kind that changes what a mistake costs, so it is the only one that
+    // gets a colour. Painting all six turns the list into bunting and makes the one that matters
+    // no easier to find.
+    var isProduction = Model.IsProduction || Model.Kind == EnvironmentKind.Production;
+}
+<span class="badge @(isProduction ? "badge-warn" : "badge-idle")">
+    @if (isProduction)
+    {
+        <i data-lucide="triangle-alert" aria-hidden="true"></i>
+    }
+    @T[$"environment.kind_{Model.Kind}"]
+</span>

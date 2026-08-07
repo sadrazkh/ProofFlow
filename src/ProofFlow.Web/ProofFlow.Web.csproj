@@ -6,6 +6,9 @@
     <ProjectReference Include="..\ProofFlow.Application\ProofFlow.Application.csproj" />
     <ProjectReference Include="..\ProofFlow.TestEngine\ProofFlow.TestEngine.csproj" />
     <ProjectReference Include="..\ProofFlow.Infrastructure\ProofFlow.Infrastructure.csproj" />
+    <!-- Hosted only in development, so the demo has something to point at without a
+         second terminal or an internet connection. Never mapped in production. -->
+    <ProjectReference Include="..\ProofFlow.FakeApi\ProofFlow.FakeApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>

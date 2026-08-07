@@ -20,7 +20,12 @@ namespace ProofFlow.FakeApi;
 /// </summary>
 public static class FakeApi
 {
-    public static void MapFakeApi(this IEndpointRouteBuilder app, string prefix = "/fake")
+    /// <summary>
+    /// Returns the group so a host can add its own conventions — the web application marks it
+    /// anonymous, because it stands in for somebody else's API and should be reached the way one
+    /// would be: through its own bearer-token endpoints, not through ProofFlow's session.
+    /// </summary>
+    public static RouteGroupBuilder MapFakeApi(this IEndpointRouteBuilder app, string prefix = "/fake")
     {
         var group = app.MapGroup(prefix);
         var state = app.ServiceProvider.GetRequiredService<FakeApiState>();
@@ -29,6 +34,8 @@ public static class FakeApi
         MapCatalog(group, state);
         MapProducts(group, state);
         MapBehaviours(group, state);
+
+        return group;
     }
 
     public static IServiceCollection AddFakeApi(this IServiceCollection services)

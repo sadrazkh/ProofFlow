@@ -1,0 +1,238 @@
+/*
+  The request laboratory and the response viewer.
+
+  Its own file because it is the first surface with a genuinely dense layout, and everything the
+  diff viewer needs later — the JSON rows, the path affordance, the status header — is prototyped
+  here first.
+*/
+
+/* ---- the request line ------------------------------------------------------------------------ */
+
+.request-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-block-end: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+/*
+  The verb, coloured by what it does.
+
+  GET reads, DELETE destroys, and the gap between them is the single most useful thing to see
+  without reading. The colours are the status tokens rather than new ones — green for the safe
+  read, red for the destructive write — so the palette stays the size it already is.
+*/
+.method-chip {
+  inline-size: auto;
+  min-inline-size: 104px;
+  font-family: var(--font-mono);
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  border-width: 1px;
+  border-style: solid;
+}
+.method-chip[data-tone='pass']    { color: var(--pass-ink);    background: var(--pass-soft);    border-color: var(--pass-border); }
+.method-chip[data-tone='running'] { color: var(--running-ink); background: var(--running-soft); border-color: var(--running-border); }
+.method-chip[data-tone='warn']    { color: var(--warn-ink);    background: var(--warn-soft);    border-color: var(--warn-border); }
+.method-chip[data-tone='fail']    { color: var(--fail-ink);    background: var(--fail-soft);    border-color: var(--fail-border); }
+.method-chip[data-tone='accent']  { color: var(--accent-ink);  background: var(--accent-soft);  border-color: var(--accent-border); }
+.method-chip[data-tone='idle']    { color: var(--idle-ink);    background: var(--idle-soft);    border-color: var(--idle-border); }
+
+/* ---- variable references ---------------------------------------------------------------------- */
+
+.reference-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.reference-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--text-2xs);
+}
+.reference-chip svg { inline-size: 11px; block-size: 11px; }
+.reference-chip.is-known   { background: var(--pass-soft); color: var(--pass-ink); border-color: var(--pass-border); }
+.reference-chip.is-unknown { background: var(--fail-soft); color: var(--fail-ink); border-color: var(--fail-border); }
+
+/* ---- key/value tables -------------------------------------------------------------------------- */
+
+.kv-table td { padding: var(--space-1) var(--space-2); }
+.kv-table thead th { padding: var(--space-2); }
+.kv-enabled { inline-size: 36px; text-align: center; }
+.kv-actions { inline-size: 44px; }
+
+/* Borderless until touched: a grid of forty outlined boxes reads as a form to fill in, and this is
+   a place to type two things. */
+.kv-input {
+  border-color: transparent;
+  background: transparent;
+  block-size: 30px;
+}
+.kv-input:hover { border-color: var(--line); background: var(--surface); }
+.kv-input:focus-visible { background: var(--surface); }
+
+/*
+  The example in the empty row is italic.
+
+  Placeholder text has to meet the same contrast as any other text, so it cannot be distinguished
+  by being faint — and in a borderless table an ordinary-weight placeholder reads as a value that
+  is already there. Italic carries the difference without touching the contrast.
+*/
+.kv-input::placeholder { font-style: italic; }
+
+.tab-count {
+  margin-inline-start: var(--space-2);
+  padding: 0 var(--space-1);
+  min-inline-size: 16px;
+  display: inline-block;
+  text-align: center;
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+  color: var(--ink-subtle);
+  font-size: var(--text-2xs);
+}
+.tab.is-active .tab-count { background: var(--accent); color: var(--accent-on); }
+
+/* ---- response ---------------------------------------------------------------------------------- */
+
+.response-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  padding: var(--space-4);
+  border-block-end: 1px solid var(--line);
+}
+.response-head .segmented { margin-inline-start: auto; }
+
+.response-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}
+.response-meta svg { inline-size: 13px; block-size: 13px; }
+
+.response-body { padding: var(--space-4); }
+.response-pending { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
+
+.response-failed { background: var(--fail-soft); color: var(--fail-ink); }
+
+.response-raw {
+  max-block-size: 60vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.response-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  margin-block-end: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--warn-soft);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-ink);
+  font-size: var(--text-xs);
+}
+.response-notice svg { inline-size: 14px; block-size: 14px; flex: none; }
+
+.response-detail { margin-block-start: var(--space-3); font-size: var(--text-xs); }
+.response-detail summary { cursor: pointer; color: var(--ink-subtle); }
+.response-detail pre {
+  margin-block-start: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  text-align: start;
+}
+
+.unresolved-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block-start: var(--space-3);
+  text-align: start;
+  max-inline-size: 60ch;
+}
+.unresolved-list li { display: flex; flex-direction: column; gap: 2px; font-size: var(--text-xs); }
+
+/* ---- the JSON tree ------------------------------------------------------------------------------ */
+
+.json-viewer {
+  max-block-size: 60vh;
+  overflow: auto;
+  /* The tree is LTR whatever the page is: a JSON path reads left to right, and mirroring it would
+     put the brackets on the wrong ends of their contents. */
+  direction: ltr;
+  text-align: left;
+}
+
+.json-line {
+  display: flex;
+  align-items: flex-start;
+  /* Indentation as a custom property, so depth is one multiplication rather than a nested
+     stylesheet that stops at whatever level somebody guessed. */
+  padding-inline-start: calc(var(--depth, 0) * var(--space-4));
+  line-height: 1.7;
+}
+
+.json-toggle {
+  inline-size: 16px;
+  block-size: 16px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--ink-faint);
+  border-radius: var(--radius-xs);
+}
+.json-toggle:hover { color: var(--ink); background: var(--surface-hover); }
+.json-toggle svg { inline-size: 12px; block-size: 12px; }
+.json-toggle-spacer { inline-size: 16px; flex: none; }
+
+/*
+  Every value is a button, because every value is a place a rule can be attached. The affordance
+  is deliberately quiet — a response with two hundred fields cannot have two hundred things
+  shouting — and appears on hover and on focus.
+*/
+.json-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-xs);
+  text-align: start;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.json-field:hover { background: var(--accent-soft); }
+.json-field:focus-visible { background: var(--accent-soft); }
+
+.json-summary { color: var(--ink-subtle); font-size: var(--text-2xs); padding-inline: var(--space-1); }
+
+.json-string  { color: var(--json-string); }
+.json-number  { color: var(--json-number); }
+.json-boolean { color: var(--json-boolean); }
+.json-null    { color: var(--json-null); }
+.json-punct   { color: var(--json-punct); }
+
+@media (max-width: 640px) {
+  .request-line { gap: var(--space-2); }
+  .method-chip { min-inline-size: 88px; }
+  .response-head .segmented { margin-inline-start: 0; }
+}

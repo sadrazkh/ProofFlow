@@ -38,10 +38,38 @@ export function renderIcons(): void {
 }
 
 /**
- * Re-rendered whenever markup appears after first paint — a toast, a Vue island, a fetched
- * fragment. Without it those elements keep their `<i data-lucide>` placeholder and show nothing.
+ * Keeps icons rendered as markup appears after first paint.
+ *
+ * The event alone was not enough. It fires when a toast or an island is inserted, but a Vue
+ * component that re-renders — a response arriving, a tab changing — produces new `<i data-lucide>`
+ * elements with nothing to announce them, and they stay invisible. That is how the failure state
+ * of the response viewer shipped with an empty circle where its icon should have been.
+ *
+ * So: an observer, batched to one pass per frame. A render is cheap; a render per mutation during
+ * a list update is not, and Vue produces a great many mutations at once.
  */
 export function watchForNewContent(): void {
   renderIcons();
   document.addEventListener('proofflow:content-changed', renderIcons);
+
+  let queued = false;
+
+  const observer = new MutationObserver((records) => {
+    if (queued) return;
+
+    const hasPending = records.some((record) =>
+      [...record.addedNodes].some((node) =>
+        node instanceof Element
+        && (node.hasAttribute?.('data-lucide') || node.querySelector?.('[data-lucide]'))));
+
+    if (!hasPending) return;
+
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      renderIcons();
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
 }
