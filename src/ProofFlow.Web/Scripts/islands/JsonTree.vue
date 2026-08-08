@@ -71,6 +71,24 @@ const display = computed(() => {
     default: return String(props.value);
   }
 });
+
+/**
+ * What the redactor leaves behind, spelled exactly as the engine writes it.
+ *
+ * Duplicated from Redactor.Mask on the server, and deliberately a literal rather than a value
+ * passed in: this is a wire format between two halves of the same product, and a component that
+ * had to be told the marker is one that silently stops recognising it the day somebody forgets.
+ */
+const MASK = '«redacted»';
+
+/**
+ * True when this value is not a value at all — it is a secret that was taken out.
+ *
+ * Worth distinguishing, because "«redacted»" rendered as an ordinary string reads as data. Somebody
+ * comparing two responses sees a field whose contents changed and starts looking for the bug; the
+ * chip says the field was never shown to them in the first place.
+ */
+const isRedacted = computed(() => kind.value === 'string' && props.value === MASK);
 </script>
 
 <template>
@@ -105,6 +123,11 @@ const display = computed(() => {
           </span>
         </template>
 
+        <!-- The title says it is deliberate. Without it the chip only says something is missing,
+             which is the reading that sends somebody looking for a bug. -->
+        <span v-else-if="isRedacted" class="chip-redacted" :title="t('response.redacted.hint')">
+          <Icon name="eye-off" />{{ t('response.redacted') }}
+        </span>
         <span v-else :class="`json-${kind}`">{{ display }}</span>
         <span v-if="!isLast && !isBranch" class="json-punct">,</span>
       </button>

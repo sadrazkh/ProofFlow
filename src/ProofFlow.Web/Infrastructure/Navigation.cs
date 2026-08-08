@@ -56,6 +56,7 @@ public static class Navigation
 
         sections.Add(new NavSection(null, [
             new NavItem("nav.team", "users", "/team", Capability.ViewProject),
+            new NavItem("runner.title", "server", "/runners", Capability.ManageRunner),
             new NavItem("nav.audit", "shield", "/activity", Capability.ViewAudit),
         ]));
 

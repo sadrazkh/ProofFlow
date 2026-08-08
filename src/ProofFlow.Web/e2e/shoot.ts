@@ -49,6 +49,7 @@ const PAGES: Target[] = [
   { name: 'project-new', path: '/projects/new', auth: true },
   { name: 'activity', path: '/activity', auth: true },
   { name: 'team', path: '/team', auth: true },
+  { name: 'runners', path: '/runners', auth: true },
   // Development only, and the cheapest visual regression test there is: one page covering every
   // component in both themes.
   { name: 'design', path: '/design', auth: true },

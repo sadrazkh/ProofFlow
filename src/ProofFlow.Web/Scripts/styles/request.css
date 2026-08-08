@@ -231,6 +231,42 @@
 .json-null    { color: var(--json-null); }
 .json-punct   { color: var(--json-punct); }
 
+/*
+  A value that was taken out before it got here.
+
+  Not styled as a string, and that is the whole point of it. Rendered in the string colour, the
+  literal "«redacted»" reads as data — somebody comparing two responses sees a field whose contents
+  changed and goes looking for the bug. A chip says the field was never shown to them.
+
+  Deliberately quiet: it marks an absence rather than a problem, and there is usually more than one
+  on the page. The eye is the same glyph the secret reveal uses, closed.
+*/
+.chip-redacted {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+
+  padding-inline: var(--space-2);
+  padding-block: 1px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-full);
+  background: var(--surface-sunken);
+
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  font-style: normal;
+  letter-spacing: 0.01em;
+  color: var(--ink-muted);
+
+  /*
+    The word is translated, so the chip follows the page rather than the mono content it sits in —
+    the surrounding JSON is forced ltr, and the label must not inherit that.
+  */
+  direction: inherit;
+}
+
+.chip-redacted svg { inline-size: 11px; block-size: 11px; }
+
 @media (max-width: 640px) {
   .request-line { gap: var(--space-2); }
   .method-chip { min-inline-size: 88px; }

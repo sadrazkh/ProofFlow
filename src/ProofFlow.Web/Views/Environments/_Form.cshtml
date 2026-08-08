@@ -2,6 +2,7 @@
 @{
     var projectId = (Guid)ViewData["ProjectId"]!;
     var canManage = (bool)ViewData["CanManage"]!;
+    var runners = ViewData["Runners"] as IReadOnlyList<RunnerChoice> ?? [];
     var action = $"/projects/{projectId}/environments/{Model.Id}";
 }
 
@@ -78,6 +79,31 @@
                        placeholder="http://proxy.internal:8080" />
             </div>
         </div>
+
+        @*
+            Where requests to this environment go out from. Only shown when there is an agent to
+            choose: a select with one option that says "this server" is a control that teaches
+            nothing and adds a decision.
+        *@
+        @if (runners.Count > 0)
+        {
+            <div class="field">
+                <label class="field-label" for="env-runner">@T["environment.runner"]</label>
+                <select class="select" id="env-runner" name="RunnerId">
+                    <option value="">@T["environment.runner.direct"]</option>
+                    @foreach (var runner in runners)
+                    {
+                        @* The state is in the option text rather than beside the select, because a
+                           closed select shows only the option — and "which one is up" is the
+                           question being asked at the moment of choosing. *@
+                        <option value="@runner.Id" selected="@(Model.RunnerId == runner.Id)">
+                            @runner.Name — @T[$"runner.state.{runner.State.ToString().ToLowerInvariant()}"]
+                        </option>
+                    }
+                </select>
+                <p class="field-hint">@T["environment.runner.hint"]</p>
+            </div>
+        }
 
         <div class="field">
             <label class="field-label" for="env-hosts">@T["environment.allowedHosts"]</label>

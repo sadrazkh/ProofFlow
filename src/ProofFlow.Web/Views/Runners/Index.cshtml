@@ -1,0 +1,258 @@
+@using ProofFlow.Domain.Runners
+@model RunnerListViewModel
+@inject Dates Dates
+
+@{
+    string Word(RunnerState state) => T[$"runner.state.{state.ToString().ToLowerInvariant()}"].Value;
+    string Meaning(RunnerState state) => T[$"runner.state.{state.ToString().ToLowerInvariant()}.hint"].Value;
+}
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["runner.title"]</h1>
+            <p class="page-subtitle">@T["runner.subtitle"]</p>
+        </div>
+    </div>
+
+    <div class="stack-6">
+        @if (Model.IssuedCode is { Length: > 0 } code)
+        {
+            @*
+                The one moment this code exists anywhere it can be read. The row keeps a hash, so
+                leaving the page loses it — which is said here rather than discovered later.
+
+                role="status" so a screen reader hears it after the redirect; it is the answer to
+                the button that was just pressed.
+            *@
+            <div class="card card-pad stack key-issued" role="status">
+                <h2 class="card-title">@T["runner.code.title", Model.IssuedFor ?? string.Empty]</h2>
+                <p class="muted">@T["runner.code.body"]</p>
+
+                @*
+                    Set large and widely tracked. It is read off this screen and typed into a
+                    terminal on another machine, often by one person reading it aloud to another,
+                    and small tight text is where that goes wrong. The grouping into fours is in
+                    the code itself.
+                *@
+                <div class="runner-code">
+                    <code class="runner-code-value" dir="ltr">@code</code>
+                    <button type="button" class="btn btn-secondary btn-sm" data-copy="@code">
+                        <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                    </button>
+                </div>
+
+                @if (Model.IssuedExpiresAt is { } expires)
+                {
+                    <p class="runner-countdown">
+                        <i data-lucide="timer" aria-hidden="true"></i>
+                        @*
+                            The server's sentence is the one that renders without JavaScript; the
+                            countdown replaces it once the script runs. Either way it says the same
+                            thing, and neither is a blank space.
+
+                            aria-live="off" inside a role="status" card, which is not a
+                            contradiction: the card should be announced once when it appears, and
+                            the clock inside it must not be announced again every second. It stays
+                            readable on demand, which is what somebody counting down actually needs.
+                        *@
+                        <span class="tabular" aria-live="off"
+                              data-countdown="@Dates.Iso(expires)"
+                              data-countdown-text="runner.code.countdown"
+                              data-countdown-expired="runner.code.expired">@T["runner.code.expires", Dates.Ahead(expires)]</span>
+                    </p>
+                }
+
+                <p class="text-sm muted">
+                    @T["runner.code.command"]
+                </p>
+                <div class="key-value">
+                    <code dir="ltr">ProofFlow.Agent --server @Model.PublicUrl --code @code</code>
+                    <button type="button" class="btn btn-secondary btn-sm"
+                            data-copy="ProofFlow.Agent --server @Model.PublicUrl --code @code">
+                        <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                    </button>
+                </div>
+            </div>
+        }
+
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">@T["runner.list"]</div>
+                    <div class="card-subtitle">@T["runner.list.subtitle"]</div>
+                </div>
+            </div>
+
+            @if (Model.Runners.Count == 0)
+            {
+                <div class="empty">
+                    <i data-lucide="server" aria-hidden="true"></i>
+                    <p class="empty-title">@T["runner.empty.title"]</p>
+                    <p class="empty-body">@T["runner.empty.body"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table runner-table">
+                        <caption class="sr-only">@T["runner.list"]</caption>
+                        <thead>
+                        <tr>
+                            <th>@T["common.name"]</th>
+                            <th>@T["common.status"]</th>
+                            <th>@T["runner.host"]</th>
+                            <th>@T["runner.lastSeen"]</th>
+                            <th><span class="sr-only">@T["common.actions"]</span></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var runner in Model.Runners)
+                        {
+                            <tr>
+                                <td>
+                                    <div class="stack-2">
+                                        <span class="semibold" dir="auto">@runner.Name</span>
+                                        @if (runner.Description is { Length: > 0 } description)
+                                        {
+                                            <span class="text-xs subtle" dir="auto">@description</span>
+                                        }
+                                        @if (runner.TokenPreview is { Length: > 0 } preview)
+                                        {
+                                            @* Enough of the token to tell two agents apart, and no
+                                               more. *@
+                                            <span class="text-xs subtle mono" dir="ltr">@preview…</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    @* A dot and a word, and the word carries what to do about it. *@
+                                    <span class="status status-@runner.Tone" title="@Meaning(runner.State)">
+                                        <span class="status-dot" aria-hidden="true"></span>
+                                        @Word(runner.State)
+                                    </span>
+                                    @if (runner.AwaitingCode && runner.ExpiresAt is { } waiting)
+                                    {
+                                        <div class="text-xs subtle" style="margin-block-start: var(--space-1);">
+                                            <span class="tabular"
+                                                  data-countdown="@Dates.Iso(waiting)"
+                                                  data-countdown-text="runner.code.countdown"
+                                                  data-countdown-expired="runner.code.expired">@T["runner.code.expires", Dates.Ahead(waiting)]</span>
+                                        </div>
+                                    }
+                                </td>
+                                <td>
+                                    @if (runner.Hostname is { Length: > 0 } hostname)
+                                    {
+                                        <div class="stack-2">
+                                            <span class="mono text-xs" dir="ltr">@hostname</span>
+                                            @if (runner.Version is { Length: > 0 } version)
+                                            {
+                                                <span class="text-xs subtle" dir="ltr">@version</span>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        @* Nothing has ever connected, so there is nothing to say —
+                                           and a dash says that better than an invented zero. *@
+                                        <span class="subtle">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (runner.LastSeenAt is { } seen)
+                                    {
+                                        <partial name="Pieces/_Timestamp" model="@(new TimestampView(seen))" />
+                                    }
+                                    else
+                                    {
+                                        <span class="subtle">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    <div class="row">
+                                        @if (runner.CanReissue)
+                                        {
+                                            <form method="post" action="/runners/@runner.Id/code">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-secondary btn-sm">
+                                                    @T["runner.reissue"]
+                                                </button>
+                                            </form>
+                                        }
+
+                                        @if (runner.CanRevoke)
+                                        {
+                                            @* Phrase-typed, like the other things that cannot be
+                                               undone: revoking is how a compromised agent is shut
+                                               out, and also how somebody breaks every scheduled run
+                                               behind a firewall by clicking the wrong row. *@
+                                            <form method="post" action="/runners/@runner.Id/revoke"
+                                                  data-confirm="@T["runner.revoke.body", runner.Name]"
+                                                  data-confirm-title="@T["runner.revoke.title"]"
+                                                  data-confirm-action="@T["runner.revoke"]"
+                                                  data-confirm-phrase="@runner.Name">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-ghost btn-sm"
+                                                        style="color: var(--fail-ink);">
+                                                    @T["runner.revoke"]
+                                                </button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+
+        <section class="card card-pad stack">
+            <h2 class="card-title">@T["runner.add"]</h2>
+            <p class="muted">@T["runner.add.body"]</p>
+
+            <form method="post" action="/runners" class="stack">
+                @Html.AntiForgeryToken()
+
+                <div class="field">
+                    <label class="field-label" for="runner-name">@T["common.name"]</label>
+                    <input class="input" id="runner-name" name="name" required maxlength="120"
+                           placeholder="@T["runner.name.placeholder"]" />
+                    <p class="field-hint">@T["runner.name.hint"]</p>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="runner-note">
+                        @T["common.description"] <span class="field-optional">· @T["common.optional"]</span>
+                    </label>
+                    <input class="input" id="runner-note" name="description" maxlength="240" />
+                </div>
+
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="server" aria-hidden="true"></i>@T["runner.add"]
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        @*
+            What a runner is for, once, on the page where somebody first meets one. Five states is
+            four more than a person can guess at from the word alone.
+        *@
+        <section class="card card-pad stack">
+            <h2 class="card-title">@T["runner.states"]</h2>
+            <dl class="team-roles">
+                @foreach (var state in Enum.GetValues<RunnerState>())
+                {
+                    <div>
+                        <dt>@Word(state)</dt>
+                        <dd>@Meaning(state)</dd>
+                    </div>
+                }
+            </dl>
+        </section>
+    </div>
+</div>

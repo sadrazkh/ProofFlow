@@ -15,12 +15,22 @@ html {
   height: 100%;
 }
 
+/*
+  Which of the two interface families this page is set in.
+
+  A variable rather than only a `font-family` declaration, so a label sitting inside monospaced
+  content — a chip in a JSON tree, say — can come back to the interface font without knowing which
+  language it is in.
+*/
+html { --font-ui: var(--font-ui-latin); }
+html[lang='fa'], html[dir='rtl'] { --font-ui: var(--font-ui-arabic); }
+
 body {
   margin: 0;
   min-height: 100%;
   background: var(--canvas);
   color: var(--ink);
-  font-family: var(--font-ui-latin);
+  font-family: var(--font-ui);
   font-size: var(--text-sm);
   line-height: var(--leading-normal);
   -webkit-font-smoothing: antialiased;
@@ -36,7 +46,6 @@ body {
 */
 html[lang='fa'] body,
 html[dir='rtl'] body {
-  font-family: var(--font-ui-arabic);
   font-size: var(--text-base);
   line-height: var(--leading-relaxed);
 }

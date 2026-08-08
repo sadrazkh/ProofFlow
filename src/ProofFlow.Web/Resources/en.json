@@ -237,6 +237,9 @@
       "schedule.enabled": "switched a schedule on",
       "schedule.disabled": "switched a schedule off",
       "runner.enrolled": "enrolled a runner",
+      "runner.created": "added a runner",
+      "runner.codeIssued": "issued a runner code",
+      "runner.revoked": "revoked a runner",
       "user.signedIn": "signed in",
       "user.passwordResetRequested": "asked to reset a password",
       "user.passwordReset": "changed a password",
@@ -335,6 +338,9 @@
     "proxy": "Proxy",
     "allowedHosts": "Hosts this environment may reach",
     "allowedHostsHint": "One per line. A leading *. covers subdomains but not the bare domain. Empty means only the base URL's own host.",
+    "runner": "Reached from",
+    "runner.direct": "This ProofFlow server",
+    "runner.hint": "Pick a runner when this environment lives somewhere ProofFlow cannot reach — inside a company network, behind a VPN. Requests then go out from that machine instead of from here.",
     "reach": "What this environment is allowed to do",
     "privateNetwork": "Reach private networks",
     "privateNetwork.hint": "Lets requests reach loopback and internal addresses. Cloud metadata endpoints stay blocked either way.",
@@ -417,6 +423,8 @@
     "fields": "{0} fields",
     "expand": "Expand",
     "collapse": "Collapse",
+    "redacted": "redacted",
+    "redacted.hint": "A secret was used here, so the value was taken out before the response was stored. This is deliberate.",
     "bytes": "{0} B",
     "kilobytes": "{0} KB",
     "megabytes": "{0} MB",
@@ -1574,5 +1582,51 @@
     "forever": "For ever",
     "help": "What a run decided — passed or failed, how long it took, which checks held — is kept for ever. This is about the bulk: the bodies each step produced, the log lines and the artefacts. Those are what make a database grow without limit, and what is most likely to still hold somebody's personal data long after anybody needed it.",
     "cleared": "The bodies and log for this run have been cleared."
+  },
+
+  "runner": {
+    "title": "Runners",
+    "subtitle": "Machines that run your tests from somewhere ProofFlow cannot reach.",
+
+    "list": "Runners",
+    "list.subtitle": "One agent usually serves everything reachable from where it sits.",
+
+    "add": "Add a runner",
+    "add.body": "Creating one issues a code. You then run the agent on the machine that can reach the API, and give it that code.",
+    "name.placeholder": "Office network",
+    "name.hint": "Where it runs, in the words your team already uses for that place.",
+    "needsName": "Give the runner a name first.",
+
+    "code.title": "The enrollment code for «{0}»",
+    "code.body": "Shown once. Nothing here can produce it again — if it is lost, issue another.",
+    "code.expires": "Expires {0}.",
+    "code.countdown": "Expires in {0}",
+    "code.expired": "This code has expired. Issue another.",
+    "code.command": "On the machine that can reach the API:",
+
+    "reissue": "Issue a new code",
+    "cannotReissue": "That runner is already enrolled, so a new code would not help. Revoke it and add another.",
+
+    "revoke": "Revoke",
+    "revoke.title": "Revoke this runner?",
+    "revoke.body": "«{0}» stops being able to claim work immediately, and its token stops opening anything. Every environment pointed at it will have nowhere to run until another is chosen. This cannot be undone.",
+
+    "host": "Host",
+    "lastSeen": "Last asked for work",
+    "states": "What each state means",
+
+    "empty.title": "No runners yet",
+    "empty.body": "You only need one if some environment lives where this server cannot reach it. Everything else runs from here.",
+
+    "state.waiting": "Waiting for the agent",
+    "state.waiting.hint": "The code has been issued and nobody has used it yet. Run the agent on the other machine and give it the code.",
+    "state.expired": "Code expired",
+    "state.expired.hint": "Fifteen minutes passed before anybody enrolled. Issue a new code.",
+    "state.ready": "Ready",
+    "state.ready.hint": "Enrolled and asking for work. This is the only state where anything runs.",
+    "state.missing": "Not answering",
+    "state.missing.hint": "Enrolled, but has not asked for work in three minutes. Something on that host has stopped.",
+    "state.revoked": "Revoked",
+    "state.revoked.hint": "Withdrawn. Its token no longer opens anything, and it cannot be brought back."
   }
 }

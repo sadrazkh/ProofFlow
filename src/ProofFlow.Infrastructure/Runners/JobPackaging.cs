@@ -353,8 +353,12 @@ public sealed class JobPackaging(
             var version = await baselines.ApprovedVersionAsync(baseline.Id, cancellation);
             var rules = await baselines.LoadRulesAsync(baseline.Id, cancellation);
 
+            // No approval filter, because approving is what writes the row — the same reason the
+            // server's own lookup does not filter either. A condition here would read as though
+            // unapproved samples existed and were being excluded, which would be a lie about how
+            // the table works.
             var samples = await db.BaselineSamples
-                .Where(sample => sample.BaselineId == baseline.Id && sample.ApprovedAt != null)
+                .Where(sample => sample.BaselineId == baseline.Id)
                 .ToDictionaryAsync(sample => sample.Key, sample => sample.Body, cancellation);
 
             packed.Add(new JobBaseline

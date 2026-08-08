@@ -31,6 +31,7 @@ const AUTHENTICATED = [
   { name: 'new project', path: '/projects/new' },
   { name: 'activity', path: '/activity' },
   { name: 'team', path: '/team' },
+  { name: 'runners', path: '/runners' },
   { name: 'design system', path: '/design' },
 ];
 

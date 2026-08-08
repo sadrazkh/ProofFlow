@@ -433,3 +433,57 @@ export function mountUnsavedGuard(): void {
     });
   });
 }
+
+/**
+ * Anything with a deadline, counted down in place.
+ *
+ * The server has already rendered a sentence — "expires in 15 minutes" — and this replaces it with
+ * a clock once a second. That order matters: the readable answer is in the HTML, so a reader
+ * without JavaScript is told when the thing runs out rather than shown an empty space.
+ *
+ * The element carries translation keys rather than translated text, and that is not only tidiness:
+ * the view localizer formats at write time, so a template still holding its {0} cannot be rendered
+ * into an attribute without throwing. Keys go out; this looks them up.
+ *
+ * A countdown is a countdown either way — it does not need to know that this one happens to be an
+ * enrollment code.
+ */
+export function mountCountdowns(): void {
+  const elements = [...document.querySelectorAll<HTMLElement>('[data-countdown]')];
+  if (elements.length === 0) return;
+
+  const tick = (): void => {
+    const now = Date.now();
+    let running = false;
+
+    for (const element of elements) {
+      const deadline = Date.parse(element.dataset.countdown ?? '');
+      if (Number.isNaN(deadline)) continue;
+
+      const left = deadline - now;
+
+      if (left <= 0) {
+        const expired = element.dataset.countdownExpired;
+        if (expired) element.textContent = t(expired);
+        element.classList.add('is-expired');
+        continue;
+      }
+
+      // Still ticking, so schedule another pass. Only while something is actually counting: a page
+      // of expired codes should not keep a timer alive for the rest of the session.
+      running = true;
+
+      const total = Math.floor(left / 1000);
+      const minutes = Math.floor(total / 60);
+      const seconds = total % 60;
+      const clock = `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+      const template = element.dataset.countdownText;
+      element.textContent = template ? t(template, clock) : clock;
+    }
+
+    if (running) window.setTimeout(tick, 1000);
+  };
+
+  tick();
+}

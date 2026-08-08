@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using ProofFlow.Domain.Environments;
+using ProofFlow.Domain.Runners;
 
 namespace ProofFlow.Web.ViewModels;
 
@@ -20,6 +21,21 @@ public sealed record EnvironmentsPageViewModel
     public bool CanManage { get; init; }
     public bool CanManageSecrets { get; init; }
     public bool CanRevealSecrets { get; init; }
+
+    /// <summary>
+    /// The agents this workspace has, for the one choice on this page that involves them.
+    ///
+    /// Carrying each one's state, because the question somebody asks while choosing is not "which
+    /// runner" but "which runner is up" — and answering it here is what keeps a reader who cannot
+    /// manage runners from needing the runners page at all.
+    /// </summary>
+    public IReadOnlyList<RunnerChoice> Runners { get; init; } = [];
+}
+
+/// <summary>A runner as an option in a list: what it is called, and whether it is answering.</summary>
+public sealed record RunnerChoice(Guid Id, string Name, RunnerState State)
+{
+    public string Tone => RunnerRowViewModel.ToneFor(State);
 }
 
 public sealed record EnvironmentSummary(
@@ -79,6 +95,14 @@ public sealed class EnvironmentFormViewModel
 
     [MaxLength(500, ErrorMessage = "error.tooLong")]
     public string? ProxyUrl { get; set; }
+
+    /// <summary>
+    /// The agent that reaches this environment, or null when ProofFlow reaches it itself.
+    ///
+    /// On the environment because that is where the fact lives: an API inside somebody's network is
+    /// unreachable from here whoever is asking and whatever they are running.
+    /// </summary>
+    public Guid? RunnerId { get; set; }
 
     /// <summary>
     /// The kinds, ordered the way a deployment pipeline runs rather than alphabetically — the list

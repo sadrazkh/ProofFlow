@@ -337,3 +337,67 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- runners ---------------------------------------------------------------------------------- */
+
+/*
+  The enrollment code, set to be read aloud.
+
+  Large, monospaced and widely tracked, because of how it is actually used: somebody reads it off
+  this screen while somebody else types it into a terminal on another machine. Everything here is in
+  service of that one sentence being said correctly the first time.
+*/
+.runner-code {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.runner-code-value {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.16em;
+  line-height: 1.2;
+  color: var(--ink);
+
+  /* The alphabet already drops 0/O and 1/I/L. This keeps the survivors distinguishable. */
+  font-variant-numeric: tabular-nums slashed-zero;
+
+  /* Selecting it should give the code and nothing else — no leading spaces from the markup. */
+  user-select: all;
+  word-break: break-all;
+}
+
+.runner-countdown {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.runner-countdown i { inline-size: 1em; block-size: 1em; }
+
+/* Ran out while the page was open. Said in the failure colour, because it now needs a new one. */
+.is-expired { color: var(--fail-ink); font-weight: var(--weight-medium); }
+
+/*
+  Five columns and a pair of buttons do not fit a phone.
+
+  Without a floor the table shrinks to the viewport instead of scrolling, and a description ends up
+  one word per line with the buttons squeezed off the end. The wrapper already scrolls; this is what
+  gives it something to scroll.
+*/
+.runner-table { min-inline-size: 46rem; }
+
+/* "Waiting for the agent" is one phrase. Broken across lines it leaves the dot beside a fragment. */
+.runner-table .status { white-space: nowrap; }

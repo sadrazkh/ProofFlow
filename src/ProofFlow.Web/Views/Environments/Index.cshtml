@@ -62,7 +62,7 @@
     <div class="detail stack-6">
         @if (selected is not null)
         {
-            <partial name="_Form" model="selected" view-data="@(new ViewDataDictionary(ViewData) { ["ProjectId"] = Model.ProjectId, ["CanManage"] = Model.CanManage })" />
+            <partial name="_Form" model="selected" view-data="@(new ViewDataDictionary(ViewData) { ["ProjectId"] = Model.ProjectId, ["CanManage"] = Model.CanManage, ["Runners"] = Model.Runners })" />
             <partial name="_Variables" model="Model" />
             <partial name="_Secrets" model="Model" />
         }

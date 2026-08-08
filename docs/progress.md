@@ -766,3 +766,55 @@ tinted panel with body text on it is where contrast bugs live.
 
 **The sketch had no edges.** They were stroked with `var(--border)`, which is not a token this
 project has, so every line was invisible and nothing complained.
+
+---
+
+## Phase K — A machine somewhere else · **done**
+
+A hosted ProofFlow cannot reach an API that lives inside somebody's network. The answers people
+reach for otherwise are all worse — a VPN into the test tool, a hole in a firewall, production
+credentials pasted into a form on the internet. A runner inverts the direction: nothing connects
+inwards, and an agent on the inside asks whether there is work, does it, and reports.
+
+| | |
+|---|---|
+| SSRF | The guard is in `ConnectCallback`, so it sees the address actually dialled rather than the one in the URL. DNS rebinding, redirects to loopback, IPv6 mapped forms, decimal and octal literals — all refused, all with tests that fail the build |
+| Retention | Bodies, logs and artefacts age out on a per-project setting; what a run decided is kept for ever |
+| Enrollment | A 4×4 code from an alphabet with no 0/O or 1/I/L, good for fifteen minutes, usable once, stored as a hash and shown exactly once |
+| Credentials | The token is a hash; the per-runner signing key is sealed with the same cipher as a secret. Neither can be read back |
+| Job | Signed HMAC-SHA256 over the payload as written, so an agent can answer the only question that matters to a process running arbitrary requests inside a private network: did this come from the installation I enrolled with, unchanged |
+| Package | The graph, the environment, the variables and secrets the graph references, and the data sets and baselines it names — found by walking the graph. Not the project, not the workspace, not anything else the database holds |
+| Execution | The same `ScenarioRunner`, the same `NodeExecutors`, the same `GuardedHttpExecutor`. The agent implements `IRunServices` over the package and `IRunSink` into memory; there is no second engine and a scenario cannot tell which side it ran on |
+| Reporting | Node results, assertions, log lines and captures come home and are written as though the run had happened here — captures into the same review queue a local run would use |
+| Runner UI | A page per workspace: the code set large enough to read aloud, a countdown, and five states as a dot plus a word that says what to do about it |
+| Choosing one | On the environment, because that is where the fact lives: an API inside somebody's network is unreachable from here whoever is asking |
+| Redaction | Both paths redact the resolved URL as well as the body, and a value the redactor removed is rendered as a chip rather than as a string |
+| Verified | Seven tests run real scenarios through the shipped agent classes against a real HTTP server with no database anywhere; four more cover the page and the environment's choice |
+| Tests | 643 passing — 500 unit, 142 integration, 43 component; 113 accessibility checks, 336 screenshots |
+
+### What making it real caught
+
+**Every job package would have arrived empty.** The tenant filter is fixed when `IWorkspaceScope` is
+first resolved, and by then the request had already built a `DbContext` to check the runner's token
+with — as an anonymous caller, in no workspace. Every read after that returned nothing: no
+environment, no data sets, no baselines, handed to an agent that would run it and report a failure
+nobody could explain. The runner calls take their own scope after the token is read now, the way the
+workers do.
+
+**A secret used in a URL was written out in full.** The body was redacted; the resolved URL beside it
+was not — and that URL goes into the step's output, the console and the report. The remote path
+surfaced it and the local path had it too.
+
+**A countdown template rendered into an attribute took the page down.** `IViewLocalizer` formats at
+write time, so a string still holding its `{0}` cannot be emitted as an attribute value. The element
+carries translation keys now and the behaviour looks them up — which is what the rest of the
+JavaScript already did.
+
+**The card's expiry never showed, in Persian.** It travelled through `TempData` as an ISO string and
+was read back with `DateTimeOffset.TryParse` under the current culture — the Persian calendar. Only
+the code crosses the redirect now; the expiry is read from the row the page is already showing, so
+the card and the list cannot disagree either.
+
+**The table shrank instead of scrolling.** Five columns and two buttons on a phone put the
+description one word per line and pushed the actions off the end. The wrapper already scrolled; it
+had nothing to scroll.

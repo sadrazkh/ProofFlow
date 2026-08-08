@@ -27,6 +27,7 @@ public sealed class EnvironmentsController(
     ICurrentUser me,
     IAuditLog audit,
     ISecretCipher cipher,
+    IClock clock,
     IStringLocalizer localizer) : Controller
 {
     [HttpGet("")]
@@ -377,6 +378,18 @@ public sealed class EnvironmentsController(
                 s.Id, s.Name, s.Description, s.Preview, s.EnvironmentId == null, s.LastUsedAt))
             .ToListAsync(cancellationToken);
 
+        // Every runner in the workspace, plus the one this environment already points at even if it
+        // has been revoked. Dropping it from the list would silently clear the setting the next
+        // time somebody saved an unrelated field, and a run would quietly start going out from
+        // here instead of from inside their network.
+        var chosen = current?.RunnerId;
+        var now = clock.UtcNow;
+
+        var runners = await db.Runners
+            .Where(runner => runner.RevokedAt == null || runner.Id == chosen)
+            .OrderBy(runner => runner.Name)
+            .ToListAsync(cancellationToken);
+
         return new EnvironmentsPageViewModel
         {
             ProjectId = projectId,
@@ -385,6 +398,11 @@ public sealed class EnvironmentsController(
             Selected = current is null ? null : ToForm(current),
             Variables = variables,
             Secrets = secrets,
+            Runners =
+            [
+                .. runners.Select(runner => new RunnerChoice(
+                    runner.Id, runner.Name, runner.StateAt(now))),
+            ],
             CanManage = me.Can(Capability.ManageEnvironment),
             CanManageSecrets = me.Can(Capability.ManageSecret),
             CanRevealSecrets = me.Can(Capability.ViewSecret),
@@ -417,6 +435,9 @@ public sealed class EnvironmentsController(
         environment.AllowInvalidCertificate = form.AllowInvalidCertificate;
         environment.ProxyUrl = string.IsNullOrWhiteSpace(form.ProxyUrl) ? null : form.ProxyUrl.Trim();
 
+        // Empty means "this server reaches it", which is a real answer rather than a missing one.
+        environment.RunnerId = form.RunnerId == Guid.Empty ? null : form.RunnerId;
+
         // Choosing the Production kind is the same statement as ticking the box, and a form where
         // the two can disagree produces an environment that looks safe in the list and is not.
         environment.IsProduction = form.IsProduction || form.Kind == EnvironmentKind.Production;
@@ -436,6 +457,7 @@ public sealed class EnvironmentsController(
         AllowInvalidCertificate = e.AllowInvalidCertificate,
         IsProduction = e.IsProduction,
         ProxyUrl = e.ProxyUrl,
+        RunnerId = e.RunnerId,
     };
 
     /// <summary>The settings worth having in the audit trail, as strings.</summary>
@@ -447,6 +469,11 @@ public sealed class EnvironmentsController(
         ["allowInvalidCertificate"] = e.AllowInvalidCertificate ? "true" : "false",
         ["isProduction"] = e.IsProduction ? "true" : "false",
         ["allowedHosts"] = e.AllowedHosts,
+
+        // Which machine requests to this environment go out from. Worth recording: it is the
+        // difference between traffic leaving this installation and traffic leaving somebody's
+        // internal network.
+        ["runner"] = e.RunnerId?.ToString(),
     };
 
     /// <summary>
