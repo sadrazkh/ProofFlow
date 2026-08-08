@@ -10,6 +10,7 @@
             id = e.Id, name = e.Name, isProduction = e.IsProduction,
         }),
         canEdit = Model.CanEdit,
+        canRun = Model.CanRun,
     }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 
@@ -23,7 +24,25 @@
         <i data-lucide="arrow-left" class="icon-forward" aria-hidden="true"></i>
     </a>
 
-    <h1 class="canvas-title" dir="auto">@Model.Scenario.Name</h1>
+    @*
+        The name, editable in place.
+
+        It was a heading, and the rename endpoint it needed already existed with nothing calling it —
+        so every scenario anybody drew stayed "Untitled scenario" in the runs list, on the dashboard
+        and in the JUnit a build agent reads. A test nobody can name is a test nobody can find.
+    *@
+    @if (Model.CanEdit)
+    {
+        <label class="sr-only" for="scenario-name">@T["common.name"]</label>
+        <input class="canvas-title canvas-title-input" id="scenario-name" dir="auto"
+               value="@Model.Scenario.Name" maxlength="120"
+               placeholder="@T["scenario.untitled"]"
+               data-rename="/projects/@Model.ProjectId/scenarios/@Model.Scenario.Id/rename" />
+    }
+    else
+    {
+        <h1 class="canvas-title" dir="auto">@Model.Scenario.Name</h1>
+    }
 
     @if (Model.Scenario.PublishedVersionId is not null)
     {

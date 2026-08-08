@@ -49,19 +49,41 @@ public sealed class ScenarioRunner(NodeExecutors executors, IRunSink sink)
         "core.group", "core.parallel", "core.join", "test.expectFailure",
     };
 
+    /// <summary>
+    /// Walks the graph from its Start, or from <paramref name="from"/> when one is named.
+    ///
+    /// Beginning partway is somebody debugging the second half of a nine-step scenario, and it does
+    /// exactly what it says: the steps before it are not run, and nothing is faked in their place.
+    /// A step that reads {{steps.signIn.response}} when signIn did not run gets the same refusal it
+    /// would get for a name that does not exist — which is the honest answer, and one the reader can
+    /// act on by starting further back.
+    ///
+    /// Only a top-level node. A step inside a loop body is driven by its container, and entering at
+    /// it would run it once, outside the thing that gives its iteration meaning.
+    /// </summary>
     public async Task<RunSummary> RunAsync(
-        Graph graph, RunScopes scopes, CancellationToken cancellation = default)
+        Graph graph, RunScopes scopes, string? from = null, CancellationToken cancellation = default)
     {
         var state = new RunnerState(graph, scopes, sink);
         var stopwatch = Stopwatch.StartNew();
 
-        var start = graph.Nodes.FirstOrDefault(node => NodeCatalogue.Find(node.Key)?.IsStart == true);
+        var start = from is { Length: > 0 }
+            ? graph.Nodes.FirstOrDefault(node => node.Id == from && node.ParentId is null)
+            : graph.Nodes.FirstOrDefault(node => NodeCatalogue.Find(node.Key)?.IsStart == true);
 
         if (start is null)
         {
-            sink.Log(RunEventLevel.Error, "This scenario has no starting point.", null, null);
-            return new RunSummary(RunStatus.Errored, 0, 0, 0, 0, stopwatch.Elapsed.TotalMilliseconds,
-                "This scenario has no starting point.");
+            // Two different mistakes, said differently. A scenario with no Start is a graph nobody
+            // finished; a named step that is not there is a run somebody asked for against a
+            // scenario that has since changed.
+            var message = from is { Length: > 0 }
+                ? "The step this run was told to begin at is not in this scenario any more."
+                : "This scenario has no starting point.";
+
+            sink.Log(RunEventLevel.Error, message, null, null);
+
+            return new RunSummary(RunStatus.Errored, 0, 0, 0, 0,
+                stopwatch.Elapsed.TotalMilliseconds, message);
         }
 
         RunStatus status;

@@ -1361,6 +1361,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<Guid>("ScenarioVersionId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("StartNodeId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("StartedAt")
                         .HasColumnType("TEXT");
 

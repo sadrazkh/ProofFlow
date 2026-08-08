@@ -43,14 +43,9 @@ else
                 <tbody>
                 @foreach (var run in Model.Runs)
                 {
-                    var (badge, status) = run.Status switch
-                    {
-                        RunStatus.Passed => ("badge-pass", "status-pass"),
-                        RunStatus.Failed => ("badge-fail", "status-fail"),
-                        RunStatus.Errored => ("badge-warn", "status-warn"),
-                        RunStatus.Running => ("badge-running", "status-running"),
-                        _ => ("badge-idle", "status-idle"),
-                    };
+                    var tone = Verdicts.Tone(run.Status);
+                    var badge = $"badge-{tone}";
+                    var status = $"status-{tone}";
 
                     <tr>
                         <td>

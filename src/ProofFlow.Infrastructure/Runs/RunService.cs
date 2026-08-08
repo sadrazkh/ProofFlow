@@ -53,7 +53,7 @@ public sealed class RunService(
     /// </summary>
     public async Task<TestRun> QueueAsync(
         Guid scenarioId, Guid? environmentId, RunTrigger trigger,
-        CancellationToken cancellation = default)
+        string? fromNodeId = null, CancellationToken cancellation = default)
     {
         var scenario = await db.Scenarios
             .FirstOrDefaultAsync(candidate => candidate.Id == scenarioId, cancellation)
@@ -94,6 +94,13 @@ public sealed class RunService(
             Status = RunStatus.Queued,
             Trigger = trigger,
             StartedByUserId = me.UserId,
+
+            // Only when it names a step this graph actually has at the top level. A stale id from a
+            // page somebody left open would otherwise queue a run that can only error.
+            StartNodeId = fromNodeId is { Length: > 0 }
+                          && graph.Nodes.Any(node => node.Id == fromNodeId && node.ParentId is null)
+                ? fromNodeId
+                : null,
 
             // Copied now rather than read through the environment later. An environment can be
             // pointed at a different agent tomorrow, and a run already waiting must not change hands
@@ -174,7 +181,7 @@ public sealed class RunService(
                 context?.Policy ?? new UrlPolicy(), redaction, run.ProjectId);
 
             var runner = new ScenarioRunner(new NodeExecutors(services), recorder);
-            var running = runner.RunAsync(graph, new RunScopes(scopes, redaction), cancellation);
+            var running = runner.RunAsync(graph, new RunScopes(scopes, redaction), run.StartNodeId, cancellation);
 
             // Flushed while it goes, from this thread and no other. Somebody who reloads the console
             // halfway through a twenty-minute run should find the run, not an empty page.

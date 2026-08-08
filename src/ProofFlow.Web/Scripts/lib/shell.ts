@@ -1,5 +1,6 @@
 import { t } from './i18n';
 import { toast } from './toast';
+import { api, ApiError } from './api';
 
 /**
  * The chrome around every page: sidebar, dropdown menus, the command palette, confirmations.
@@ -299,11 +300,16 @@ export function confirmAction(options: Confirmation): Promise<boolean> {
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-modal', 'true');
 
+  // Named by its own title. Without this a screen reader announces "dialog" and nothing else,
+  // which is the one moment in this product where knowing what is being asked matters most.
+  const titleId = 'pf-confirm-title';
+  overlay.setAttribute('aria-labelledby', titleId);
+
   overlay.innerHTML = `
     <div class="dialog">
       <div class="card-header">
         <div>
-          <div class="card-title">${escapeHtml(options.title)}</div>
+          <div class="card-title" id="${titleId}">${escapeHtml(options.title)}</div>
         </div>
       </div>
       <div class="card-body stack">
@@ -321,6 +327,10 @@ export function confirmAction(options: Confirmation): Promise<boolean> {
         </button>
       </div>
     </div>`;
+
+  // Where to put focus back. Whatever opened this is almost always a button in a row, and landing
+  // on <body> afterwards means tabbing past the sidebar and the topbar to reach it again.
+  const opener = document.activeElement as HTMLElement | null;
 
   document.body.appendChild(overlay);
 
@@ -340,14 +350,64 @@ export function confirmAction(options: Confirmation): Promise<boolean> {
       if (settled) return;
       settled = true;
 
+      document.removeEventListener('keydown', onKey, true);
       overlay.remove();
       document.body.style.overflow = '';
+
+      // Only if it is still there. A dialog that confirmed a deletion has often taken its own
+      // opener off the page with it.
+      if (opener?.isConnected) opener.focus();
+
       resolve(agreed);
     };
 
+    /**
+     * Escape anywhere, and Tab kept inside.
+     *
+     * On the document rather than the overlay, because clicking the backdrop moves focus to the
+     * body and an overlay listener then hears nothing. Captured, so a page that handles Escape for
+     * its own reasons — the canvas does — does not eat it first.
+     *
+     * The trap is what aria-modal already promises. Without it Tab walks out of the dialog and into
+     * a page the reader has just been told they cannot use, with no way back but Shift+Tab counted
+     * blind.
+     */
+    function onKey(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        event.stopPropagation();
+        close(false);
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+
+      const stops = [...overlay.querySelectorAll<HTMLElement>('button, input, a[href]')]
+        .filter((element) => !element.hasAttribute('disabled'));
+
+      if (stops.length === 0) return;
+
+      const first = stops[0]!;
+      const last = stops[stops.length - 1]!;
+      const active = document.activeElement;
+
+      // Wrapping by hand at both ends, and also when focus has escaped already — which it has if
+      // the reader tabbed before this ran, or clicked the backdrop.
+      if (!overlay.contains(active)) {
+        event.preventDefault();
+        first.focus();
+      } else if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener('keydown', onKey, true);
+
     overlay.querySelector('[data-confirm-cancel]')?.addEventListener('click', () => close(false));
     overlay.addEventListener('click', (event) => { if (event.target === overlay) close(false); });
-    overlay.addEventListener('keydown', (event) => { if (event.key === 'Escape') close(false); });
     accept.addEventListener('click', () => close(true));
   });
 }
@@ -486,4 +546,53 @@ export function mountCountdowns(): void {
   };
 
   tick();
+}
+
+/**
+ * Renaming something in place, from the heading it is the heading of.
+ *
+ * On blur and on Enter, not on every keystroke: a rename is a save, and saving nine times while
+ * somebody types nine letters is nine rows in the audit log.
+ *
+ * Escape puts back what was there. Anything that saves without a visible button needs a way to
+ * change your mind that is not "remember what it said".
+ */
+export function mountRenames(): void {
+  document.querySelectorAll<HTMLInputElement>('input[data-rename]').forEach((field) => {
+    let saved = field.value;
+
+    const save = async (): Promise<void> => {
+      const name = field.value.trim();
+
+      if (name === saved.trim()) return;
+
+      if (name.length === 0) {
+        field.value = saved;
+        return;
+      }
+
+      try {
+        await api.post(field.dataset.rename!, { name });
+        saved = name;
+        field.value = name;
+        toast(t('scenario.renamed'), 'success');
+      } catch (error) {
+        // Put the old name back rather than leaving the box showing something that is not true.
+        field.value = saved;
+        toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+      }
+    };
+
+    field.addEventListener('blur', () => void save());
+
+    field.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        field.blur();
+      } else if (event.key === 'Escape') {
+        field.value = saved;
+        field.blur();
+      }
+    });
+  });
 }

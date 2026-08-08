@@ -36,6 +36,58 @@
 else
 {
     <div class="stack-6">
+        @if (Model.ShowGettingStarted)
+        {
+            @*
+                Four steps, read from the database rather than remembered. Nothing to dismiss: when
+                the last one is true the card is not rendered, which is the only kind of onboarding
+                that cannot outstay its welcome.
+
+                Each line says what the thing is as well as what to do, because "add an environment"
+                to somebody who has never used this is an instruction without a subject.
+            *@
+            var steps = new (bool Done, string Key, string? Href)[]
+                {
+                    (true, "project", null),
+                    (Model.HasEnvironment, "environment",
+                        Model.FirstProjectId is { } p1 ? $"/projects/{p1}/environments" : null),
+                    (Model.HasScenario, "scenario",
+                        Model.FirstProjectId is { } p2 ? $"/projects/{p2}/scenarios/new" : null),
+                    (Model.HasRun, "run",
+                        Model.FirstProjectId is { } p3 ? $"/projects/{p3}/scenarios" : null),
+                };
+
+            var next = Array.FindIndex(steps, step => !step.Done);
+
+            <section class="card card-pad stack getting-started" aria-labelledby="getting-started">
+                <div>
+                    <h2 class="card-title" id="getting-started">@T["start.title"]</h2>
+                    <p class="card-subtitle">@T["start.subtitle"]</p>
+                </div>
+
+                <ol class="start-steps">
+                    @for (var at = 0; at < steps.Length; at++)
+                    {
+                        var step = steps[at];
+
+                        <li class="start-step @(step.Done ? "is-done" : at == next ? "is-next" : "")">
+                            <span class="start-mark" aria-hidden="true">
+                                <i data-lucide="@(step.Done ? "circle-check" : "circle-dot")"></i>
+                            </span>
+                            <span class="start-text">
+                                <span class="start-name">@T[$"start.{step.Key}"]</span>
+                                <span class="start-what">@T[$"start.{step.Key}.what"]</span>
+                            </span>
+                            @if (!step.Done && at == next && step.Href is { } href)
+                            {
+                                <a class="btn btn-secondary btn-sm" href="@href">@T[$"start.{step.Key}.action"]</a>
+                            }
+                        </li>
+                    }
+                </ol>
+            </section>
+        }
+
         <div class="grid-stats">
             <partial name="Pieces/_StatTile" model="@(new StatTile(T["dashboard.passRate"].Value, Model.TotalRuns == 0 ? "—" : $"{Model.PassRatePercent}%", "circle-check", "pass"))" />
             <partial name="Pieces/_StatTile" model="@(new StatTile(T["dashboard.failing"].Value, Model.TotalRuns == 0 ? "—" : Model.FailingCount.ToString(), "circle-alert", "fail"))" />
@@ -63,16 +115,68 @@ else
             </div>
         </section>
 
-        @* The panels the brief asks for arrive with the phases that produce their data. Showing an
-           empty chart labelled "Trend" would be a decoration, not information. *@
         <section class="card">
             <div class="card-header">
                 <h2 class="card-title">@T["dashboard.recentRuns"]</h2>
             </div>
-            <div class="empty empty-inline">
-                <div class="empty-art"><i data-lucide="history" aria-hidden="true"></i></div>
-                <p class="empty-body">@T["dashboard.empty.body"]</p>
-            </div>
+
+            @if (Model.RecentRuns.Count == 0)
+            {
+                <div class="empty empty-inline">
+                    <div class="empty-art"><i data-lucide="history" aria-hidden="true"></i></div>
+                    <p class="empty-body">@T["dashboard.empty.body"]</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-wrap">
+                    <table class="table">
+                        <caption class="sr-only">@T["dashboard.recentRuns"]</caption>
+                        <thead>
+                        <tr>
+                            <th>@T["run.column.scenario"]</th>
+                            <th>@T["project.one"]</th>
+                            <th>@T["run.column.environment"]</th>
+                            <th>@T["run.column.verdict"]</th>
+                            <th>@T["run.column.started"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var run in Model.RecentRuns)
+                        {
+                            var word = run.Status.ToString().ToLowerInvariant();
+
+                            <tr>
+                                <td>
+                                    <a href="/projects/@run.ProjectId/runs/@run.Id" dir="auto">@run.ScenarioName</a>
+                                </td>
+                                <td dir="auto">@run.ProjectName</td>
+                                <td dir="auto">
+                                    @if (run.EnvironmentName is { Length: > 0 } environment)
+                                    {
+                                        @environment
+                                    }
+                                    else
+                                    {
+                                        <span class="subtle">—</span>
+                                    }
+                                </td>
+                                <td>
+                                    @* The same dot and word as everywhere else a verdict appears. *@
+                                    <span class="status status-@Verdicts.Tone(run.Status)">
+                                        <span class="status-dot" aria-hidden="true"></span>
+                                        @T[$"run.status.{word}"]
+                                    </span>
+                                </td>
+                                <td>
+                                    <partial name="Pieces/_Timestamp" model="@(new TimestampView(run.StartedAt))" />
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
         </section>
     </div>
 }

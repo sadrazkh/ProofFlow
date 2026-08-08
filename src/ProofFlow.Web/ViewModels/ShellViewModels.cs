@@ -1,3 +1,5 @@
+using ProofFlow.Domain.Runs;
+
 namespace ProofFlow.Web.ViewModels;
 
 /// <summary>Everything the dashboard renders. Assembled by the controller, never queried by a view.</summary>
@@ -11,7 +13,41 @@ public sealed record DashboardViewModel
     public int FailingCount { get; init; }
     public int AwaitingApproval { get; init; }
     public bool IsEmpty => TotalProjects == 0;
+
+    /// <summary>
+    /// The four things somebody has to have done before this product has told them anything.
+    ///
+    /// Not a tour and not a dismissible banner: it is four facts read from the database, and it
+    /// stops being shown when the last of them is true. A checklist somebody has to close is a
+    /// checklist that outlives its usefulness by a year.
+    /// </summary>
+    public bool HasEnvironment { get; init; }
+    public bool HasScenario { get; init; }
+    public bool HasRun { get; init; }
+
+    /// <summary>Where the next unfinished step goes, or null when there is nothing left to do.</summary>
+    public Guid? FirstProjectId { get; init; }
+
+    public bool ShowGettingStarted => !HasRun;
+
+    /// <summary>The last few runs, across every project in the workspace.</summary>
+    public IReadOnlyList<RecentRunRow> RecentRuns { get; init; } = [];
 }
+
+/// <summary>
+/// One line of the recent-runs panel.
+///
+/// Carries the project as well as the scenario, because this list crosses projects and "Fetch every
+/// study by id · failed" is the same sentence in four of them.
+/// </summary>
+public sealed record RecentRunRow(
+    Guid Id,
+    Guid ProjectId,
+    string ProjectName,
+    string ScenarioName,
+    string? EnvironmentName,
+    RunStatus Status,
+    DateTimeOffset StartedAt);
 
 public sealed record ProjectCardViewModel
 {

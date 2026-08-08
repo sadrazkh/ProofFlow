@@ -54,6 +54,47 @@ public class ScenarioRunnerTests
     }
 
     [Fact]
+    public async Task A_run_can_begin_partway_and_the_steps_before_it_do_not_run()
+    {
+        var (runner, sink, _) = Harness.Build();
+
+        var graph = new GraphBuilder()
+            .Node("start", "core.start")
+            .Node("first", "core.checkpoint", properties: [("name", "one")])
+            .Node("second", "core.checkpoint", properties: [("name", "two")])
+            .Node("end", "core.end")
+            .Chain("start", "first", "second", "end")
+            .Build();
+
+        var summary = await runner.RunAsync(graph, Harness.Scopes(), "second");
+
+        summary.Status.Should().Be(RunStatus.Passed);
+
+        // Not skipped, not faked — never asked. Somebody debugging the end of a long scenario is
+        // not waiting for the beginning of it again.
+        sink.Order.Should().Equal("second", "end");
+    }
+
+    [Fact]
+    public async Task Beginning_at_a_step_that_is_gone_says_so_rather_than_starting_over()
+    {
+        var (runner, _, _) = Harness.Build();
+
+        var graph = new GraphBuilder()
+            .Node("start", "core.start")
+            .Node("first", "core.checkpoint", properties: [("name", "one")])
+            .Chain("start", "first")
+            .Build();
+
+        // The dangerous alternative is falling back to the Start: somebody asks to run the last
+        // step of a long scenario against production and gets all of it.
+        var summary = await runner.RunAsync(graph, Harness.Scopes(), "deleted-yesterday");
+
+        summary.Status.Should().Be(RunStatus.Errored);
+        summary.Outcome.Should().Contain("not in this scenario");
+    }
+
+    [Fact]
     public async Task A_scenario_with_no_start_says_so_instead_of_doing_nothing()
     {
         var (runner, _, _) = Harness.Build();
@@ -368,7 +409,7 @@ public class ScenarioRunnerTests
             .Chain("start", "cleanup", "wait")
             .Build();
 
-        var run = runner.RunAsync(graph, Harness.Scopes(), stopping.Token);
+        var run = runner.RunAsync(graph, Harness.Scopes(), cancellation: stopping.Token);
         await Task.Delay(80);
         await stopping.CancelAsync();
 

@@ -31,6 +31,9 @@ const props = defineProps<{
   projectId: string;
   runId: string;
   canCancel: boolean;
+
+  /** The step this run began at, when it did not begin at the beginning. */
+  startedFrom?: string | null;
 }>();
 
 const status = ref<RunStatus>('Queued');
@@ -310,6 +313,14 @@ async function cancel(): Promise<void> {
           <dd class="tabular" dir="ltr">{{ elapsed }}</dd>
         </div>
       </dl>
+
+      <!--
+        Said on the page, not only in the record. Three steps in a scenario of nine reads as a run
+        that fell over unless something says the earlier ones were never asked to run.
+      -->
+      <span v-if="startedFrom" class="badge badge-idle run-partial">
+        <Icon name="circle-play" />{{ t('run.startedFrom', startedFrom) }}
+      </span>
 
       <span class="grow"></span>
 

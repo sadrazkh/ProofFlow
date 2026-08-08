@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Domain.Baselines;
+using ProofFlow.Domain.Runs;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Web.Infrastructure;
 using ProofFlow.Web.ViewModels;
@@ -33,11 +35,53 @@ public sealed class DashboardController(
                 Slug = p.Slug,
                 Description = p.Description,
                 Accent = p.Accent,
+
+                // Counted here rather than left at zero. A card that says "0 environments" about a
+                // project with four is the false-zero the design contract exists to forbid, and it
+                // is the first thing anybody reads about a project.
+                EnvironmentCount = db.Environments.Count(e => e.ProjectId == p.Id),
+                ScenarioCount = db.Scenarios.Count(s => s.ProjectId == p.Id),
+                BaselineCount = db.Baselines.Count(b => b.ProjectId == p.Id),
                 IsArchived = false,
             })
             .ToListAsync(cancellationToken);
 
         var totalProjects = await db.Projects.CountAsync(p => p.ArchivedAt == null, cancellationToken);
+
+        // Over the last fortnight rather than for ever. A pass rate across a year of history barely
+        // moves, which makes it a number nobody looks at twice; what a reader wants to know on
+        // opening this page is whether things are going wrong now.
+        var since = DateTimeOffset.UtcNow.AddDays(-14);
+
+        var verdicts = await db.Runs
+            .Where(run => run.CreatedAt >= since
+                          && (run.Status == RunStatus.Passed || run.Status == RunStatus.Failed
+                              || run.Status == RunStatus.Errored))
+            .GroupBy(run => run.Status)
+            .Select(group => new { Status = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        var totalRuns = verdicts.Sum(row => row.Count);
+        var passed = verdicts.Where(row => row.Status == RunStatus.Passed).Sum(row => row.Count);
+
+        var awaiting = await db.BaselineVersions
+            .CountAsync(version => version.Status == BaselineStatus.PendingApproval, cancellationToken);
+
+        // Across every project, newest first. The panel is on the dashboard rather than in a
+        // project because the question it answers — did anything break while I was away — is not a
+        // question about one project.
+        var recent = await db.Runs
+            .OrderByDescending(run => run.CreatedAt)
+            .Take(6)
+            .Select(run => new RecentRunRow(
+                run.Id,
+                run.ProjectId,
+                db.Projects.Where(p => p.Id == run.ProjectId).Select(p => p.Name).FirstOrDefault()!,
+                db.Scenarios.Where(s => s.Id == run.ScenarioId).Select(s => s.Name).FirstOrDefault()!,
+                db.Environments.Where(e => e.Id == run.EnvironmentId).Select(e => e.Name).FirstOrDefault(),
+                run.Status,
+                run.CreatedAt))
+            .ToListAsync(cancellationToken);
 
         ViewData["Title"] = null;
         // Not "ProofFlow" — the wordmark is already six centimetres away in the sidebar, and a
@@ -49,12 +93,19 @@ public sealed class DashboardController(
             DisplayName = me.DisplayName,
             Projects = projects,
             TotalProjects = totalProjects,
-            // Runs, pass rate and approvals arrive with the phases that produce them. Zero here is
-            // the truth on a fresh install, and the empty state is what a reader actually sees.
-            TotalRuns = 0,
-            PassRatePercent = 0,
-            FailingCount = 0,
-            AwaitingApproval = 0,
+            TotalRuns = totalRuns,
+
+            // Rounded down. 99% on a fortnight with one failure in it is a rounding that hides the
+            // failure, and this tile exists to not do that.
+            PassRatePercent = totalRuns == 0 ? 0 : (int)Math.Floor(passed * 100.0 / totalRuns),
+            FailingCount = totalRuns - passed,
+            AwaitingApproval = awaiting,
+
+            HasEnvironment = await db.Environments.AnyAsync(cancellationToken),
+            HasScenario = await db.Scenarios.AnyAsync(cancellationToken),
+            HasRun = await db.Runs.AnyAsync(cancellationToken),
+            FirstProjectId = projects.FirstOrDefault()?.Id,
+            RecentRuns = recent,
         });
     }
 }

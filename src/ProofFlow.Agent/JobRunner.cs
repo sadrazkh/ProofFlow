@@ -85,7 +85,7 @@ internal static class JobRunner
 
             var runner = new ScenarioRunner(new NodeExecutors(services), sink);
 
-            var summary = await runner.RunAsync(graph, new RunScopes(scopes, redaction), cancellation);
+            var summary = await runner.RunAsync(graph, new RunScopes(scopes, redaction), package.StartNodeId, cancellation);
 
             return new JobReport
             {

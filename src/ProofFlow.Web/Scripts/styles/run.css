@@ -431,3 +431,12 @@
     display: none;
   }
 }
+
+/*
+  A run that began partway.
+
+  Beside the verdict rather than under it: "Passed" on a run that only did the last third is a
+  different sentence, and the two have to be read together or not at all.
+*/
+.run-partial { gap: var(--space-1); white-space: nowrap; }
+.run-partial svg { inline-size: 12px; block-size: 12px; }

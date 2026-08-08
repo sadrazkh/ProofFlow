@@ -67,7 +67,7 @@ public sealed class CiController(
             if (scenarios.Count == 1 && environments.Count == 1)
             {
                 var run = await runs.QueueAsync(
-                    scenarios[0], environments[0], RunTrigger.Api, cancellationToken);
+                    scenarios[0], environments[0], RunTrigger.Api, cancellation: cancellationToken);
 
                 await queue.EnqueueAsync(new QueuedRun(run.Id, run.WorkspaceId), cancellationToken);
                 await RecordAsync(projectId, "run", run.Id, cancellationToken);

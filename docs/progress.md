@@ -818,3 +818,45 @@ the card and the list cannot disagree either.
 **The table shrank instead of scrolling.** Five columns and two buttons on a phone put the
 description one word per line and pushed the actions off the end. The wrapper already scrolled; it
 had nothing to scroll.
+
+---
+
+## Phase L — The parts a person touches · **done**
+
+Prioritised by what the acceptance run put in front of a reader, not by the length of a list.
+
+| | |
+|---|---|
+| Run from a step | Begins at the step you chose and does not re-run what came before. Only a top-level step: a loop body is driven by its container, and entering at it would run it once, outside the thing that gives its iteration meaning. A step that needs an earlier step's output gets the same refusal as a name that does not exist, which is the honest answer and one you can act on by starting further back |
+| Saying so | The console carries "From «Fetch the order» onwards". Three steps in a scenario of nine reads as a run that fell over unless the page says otherwise, and «passed» on a third of a test is a different sentence |
+| Naming a test | The canvas heading is the name, editable in place. The rename endpoint already existed with nothing calling it, so every scenario anybody drew stayed «Untitled scenario» — in the runs list, on the dashboard, and in the JUnit a build agent reads |
+| Getting started | Four steps on the dashboard, read from the database rather than remembered, and gone once the fourth is true. What a project is, what an environment is, what a test is, where the result lives. Nothing to dismiss |
+| Dialogs | Focus is trapped while one is open, returns to whatever opened it, the dialog carries its own title as its accessible name, and Escape works after a click on the backdrop. `aria-modal` was promising all four and delivering none |
+| Virtual scrolling | Where a list genuinely gets long: the run log already windows, and runs and activity page at thirty and fifty. Not everywhere |
+| Tests | 645 passing — 502 unit, 143 integration, 43 component; 125 accessibility checks, 348 screenshots |
+
+### What the dashboard was saying
+
+**Zero runs, zero failures, zero waiting.** Hard-coded, with a comment saying the real numbers arrive
+with the phases that produce them. Those phases arrived several phases ago. The first page anybody
+opens was telling a workspace with forty runs that it had none — and the project's own design
+contract is that a false zero is worse than a dash.
+
+**Zero environments on every project card.** The card has counted fields and nobody filled them.
+
+**A "Recent runs" panel that had never shown a run.** It is a table now, across every project,
+because the question it answers — did anything break while I was away — is not a question about one
+project.
+
+### Two things left undone, on purpose
+
+**The engine's messages stay in English.** They are written for a non-programmer — "Expected 200, got
+500", "«vars» has no value, so «recordId» cannot be read from it" — and the one family that already
+carries a code, an HTTP request that could not be made, is localised where somebody first meets it.
+Translating the rest means giving the engine a message code and persisting it on every node run and
+every assertion: a new taxonomy and a schema change, which is the thing this phase was told not to
+build. Backlog.
+
+**A data set shows its first two hundred rows.** It says so, and pasting replaces the whole set, so
+the way out exists. Virtualising an editable table is a real piece of work for a case that has a
+workaround; the read-only log was worth it, this is not yet. Backlog.

@@ -42,6 +42,10 @@ public sealed record JobPackage
 
     /// <summary>The baselines the graph names, with their approved answer and rules.</summary>
     public IReadOnlyList<JobBaseline> Baselines { get; init; } = [];
+
+    /// <summary>The step to begin at, or null for the whole scenario. Travels so a partial run is
+    /// partial on the agent too, rather than quietly becoming a whole one out there.</summary>
+    public string? StartNodeId { get; init; }
 }
 
 public sealed record JobEnvironment

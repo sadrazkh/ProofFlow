@@ -105,6 +105,16 @@ public class TestRun : Entity, IWorkspaceOwned
     /// <summary>When an agent took it. Null while it is still waiting for one.</summary>
     public DateTimeOffset? ClaimedAt { get; set; }
 
+    /// <summary>
+    /// The step this run began at, or null for the whole scenario from its Start.
+    ///
+    /// Recorded rather than inferred, and it has to be: a run that began in the middle did not skip
+    /// its earlier steps by failing them, and a reader looking at three steps in a scenario of nine
+    /// needs the page to say so. It is also what makes the record honest afterwards — "passed" on a
+    /// run that only did the last third is a different sentence from "passed".
+    /// </summary>
+    public string? StartNodeId { get; set; }
+
     public Guid? StartedByUserId { get; set; }
 
     /// <summary>Who asked it to stop, when somebody did.</summary>

@@ -99,6 +99,7 @@ public sealed class JobPackaging(
             Secrets = secrets,
             DataSets = await DataSetsAsync(run.ProjectId, Referenced(graph, DataSetProperties), cancellation),
             Baselines = await BaselinesAsync(run.ProjectId, Referenced(graph, BaselineProperties), cancellation),
+            StartNodeId = run.StartNodeId,
         };
     }
 

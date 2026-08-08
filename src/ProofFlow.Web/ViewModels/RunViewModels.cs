@@ -31,6 +31,25 @@ public sealed class RunListViewModel
     public bool CanRun { get; init; }
 }
 
+/// <summary>
+/// Which status colour a verdict wears.
+///
+/// One map for every page that shows one. The runs list, the dashboard panel and the console all
+/// draw the same five words, and a run that is amber in one place and red in another is two
+/// different runs as far as the reader is concerned.
+/// </summary>
+public static class Verdicts
+{
+    public static string Tone(RunStatus status) => status switch
+    {
+        RunStatus.Passed => "pass",
+        RunStatus.Failed => "fail",
+        RunStatus.Errored => "warn",
+        RunStatus.Running => "running",
+        _ => "idle",
+    };
+}
+
 public sealed class RunConsoleViewModel
 {
     public required Guid ProjectId { get; init; }
@@ -44,6 +63,14 @@ public sealed class RunConsoleViewModel
     public RunStatus Status { get; init; }
 
     public bool CanCancel { get; init; }
+
+    /// <summary>
+    /// The name of the step this run began at, when it did not begin at the beginning.
+    ///
+    /// The name rather than the id, because the console shows it to a person: "from «Fetch the
+    /// order» onwards" is the sentence, and an id would be the sentence's worst possible subject.
+    /// </summary>
+    public string? StartedFrom { get; init; }
 }
 
 /// <summary>

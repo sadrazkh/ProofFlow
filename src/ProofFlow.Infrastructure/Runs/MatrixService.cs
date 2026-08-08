@@ -97,7 +97,7 @@ public sealed class MatrixService(
             foreach (var environmentId in environments)
             {
                 var run = await runs.QueueAsync(
-                    scenarioId, environmentId, RunTrigger.Person, cancellation);
+                    scenarioId, environmentId, RunTrigger.Person, cancellation: cancellation);
 
                 run.BatchId = batch.Id;
                 queued.Add(run);

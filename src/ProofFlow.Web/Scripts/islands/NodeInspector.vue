@@ -23,13 +23,28 @@ const props = defineProps<{
   problems: GraphProblem[];
   environments: { id: string; name: string; isProduction: boolean }[];
   canEdit: boolean;
+  canRun: boolean;
 }>();
 
 const emit = defineEmits<{
   update: [changes: Partial<GraphNodeDto>];
   property: [name: string, value: string | null];
   remove: [];
+  runFrom: [];
 }>();
+
+/**
+ * Whether this step can be the place a run begins.
+ *
+ * Not the Start — running from Start is the ordinary button. And not a step inside a container: a
+ * loop body is driven by the loop, and entering at it would run it once, outside the thing that
+ * gives its iteration any meaning.
+ */
+const canStartHere = computed(() =>
+  props.canRun
+  && props.node !== null
+  && !props.node.parentId
+  && props.spec?.isStart !== true);
 
 const visible = computed<PropertyDto[]>(() => {
   if (!props.spec || !props.node) return [];
@@ -238,9 +253,24 @@ const matchers = MATCHER_GROUPS;
         </li>
       </ul>
 
-      <footer v-if="canEdit" class="inspector-foot">
-        <button type="button" class="btn btn-secondary btn-sm" @click="emit('remove')">
+      <footer v-if="canEdit || canStartHere" class="inspector-foot">
+        <button v-if="canEdit" type="button" class="btn btn-secondary btn-sm" @click="emit('remove')">
           <Icon name="trash-2" />{{ t('canvas.removeStep') }}
+        </button>
+
+        <!--
+          Debugging the second half of a long scenario. The title says what it will not do, because
+          the surprise otherwise is a step that fails on a value an earlier step was supposed to
+          have put there.
+        -->
+        <button
+          v-if="canStartHere"
+          type="button"
+          class="btn btn-secondary btn-sm"
+          :title="t('canvas.runFrom.hint')"
+          @click="emit('runFrom')"
+        >
+          <Icon name="circle-play" />{{ t('canvas.runFrom') }}
         </button>
       </footer>
     </template>

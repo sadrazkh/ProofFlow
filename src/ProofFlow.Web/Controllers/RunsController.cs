@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -82,7 +83,8 @@ public sealed class RunsController(
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.RunTest)]
     public async Task<IActionResult> Start(
-        Guid projectId, Guid scenarioId, Guid? environmentId, CancellationToken cancellationToken)
+        Guid projectId, Guid scenarioId, Guid? environmentId, string? fromNodeId,
+        CancellationToken cancellationToken)
     {
         var scenario = await db.Scenarios
             .FirstOrDefaultAsync(candidate =>
@@ -93,7 +95,8 @@ public sealed class RunsController(
         TestRun run;
         try
         {
-            run = await runs.QueueAsync(scenarioId, environmentId, RunTrigger.Person, cancellationToken);
+            run = await runs.QueueAsync(
+                scenarioId, environmentId, RunTrigger.Person, fromNodeId, cancellationToken);
         }
         catch (InvalidOperationException ex)
         {
@@ -136,7 +139,32 @@ public sealed class RunsController(
             ScenarioName = scenario?.Name ?? string.Empty,
             Status = run.Status,
             CanCancel = me.Can(Capability.RunTest),
+
+            // Read out of the run's own snapshot rather than the scenario as it is now. The graph
+            // may have been edited since; what this run began at is a fact about this run.
+            StartedFrom = StartedFrom(run),
         });
+    }
+
+    /// <summary>The name of the step a partial run began at, from the graph it was queued with.</summary>
+    private static string? StartedFrom(TestRun run)
+    {
+        if (run.StartNodeId is not { Length: > 0 } from || run.DefinitionJson is null) return null;
+
+        try
+        {
+            return JsonDocument.Parse(run.DefinitionJson).RootElement
+                .GetProperty("nodes").EnumerateArray()
+                .Where(node => node.TryGetProperty("id", out var id) && id.GetString() == from)
+                .Select(node => node.TryGetProperty("name", out var name) ? name.GetString() : null)
+                .FirstOrDefault();
+        }
+        catch (Exception exception) when (exception is JsonException or KeyNotFoundException)
+        {
+            // The snapshot is unreadable, which the console will say about the graph anyway. Not a
+            // reason to fail the whole page over a label.
+            return null;
+        }
     }
 
     /// <summary>

@@ -37,6 +37,38 @@
   white-space: nowrap;
 }
 
+/*
+  The same heading, editable.
+
+  Borderless until it is touched, so the bar still reads as a title rather than as a form — but it
+  takes a focus ring and a hover surface, because a field with no affordance at all is a field
+  nobody discovers.
+*/
+.canvas-title-input {
+  min-inline-size: 12ch;
+  max-inline-size: 42ch;
+  inline-size: 28ch;
+
+  padding: var(--space-1) var(--space-2);
+  margin-inline-start: calc(var(--space-2) * -1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.canvas-title-input:hover { background: var(--surface-hover); }
+
+.canvas-title-input:focus {
+  outline: none;
+  border-color: var(--line-strong);
+  background: var(--surface);
+}
+
+.canvas-title-input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+.canvas-title-input::placeholder { color: var(--ink-faint); font-weight: var(--weight-medium); }
+
 .canvas-shell {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

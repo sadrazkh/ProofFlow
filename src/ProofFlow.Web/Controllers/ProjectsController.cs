@@ -38,6 +38,13 @@ public sealed class ProjectsController(
                 Slug = p.Slug,
                 Description = p.Description,
                 Accent = p.Accent,
+
+                // Counted here rather than left at zero. A card that says "0 environments" about a
+                // project with four is the false-zero the design contract exists to forbid, and it
+                // is the first thing anybody reads about a project.
+                EnvironmentCount = db.Environments.Count(e => e.ProjectId == p.Id),
+                ScenarioCount = db.Scenarios.Count(s => s.ProjectId == p.Id),
+                BaselineCount = db.Baselines.Count(b => b.ProjectId == p.Id),
                 IsArchived = p.ArchivedAt != null,
             })
             .ToListAsync(cancellationToken);

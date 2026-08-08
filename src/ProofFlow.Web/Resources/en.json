@@ -154,6 +154,7 @@
   "project": {
     "title": "Projects",
     "subtitle": "One project per system you test.",
+    "one": "Project",
     "new": "New project",
     "newTitle": "Create a project",
     "nameHint": "What is this system called? For example, «Orders API».",
@@ -183,6 +184,27 @@
     },
     "archiveHint": "Archiving hides the project from lists. Nothing is deleted, and it can be brought back at any time."
   },
+  "start": {
+    "title": "Getting started",
+    "subtitle": "Four things, and this card goes away on its own once the last one is done.",
+
+    "project": "A project",
+    "project.what": "One system under test. It holds the places you can point it at, the tests you draw, and everything they have ever found.",
+    "project.action": "Make one",
+
+    "environment": "An environment",
+    "environment.what": "Where the requests actually go — staging, local, production. The same test runs against each of them.",
+    "environment.action": "Add one",
+
+    "scenario": "A test",
+    "scenario.what": "Drawn as a picture: send a request, check the answer, do something about it if the answer is wrong.",
+    "scenario.action": "Draw one",
+
+    "run": "A run",
+    "run.what": "Press Run and watch it happen, step by step. What it found is kept, so you can come back to it next month.",
+    "run.action": "Run it"
+  },
+
   "dashboard": {
     "title": "Dashboard",
     "greeting": "Hello, {0}",
@@ -1169,6 +1191,8 @@
     "note": "Note",
     "notePlaceholder": "Why this step is here",
     "removeStep": "Remove this step",
+    "runFrom": "Run from here",
+    "runFrom.hint": "Runs this step and everything after it. The steps before it do not run, so anything they would have produced is not there.",
     "reachesOut": "Makes a real request",
     "unknownType": "A kind of step this version does not know",
     "oneStartOnly": "A scenario begins in one place, and it already has one.",
@@ -1199,6 +1223,7 @@
     "subtitle": "Tests drawn as a picture of what happens.",
     "new": "New scenario",
     "untitled": "Untitled scenario",
+    "renamed": "Renamed.",
     "nameTaken": "A scenario called {0} already exists in this project.",
     "steps": "Steps",
     "draft": "Draft",
@@ -1248,6 +1273,7 @@
     "checksPassed": "Checks passed",
     "checksFailed": "Checks failed",
     "elapsed": "Took",
+    "startedFrom": "From «{0}» onwards",
     "failedChecks": "What did not hold",
     "soft": "Soft",
     "hard": "Hard",

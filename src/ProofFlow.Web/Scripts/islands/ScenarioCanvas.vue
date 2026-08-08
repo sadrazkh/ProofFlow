@@ -39,6 +39,7 @@ const props = defineProps<{
   scenarioId: string;
   environments: { id: string; name: string; isProduction: boolean }[];
   canEdit: boolean;
+  canRun: boolean;
 }>();
 
 const {
@@ -571,6 +572,33 @@ function attachProblems(): void {
   }));
 }
 
+/**
+ * Starts a run at the selected step.
+ *
+ * Through the page's own run form rather than a second POST of its own: that form already carries
+ * the antiforgery token and the environment somebody chose in the bar, and duplicating either here
+ * would mean a "run from here" that quietly went somewhere else.
+ *
+ * Saved first. The server has to begin at a step it knows about, and the save is also what turns a
+ * node's temporary id into the one the graph is stored under.
+ */
+async function runFromSelected(): Promise<void> {
+  if (dirty.value && props.canEdit) await save();
+
+  const from = selectedId.value;
+  const form = document.querySelector<HTMLFormElement>('form[action$="/runs/start"]');
+
+  if (!from || !form) return;
+
+  const field = form.querySelector<HTMLInputElement>('input[name="fromNodeId"]')
+    ?? form.appendChild(Object.assign(document.createElement('input'), {
+      type: 'hidden', name: 'fromNodeId',
+    }));
+
+  field.value = from;
+  form.requestSubmit();
+}
+
 async function save(): Promise<void> {
   if (!props.canEdit || saving.value) return;
   saving.value = true;
@@ -730,9 +758,11 @@ watch(nodes, () => { if (loaded.value) dirty.value = true; }, { deep: true });
       :problems="problems"
       :environments="environments"
       :can-edit="canEdit"
+      :can-run="canRun"
       @update="updateSelected"
       @property="setProperty"
       @remove="removeSelected"
+      @run-from="runFromSelected"
     />
   </div>
 </template>
