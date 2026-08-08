@@ -1900,6 +1900,62 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("Workspaces", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Workspaces.WorkspaceInvitation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AcceptedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("AcceptedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExpiresAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("InvitedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Role")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("WorkspaceId", "Email");
+
+                    b.ToTable("WorkspaceInvitations", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Workspaces.WorkspaceMember", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2455,6 +2511,17 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .IsRequired();
 
                     b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Workspaces.WorkspaceInvitation", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Workspaces.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Workspace");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Workspaces.WorkspaceMember", b =>

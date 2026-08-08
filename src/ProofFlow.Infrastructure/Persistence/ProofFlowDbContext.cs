@@ -74,6 +74,7 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<ScheduleScenario> ScheduleScenarios => Set<ScheduleScenario>();
     public DbSet<ScheduleEnvironment> ScheduleEnvironments => Set<ScheduleEnvironment>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
+    public DbSet<WorkspaceInvitation> WorkspaceInvitations => Set<WorkspaceInvitation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

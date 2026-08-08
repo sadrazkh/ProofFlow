@@ -1,0 +1,266 @@
+@using ProofFlow.Domain.Authorization
+@model TeamViewModel
+@inject Dates Dates
+
+@{
+    string Name(WorkspaceRole role) => T[$"workspace.role_{role}"].Value;
+    string Summarise(WorkspaceRole role) => T[$"workspace.role_{role}_help"].Value;
+
+    // How many things a role can do, from the capability table itself. It is what makes a role
+    // change legible — "Reviewer to Admin" means nothing to somebody who has not memorised six
+    // definitions, and "gains 9, keeps 4" does.
+    int Count(WorkspaceRole role) =>
+        Enum.GetValues<Capability>().Count(capability => RoleCapabilities.Allows(role, capability));
+}
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["nav.team"]</h1>
+            <p class="page-subtitle">@T["team.subtitle"]</p>
+        </div>
+    </div>
+
+    <div class="stack-6">
+        @if (Model.IssuedLink is { Length: > 0 } link)
+        {
+            @*
+                Shown once, and honestly. No mail server is configured, so the product does not
+                claim to have sent anything — it hands over the link and says to pass it on.
+            *@
+            <div class="card card-pad stack key-issued" role="status">
+                <h2 class="card-title">@T["team.invite.link.title"]</h2>
+                <p class="muted">@T["team.invite.link.body"]</p>
+
+                <div class="key-value">
+                    <code dir="ltr">@link</code>
+                    <button type="button" class="btn btn-secondary btn-sm" data-copy="@link">
+                        <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                    </button>
+                </div>
+            </div>
+        }
+
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">@T["team.members"]</div>
+                    <div class="card-subtitle">@T["team.members.subtitle"]</div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="table">
+                    <caption class="sr-only">@T["team.members"]</caption>
+                    <thead>
+                    <tr>
+                        <th>@T["common.name"]</th>
+                        <th>@T["workspace.role"]</th>
+                        <th>@T["team.joined"]</th>
+                        @if (Model.CanManage)
+                        {
+                            <th><span class="sr-only">@T["common.actions"]</span></th>
+                        }
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var member in Model.Members)
+                    {
+                        <tr>
+                            <td>
+                                <div class="team-person">
+                                    <span class="semibold" dir="auto">@member.DisplayName</span>
+                                    @if (member.IsYou)
+                                    {
+                                        <span class="badge badge-accent">@T["team.you"]</span>
+                                    }
+                                    <span class="text-xs subtle" dir="ltr">@member.Email</span>
+                                </div>
+                            </td>
+                            <td>
+                                @* The role, and what it means. A list of six words nobody can rank
+                                   is a list somebody guesses at. *@
+                                <span class="badge badge-idle"
+                                      title="@Summarise(member.Role)">@Name(member.Role)</span>
+                            </td>
+                            <td>
+                                @if (member.JoinedAt is { } joined)
+                                {
+                                    <partial name="Pieces/_Timestamp" model="@(new TimestampView(joined))" />
+                                }
+                                else
+                                {
+                                    <span class="subtle">—</span>
+                                }
+                            </td>
+                            @if (Model.CanManage)
+                            {
+                                <td>
+                                    @if (member.IsYou)
+                                    {
+                                        @* Nobody changes their own role. Somebody who could promote
+                                           themselves does not have a role, they have a suggestion. *@
+                                        <span class="text-xs subtle">@T["team.notYourself"]</span>
+                                    }
+                                    else
+                                    {
+                                        <div class="row">
+                                            <form method="post" action="/team/members/@member.UserId/role"
+                                                  class="row team-role-form"
+                                                  data-confirm="@T["team.role.change.body", member.DisplayName, Count(member.Role)]"
+                                                  data-confirm-title="@T["team.role.change.title"]"
+                                                  data-confirm-action="@T["action.save"]"
+                                                  data-confirm-tone="primary">
+                                                @Html.AntiForgeryToken()
+                                                <label class="sr-only" for="role-@member.UserId">@T["workspace.role"]</label>
+                                                <select class="select" id="role-@member.UserId" name="role">
+                                                    @foreach (var role in TeamViewModel.Assignable)
+                                                    {
+                                                        <option value="@role" selected="@(role == member.Role)"
+                                                                title="@Summarise(role)">
+                                                            @Name(role)
+                                                        </option>
+                                                    }
+                                                </select>
+                                                @* Confirmed, and the confirmation says what changes
+                                                   rather than only which word it becomes. *@
+                                                <button type="submit" class="btn btn-secondary btn-sm"
+                                                        formaction="/team/members/@member.UserId/role">
+                                                    @T["action.save"]
+                                                </button>
+                                            </form>
+
+                                            <form method="post" action="/team/members/@member.UserId/remove"
+                                                  data-confirm="@T["team.remove.body", member.DisplayName]"
+                                                  data-confirm-title="@T["team.remove.title"]"
+                                                  data-confirm-action="@T["team.remove"]">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-ghost btn-icon btn-sm"
+                                                        aria-label="@T["team.remove"]">
+                                                    <i data-lucide="user-minus" aria-hidden="true"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                </td>
+                            }
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        @if (Model.Invitations.Count > 0)
+        {
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">@T["team.invitations"]</div>
+                        <div class="card-subtitle">@T["team.invitations.subtitle"]</div>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <caption class="sr-only">@T["team.invitations"]</caption>
+                        <thead>
+                        <tr>
+                            <th>@T["auth.email"]</th>
+                            <th>@T["workspace.role"]</th>
+                            <th>@T["apikey.expiry"]</th>
+                            @if (Model.CanManage)
+                            {
+                                <th><span class="sr-only">@T["common.actions"]</span></th>
+                            }
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var invitation in Model.Invitations)
+                        {
+                            <tr>
+                                <td dir="ltr">@invitation.Email</td>
+                                <td>
+                                    <span class="badge badge-idle">
+                                        @Name(invitation.Role)
+                                    </span>
+                                </td>
+                                <td>
+                                    @* Ahead, not ago: this has not happened yet. *@
+                                    <time datetime="@Dates.Iso(invitation.ExpiresAt)"
+                                          title="@Dates.Absolute(invitation.ExpiresAt)">@Dates.Ahead(invitation.ExpiresAt)</time>
+                                </td>
+                                @if (Model.CanManage)
+                                {
+                                    <td>
+                                        <form method="post" action="/team/invitations/@invitation.Id/revoke">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-ghost btn-sm">
+                                                @T["team.invite.revoke"]
+                                            </button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        }
+
+        @if (Model.CanManage)
+        {
+            <section class="card card-pad stack">
+                <h2 class="card-title">@T["team.invite"]</h2>
+
+                <form method="post" action="/team/invite" class="stack">
+                    @Html.AntiForgeryToken()
+
+                    <div class="field">
+                        <label class="field-label" for="invite-email">@T["auth.email"]</label>
+                        <input class="input" id="invite-email" name="email" type="email" required
+                               maxlength="320" dir="ltr" placeholder="someone@example.com" />
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="invite-role">@T["workspace.role"]</label>
+                        <select class="select" id="invite-role" name="role">
+                            @foreach (var role in TeamViewModel.Assignable)
+                            {
+                                <option value="@role" selected="@(role == WorkspaceRole.Viewer)">
+                                    @Name(role)
+                                </option>
+                            }
+                        </select>
+                        <p class="field-hint">@T["team.invite.roleHint"]</p>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="user-plus" aria-hidden="true"></i>@T["team.invite"]
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            @*
+                What each role can do, spelled out once rather than guessed at from six words. Built
+                from the capability table, so it cannot drift from the rules it describes.
+            *@
+            <section class="card card-pad stack">
+                <h2 class="card-title">@T["team.roles"]</h2>
+
+                <dl class="team-roles">
+                    @foreach (var role in Enum.GetValues<WorkspaceRole>())
+                    {
+                        <div>
+                            <dt>@Name(role)</dt>
+                            <dd>@Summarise(role)</dd>
+                        </div>
+                    }
+                </dl>
+            </section>
+        }
+    </div>
+</div>

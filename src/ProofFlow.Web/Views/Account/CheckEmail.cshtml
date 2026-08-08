@@ -1,0 +1,50 @@
+@model CheckEmailViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = T["auth.checkEmailTitle"].Value;
+}
+
+@*
+    Says the same thing whether or not the address belongs to an account. That is the whole design of
+    this page: any difference here — a different sentence, a different page, a visibly different
+    delay — answers the question "does this person have an account with you".
+*@
+<div class="stack-4" style="text-align: center;">
+    <div class="empty-art" style="margin-inline: auto;">
+        <i data-lucide="mail-check" aria-hidden="true"></i>
+    </div>
+
+    <div class="stack-2">
+        <h1 class="page-title">@T["auth.checkEmailTitle"]</h1>
+        <p class="page-subtitle">@T["auth.checkEmailBody"]</p>
+    </div>
+
+    @if (!Model.WasEmailed && Model.Link is { Length: > 0 } link)
+    {
+        @*
+            Development only, and labelled as such. There is no mail server on a laptop, and a flow
+            that cannot be walked is a flow that does not get tested.
+        *@
+        <div class="card card-pad stack-2 key-issued" role="status" style="text-align: start;">
+            <div class="row" style="gap: var(--space-2);">
+                <span class="badge badge-warn">@T["auth.devOnly"]</span>
+                <span class="text-xs subtle">@T["auth.devLinkBody"]</span>
+            </div>
+
+            <div class="key-value">
+                <code dir="ltr">@link</code>
+                <button type="button" class="btn btn-secondary btn-sm" data-copy="@link">
+                    <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                </button>
+            </div>
+
+            <div>
+                <a class="btn btn-primary btn-sm" href="@link">@T["auth.reset.title"]</a>
+            </div>
+        </div>
+    }
+
+    <p class="text-xs subtle">
+        <a href="/account/sign-in">@T["auth.backToSignIn"]</a>
+    </p>
+</div>

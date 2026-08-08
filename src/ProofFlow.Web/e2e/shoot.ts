@@ -40,11 +40,14 @@ type Target = { name: string; path: string; auth: boolean };
 const PAGES: Target[] = [
   { name: 'sign-in', path: '/account/sign-in', auth: false },
   { name: 'sign-up', path: '/account/sign-up', auth: false },
+  { name: 'forgot-password', path: '/account/forgot', auth: false },
+  { name: 'check-email', path: '/account/check-email', auth: false },
   { name: 'not-found', path: '/no-such-page', auth: false },
   { name: 'dashboard', path: '/', auth: true },
   { name: 'projects', path: '/projects', auth: true },
   { name: 'project-new', path: '/projects/new', auth: true },
   { name: 'activity', path: '/activity', auth: true },
+  { name: 'team', path: '/team', auth: true },
   // Development only, and the cheapest visual regression test there is: one page covering every
   // component in both themes.
   { name: 'design', path: '/design', auth: true },
@@ -69,6 +72,7 @@ const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
   { name: 'runs', path: (id) => `/projects/${id}/runs` },
   { name: 'matrix', path: (id) => `/projects/${id}/matrix` },
   { name: 'schedules', path: (id) => `/projects/${id}/schedules` },
+  { name: 'approvals', path: (id) => `/projects/${id}/approvals` },
   { name: 'project-settings', path: (id) => `/projects/${id}/settings` },
 ];
 

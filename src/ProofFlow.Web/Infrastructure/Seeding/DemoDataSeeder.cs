@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
@@ -8,6 +9,7 @@ using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Identity;
 using ProofFlow.Infrastructure.Persistence;
+using ProofFlow.Infrastructure.Workspaces;
 
 namespace ProofFlow.Web.Infrastructure.Seeding;
 
@@ -110,13 +112,94 @@ public sealed class DemoDataSeeder(
             Environments(workspace.Id, project);
         }
 
+        await ColleaguesAsync(workspace.Id, password, persian);
+
         await db.SaveChangesAsync(cancellationToken);
 
         user.LastWorkspaceId = workspace.Id;
         await users.UpdateAsync(user);
 
-        logger.LogInformation("Seeded the demo workspace and signed-in account {Email}.", DemoEmail);
+        logger.LogInformation(
+            "Seeded the demo workspace, the account {Email}, and {Count} colleagues who share the "
+            + "same demo password.",
+            DemoEmail, Colleagues.Length);
     }
+
+    /// <summary>
+    /// The rest of the team, and one invitation nobody has taken up.
+    ///
+    /// Without them there is nothing of this to see. The separation of author and approver only
+    /// binds when there is somebody else to approve, so a workspace of one demonstrates the
+    /// exception rather than the rule; and a team page with a single row shows neither a role
+    /// change nor a removal.
+    ///
+    /// They share <c>Demo:Password</c> rather than getting one each. A demo workspace is already
+    /// gated behind a switch and a password somebody had to choose, and adding four more secrets to
+    /// that arrangement makes it harder to reason about rather than safer.
+    /// </summary>
+    private async Task ColleaguesAsync(Guid workspaceId, string password, bool persian)
+    {
+        foreach (var colleague in Colleagues)
+        {
+            var account = new ProofFlowUser
+            {
+                Id = Guid.CreateVersion7(),
+                UserName = colleague.Email,
+                Email = colleague.Email,
+                EmailConfirmed = true,
+                DisplayName = persian ? colleague.Persian : colleague.English,
+                CreatedAt = clock.UtcNow,
+            };
+
+            var made = await users.CreateAsync(account, password);
+
+            if (!made.Succeeded)
+            {
+                logger.LogWarning("The demo colleague {Email} was not created: {Errors}.",
+                    colleague.Email, string.Join("; ", made.Errors.Select(e => e.Description)));
+                continue;
+            }
+
+            db.WorkspaceMembers.Add(new WorkspaceMember
+            {
+                WorkspaceId = workspaceId,
+                UserId = account.Id,
+                Role = colleague.Role,
+                InvitedAt = clock.UtcNow,
+                JoinedAt = clock.UtcNow,
+            });
+        }
+
+        // One invitation left open, so the page has something to withdraw. Its token is generated
+        // and thrown away rather than kept: only the hash is stored, here as everywhere, and a
+        // demo that quietly held on to the plain text would be demonstrating the opposite of the
+        // rule it is meant to show.
+        db.WorkspaceInvitations.Add(new WorkspaceInvitation
+        {
+            WorkspaceId = workspaceId,
+            Email = "newcomer@proofflow.local",
+            Role = WorkspaceRole.Viewer,
+            Hash = TeamService.Fingerprint(
+                Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(TeamService.TokenBytes))),
+            ExpiresAt = clock.UtcNow + WorkspaceInvitation.Lifetime,
+        });
+    }
+
+    /// <summary>
+    /// Four roles, chosen so every rule in this part of the product has something to act on: a
+    /// reviewer who may approve, a designer who may record but not approve, somebody who may only
+    /// press Run, and somebody who may only read.
+    /// </summary>
+    private static readonly DemoColleague[] Colleagues =
+    [
+        new("reviewer@proofflow.local", WorkspaceRole.Reviewer, "Rosa Klein", "رؤیا بهرامی"),
+        new("designer@proofflow.local", WorkspaceRole.TestDesigner, "Ada Okonkwo", "کیان رستمی"),
+        new("runner@proofflow.local", WorkspaceRole.Runner, "Tomas Vega", "سارا نوری"),
+        new("viewer@proofflow.local", WorkspaceRole.Viewer, "Mei Lin", "بهرام کاویانی"),
+    ];
+
+    private sealed record DemoColleague(
+        string Email, WorkspaceRole Role, string English, string Persian);
 
     /// <summary>
     /// Three environments per project, because comparing them is what the product is for.

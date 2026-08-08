@@ -22,9 +22,12 @@ namespace ProofFlow.Web.Controllers;
 public sealed class AccountController(
     UserManager<ProofFlowUser> users,
     SignInManager<ProofFlowUser> signIn,
+    SessionCookie session,
     ProofFlowDbContext db,
     IClock clock,
     IAuditLog audit,
+    AccountMail mail,
+    IWebHostEnvironment environment,
     IStringLocalizer localizer,
     ILogger<AccountController> logger) : Controller
 {
@@ -174,45 +177,151 @@ public sealed class AccountController(
     [HttpGet("denied")]
     public IActionResult Denied() => View();
 
-    /// <summary>
-    /// Writes the sign-in cookie, including the workspace and role claims that authorisation and
-    /// the tenant filter both read.
-    ///
-    /// Claims rather than a per-request lookup: <c>Can()</c> is called dozens of times rendering
-    /// one page. The cost is that a role change lands on the next sign-in or workspace switch,
-    /// which is stated in <see cref="HttpCurrentUser"/>.
-    /// </summary>
-    private async Task IssueCookieAsync(ProofFlowUser user, bool rememberMe)
+    // ---- forgotten passwords ---------------------------------------------------------------------
+
+    [HttpGet("forgot")]
+    public IActionResult Forgot()
     {
-        var workspaceId = user.LastWorkspaceId;
-        var membership = await db.WorkspaceMembers
-            .IgnoreQueryFilters() // No workspace is established yet — that is what this reads.
-            .Where(m => m.UserId == user.Id)
-            .OrderByDescending(m => m.WorkspaceId == workspaceId)
-            .ThenBy(m => m.CreatedAt)
-            .FirstOrDefaultAsync();
+        if (User.Identity?.IsAuthenticated == true) return Redirect("/");
+        return View(new ForgotPasswordViewModel());
+    }
 
-        var identity = await signIn.CreateUserPrincipalAsync(user);
-        if (identity.Identity is ClaimsIdentity claims)
+    /// <summary>
+    /// Sends a reset link, and says the same thing either way.
+    ///
+    /// The response cannot depend on whether the address belongs to an account. "No such account" on
+    /// this form is a way of asking whether somebody has one, and it works for every address anybody
+    /// cares to try. So the answer is identical, the work is not, and the rate limiter is what makes
+    /// the timing difference not worth measuring.
+    /// </summary>
+    [HttpPost("forgot")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> Forgot(ForgotPasswordViewModel model)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        var user = await users.FindByEmailAsync(model.Email);
+
+        if (user is not null)
         {
-            claims.AddClaim(new Claim("pf:name", user.DisplayName ?? user.Email ?? "unknown"));
+            var token = await users.GeneratePasswordResetTokenAsync(user);
+            var link = mail.ResetLink(user.Id, token);
 
-            if (membership is not null)
+            if (mail.CanSend)
             {
-                claims.AddClaim(new Claim(HttpCurrentUser.WorkspaceClaim, membership.WorkspaceId.ToString()));
-                claims.AddClaim(new Claim(HttpCurrentUser.RoleClaim, membership.Role.ToString()));
+                await mail.PasswordResetAsync(user.Email!, link, HttpContext.RequestAborted);
             }
+            else if (environment.IsDevelopment())
+            {
+                // A development machine with no mail server would otherwise have no way to walk this
+                // flow at all. Carried once, through TempData, and only here — on a deployed
+                // installation this branch does not exist, because showing the link to whoever typed
+                // the address is the whole vulnerability the flow is designed to avoid.
+                TempData["ResetLink"] = link;
+            }
+            else
+            {
+                // Nothing was sent and nothing can be shown. Somebody has to be able to find out
+                // why, and it is not the person at the form.
+                logger.LogWarning(
+                    "A password reset was requested but no mail server is configured. "
+                    + "Set Smtp:Host, or reset the password from the command line.");
+            }
+
+            await audit.RecordAsync(
+                new AuditEntry("user.passwordResetRequested", null, "User", user.Id),
+                HttpContext.RequestAborted);
         }
 
-        await HttpContext.SignInAsync(IdentityConstants.ApplicationScheme, identity,
-            new AuthenticationProperties { IsPersistent = rememberMe });
-
-        // SignInAsync writes the cookie for the *next* request; it does not change who this one is
-        // running as. Without this line, anything after sign-in still sees an anonymous principal —
-        // which is why the audit entry for signing in used to be dropped for having no workspace,
-        // and why the tenant filter would have returned nothing to any query that followed.
-        HttpContext.User = identity;
+        return RedirectToAction(nameof(CheckEmail));
     }
+
+    [HttpGet("check-email")]
+    public IActionResult CheckEmail()
+    {
+        return View(new CheckEmailViewModel
+        {
+            Link = TempData["ResetLink"] as string,
+            WasEmailed = mail.CanSend,
+        });
+    }
+
+    [HttpGet("reset")]
+    public async Task<IActionResult> Reset(Guid u, string? t)
+    {
+        if (string.IsNullOrWhiteSpace(t) || await users.FindByIdAsync(u.ToString()) is null)
+        {
+            TempData.Error(localizer["auth.reset.notUsable"]);
+            return Redirect("/account/forgot");
+        }
+
+        // The token is not verified here. Identity's tokens are single-use and time-limited, and
+        // spending one to render a form would mean a reload of the page invalidates it.
+        return View(new ResetPasswordViewModel { UserId = u, Token = t });
+    }
+
+    [HttpPost("reset")]
+    [ValidateAntiForgeryToken]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> Reset(ResetPasswordViewModel model)
+    {
+        if (model.Password != model.ConfirmPassword)
+            ModelState.AddModelError(nameof(model.ConfirmPassword), localizer["auth.passwordsDiffer"]);
+
+        if (!ModelState.IsValid) return View(model);
+
+        var user = await users.FindByIdAsync(model.UserId.ToString());
+
+        if (user is null)
+        {
+            TempData.Error(localizer["auth.reset.notUsable"]);
+            return Redirect("/account/forgot");
+        }
+
+        var result = await users.ResetPasswordAsync(user, model.Token, model.Password);
+
+        if (!result.Succeeded)
+        {
+            foreach (var error in result.Errors)
+            {
+                // An expired or spent token is not a field-level problem, and putting it under the
+                // password box would tell somebody their new password was rejected when it was not.
+                ModelState.AddModelError(
+                    error.Code.Contains("Token", StringComparison.Ordinal) ? string.Empty : nameof(model.Password),
+                    error.Code switch
+                    {
+                        "InvalidToken" => localizer["auth.reset.notUsable"],
+                        "PasswordTooShort" => localizer["auth.passwordTooShort", 10],
+                        _ => error.Description,
+                    });
+            }
+
+            return View(model);
+        }
+
+        // Somebody locked out by the guessing that made them reset in the first place should not
+        // then be locked out of the account they have just recovered.
+        await users.ResetAccessFailedCountAsync(user);
+        await users.UpdateSecurityStampAsync(user);
+
+        await audit.RecordAsync(
+            new AuditEntry("user.passwordReset", null, "User", user.Id), HttpContext.RequestAborted);
+
+        // Not signed in automatically. Whoever holds the link is not yet known to be the account
+        // holder; typing the new password once proves they at least know it.
+        TempData.Success(localizer["auth.reset.done"]);
+        return Redirect("/account/sign-in");
+    }
+
+    /// <summary>
+    /// Writes the sign-in cookie.
+    ///
+    /// Delegated, because accepting an invitation has to write the same cookie with the same claims
+    /// — and two copies of that would be two places for the workspace claim to be forgotten.
+    /// </summary>
+    private Task IssueCookieAsync(ProofFlowUser user, bool rememberMe) =>
+        session.IssueAsync(user, rememberMe);
 
     private Task<bool> AnyUserExistsAsync() => db.Users.AnyAsync();
 

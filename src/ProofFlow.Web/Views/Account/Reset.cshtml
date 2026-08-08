@@ -1,0 +1,50 @@
+@model ResetPasswordViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = T["auth.reset.title"].Value;
+    var summary = ViewData.ModelState[string.Empty]?.Errors;
+}
+
+<div class="stack-2">
+    <h1 class="page-title">@T["auth.reset.title"]</h1>
+    <p class="page-subtitle">@T["auth.reset.subtitle"]</p>
+</div>
+
+<form method="post" action="/account/reset" class="stack" novalidate>
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="UserId" value="@Model.UserId" />
+    <input type="hidden" name="Token" value="@Model.Token" />
+
+    @if (summary is { Count: > 0 })
+    {
+        @* An expired or already-used link lands here rather than under the password box, because
+           there is nothing wrong with what they typed. *@
+        <div class="form-summary-error" role="alert">
+            <i data-lucide="circle-alert" aria-hidden="true"></i>
+            <span>
+                @summary[0].ErrorMessage
+                <a href="/account/forgot">@T["auth.reset.askAgain"]</a>
+            </span>
+        </div>
+    }
+
+    <div class="field">
+        <label class="field-label" for="Password">@T["auth.reset.newPassword"]</label>
+        <input class="input" id="Password" name="Password" type="password"
+               autocomplete="new-password" required autofocus minlength="10"
+               aria-invalid="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "true" : "false")"
+               aria-describedby="Password-hint" />
+        <p class="field-hint" id="Password-hint">@T["auth.passwordTooShort", 10]</p>
+        <partial name="Pieces/_FieldError" model="@("Password")" />
+    </div>
+
+    <div class="field">
+        <label class="field-label" for="ConfirmPassword">@T["auth.confirmPassword"]</label>
+        <input class="input" id="ConfirmPassword" name="ConfirmPassword" type="password"
+               autocomplete="new-password" required
+               aria-invalid="@(ViewData.ModelState["ConfirmPassword"]?.Errors.Count > 0 ? "true" : "false")" />
+        <partial name="Pieces/_FieldError" model="@("ConfirmPassword")" />
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block">@T["auth.reset.action"]</button>
+</form>

@@ -1,0 +1,182 @@
+@model ApprovalViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["approval.title"]</h1>
+        <p class="page-subtitle">@T["approval.subtitle"]</p>
+    </div>
+</div>
+
+@if (Model.Inbox.Total == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="check-check" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["approval.empty.title"]</h2>
+            <p class="empty-body">@T["approval.empty.body"]</p>
+        </div>
+    </div>
+}
+else
+{
+    @if (Model.Inbox.Versions.Count > 0)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">@T["approval.versions"]</div>
+                    <div class="card-subtitle">@T["approval.versions.subtitle"]</div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="table table-hover">
+                    <caption class="sr-only">@T["approval.versions"]</caption>
+                    <thead>
+                    <tr>
+                        <th>@T["common.name"]</th>
+                        <th>@T["approval.recordedBy"]</th>
+                        <th>@T["common.created"]</th>
+                        <th><span class="sr-only">@T["common.actions"]</span></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var version in Model.Inbox.Versions)
+                    {
+                        <tr>
+                            <td>
+                                <a href="/projects/@Model.ProjectId/baselines/@version.BaselineId" dir="auto">
+                                    @version.BaselineName
+                                </a>
+                                <span class="badge badge-idle tabular" dir="ltr">v@(version.Number)</span>
+                            </td>
+                            <td>
+                                <span dir="auto">@version.RecordedBy</span>
+                                @if (version.ByYou)
+                                {
+                                    <span class="badge badge-accent">@T["team.you"]</span>
+                                }
+                            </td>
+                            <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(version.RecordedAt))" /></td>
+                            <td>
+                                @*
+                                    Somebody who recorded it cannot approve it — while there is
+                                    somebody else who could. Said here rather than after the press,
+                                    because finding out a rule by being refused is a bad way to
+                                    learn one.
+                                *@
+                                @if (Model.CanApprove && version.ByYou && Model.Inbox.SomebodyElseCanApprove)
+                                {
+                                    <span class="approval-yours">
+                                        <i data-lucide="user-check" aria-hidden="true"></i>
+                                        @T["approval.waitingOnSomebodyElse"]
+                                    </span>
+                                }
+                                else if (Model.CanApprove)
+                                {
+                                    <div class="row">
+                                        <form method="post"
+                                              action="/projects/@Model.ProjectId/baselines/@version.BaselineId/versions/@version.VersionId/approve">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-secondary btn-sm">
+                                                <i data-lucide="check" aria-hidden="true"></i>@T["approval.approve"]
+                                            </button>
+                                        </form>
+
+                                        <a class="btn btn-ghost btn-sm"
+                                           href="/projects/@Model.ProjectId/baselines/@version.BaselineId">
+                                            @T["approval.look"]
+                                        </a>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <a class="btn btn-ghost btn-sm"
+                                       href="/projects/@Model.ProjectId/baselines/@version.BaselineId">
+                                        @T["approval.look"]
+                                    </a>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.Inbox.MoreVersions > 0)
+            {
+                <div class="card-body">
+                    @* Counted rather than silently cut. *@
+                    <p class="text-xs subtle">@T["approval.more", Model.Inbox.MoreVersions]</p>
+                </div>
+            }
+        </section>
+    }
+
+    @if (Model.Inbox.Sessions.Count > 0)
+    {
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">@T["approval.sessions"]</div>
+                    <div class="card-subtitle">@T["approval.sessions.subtitle"]</div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="table table-hover">
+                    <caption class="sr-only">@T["approval.sessions"]</caption>
+                    <thead>
+                    <tr>
+                        <th>@T["common.name"]</th>
+                        <th>@T["approval.waiting"]</th>
+                        <th>@T["approval.recordedBy"]</th>
+                        <th>@T["run.column.started"]</th>
+                        <th><span class="sr-only">@T["common.actions"]</span></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var session in Model.Inbox.Sessions)
+                    {
+                        <tr>
+                            <td dir="auto">@session.BaselineName</td>
+                            <td>
+                                <span class="tabular" dir="ltr">@session.Waiting</span>
+                                @if (session.Differing > 0)
+                                {
+                                    @* The ones worth opening first: something moved. *@
+                                    <span class="badge badge-warn tabular" dir="ltr"
+                                          title="@T["approval.differing", session.Differing]">
+                                        @session.Differing
+                                    </span>
+                                }
+                            </td>
+                            <td>
+                                <span dir="auto">@session.StartedBy</span>
+                                @if (session.ByYou)
+                                {
+                                    <span class="badge badge-accent">@T["team.you"]</span>
+                                }
+                            </td>
+                            <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(session.StartedAt))" /></td>
+                            <td>
+                                <a class="btn btn-secondary btn-sm"
+                                   href="/projects/@Model.ProjectId/captures/@session.SessionId">
+                                    @T["approval.review"]
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            @if (Model.Inbox.MoreSessions > 0)
+            {
+                <div class="card-body">
+                    <p class="text-xs subtle">@T["approval.more", Model.Inbox.MoreSessions]</p>
+                </div>
+            }
+        </section>
+    }
+}

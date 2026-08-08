@@ -1,5 +1,8 @@
 @{
-    var path = Context.Request.Path.Value ?? "/";
+    // Path and query together. Without the query, switching language on a page whose address
+    // carries something — a reset token, an audit filter, a page number — quietly drops it and
+    // lands the reader somewhere they did not ask to be.
+    var path = $"{Context.Request.Path.Value ?? "/"}{Context.Request.QueryString.Value}";
     var projectId = Context.Items["ProjectId"] as Guid?;
     var sections = Navigation.For(Me, projectId);
     var workspaceName = Context.Items["WorkspaceName"] as string ?? "";

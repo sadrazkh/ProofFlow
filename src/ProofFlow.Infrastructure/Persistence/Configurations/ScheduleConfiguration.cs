@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using ProofFlow.Domain.Scheduling;
+using ProofFlow.Domain.Workspaces;
 
 namespace ProofFlow.Infrastructure.Persistence.Configurations;
 
@@ -75,5 +76,20 @@ public sealed class ApiKeyConfiguration : IEntityTypeConfiguration<ApiKey>
         // presents a key and nothing else, so there is no workspace to narrow by yet.
         builder.HasIndex(key => key.Hash).IsUnique();
         builder.HasIndex(key => new { key.WorkspaceId, key.RevokedAt });
+    }
+}
+
+public sealed class WorkspaceInvitationConfiguration : IEntityTypeConfiguration<WorkspaceInvitation>
+{
+    public void Configure(EntityTypeBuilder<WorkspaceInvitation> builder)
+    {
+        builder.ToTable("WorkspaceInvitations");
+        builder.Property(invitation => invitation.Email).HasMaxLength(320).IsRequired();
+        builder.Property(invitation => invitation.Hash).HasMaxLength(64).IsRequired();
+
+        // The lookup a link makes, and it has to be by hash alone: somebody following an invitation
+        // has presented a token and nothing else, so there is no workspace to narrow by yet.
+        builder.HasIndex(invitation => invitation.Hash).IsUnique();
+        builder.HasIndex(invitation => new { invitation.WorkspaceId, invitation.Email });
     }
 }

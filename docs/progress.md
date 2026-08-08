@@ -606,3 +606,82 @@ matrix header had. Marked by an icon now, which survives the column being called
 **A route that already existed.** `/projects/{id}/settings` was not the dead nav link it looked
 like — `ProjectsController.Settings` was already there, and a second controller on the same route
 produced an ambiguous-match 500. The keys joined the page that existed.
+
+---
+
+## Phase I — Two people, or nobody · **done**
+
+The rule that makes a review a review, the people it applies to, and the way back in for somebody
+who has forgotten their password.
+
+| | |
+|---|---|
+| Separation | Nobody approves a version they recorded — *while somebody else could*. Enforced in a service, not in a form |
+| Roles | The capability table decides. A designer records and cannot approve; a reviewer approves and cannot record |
+| Team page | Members, roles, invitations, and what each role can actually do — built from the capability table itself |
+| Invitations | 32 random bytes, stored only as a hash, 14 days, one live link per address, withdrawable |
+| Two rules | The last owner cannot be demoted or removed; nobody changes their own role |
+| Approval inbox | Proposed versions and waiting sweeps in one list, per project, saying who recorded each and whether it was you |
+| Audit filters | Who, and what kind — a GET, so a narrowed log is a URL somebody can send |
+| Password reset | SMTP if configured; the same answer either way; single-use token; the link built from configuration, not the Host header |
+| Verified | `e2e/demo-approval.ts` has the designer propose one version and the owner another, then a reviewer approves through the interface |
+| Tests | 492 passing — 359 unit, 92 integration, 41 component; 117 accessibility checks, 300 screenshots |
+
+### Five decisions worth recording
+
+**The separation rule is conditional, and that is the design.** "Somebody else has to look, if there
+is somebody else." A workspace of one person is not a governance failure — it is a workspace of one
+person, and a product that refuses to let them approve anything is one they cannot use. The moment a
+second person who *could* approve exists, the rule binds. It reads roles, not a head count: three
+viewers and a designer is a workspace where nobody else can approve.
+
+**The page says so before the press, not after.** A row you recorded shows "waiting on somebody
+else" instead of an Approve button. Finding out a rule by being refused is a bad way to learn one.
+
+**A colleague's password is never chosen for them.** An invitation carries a token, not an account:
+the link says which workspace, the account says who, and following it while signed out sends you to
+sign in and back again. A link that created accounts would be a link that creates accounts.
+
+**The reset link is built from configuration, not from the request.** `App:PublicUrl`, because the
+Host header is attacker-controlled: type a victim's address into the reset form with a forged Host
+and they receive a genuine email from us pointing at somebody else's server. Everything about that
+message is real except the domain.
+
+**Four demo colleagues share the demo password rather than getting one each.** The demo workspace is
+already behind a switch and a password somebody had to choose; four more secrets make that harder to
+reason about, not safer. Without colleagues none of this phase can be seen at all.
+
+### What the run and the audit caught
+
+**`v@version.Number` rendered literally.** Razor reads `v@v…` as an email address and emits it
+verbatim, so every row in the approval inbox said "orders v@version.Number". Parenthesised now.
+
+**The audit filter answered the wrong question.** The parameter was called `action` — a reserved
+routing token — so it bound to the method name, filtered for events starting with "Index", and
+rendered an empty log with a Clear button on it. Nothing threw. It is called `kind` now, and the
+comment says why.
+
+**Sixteen audit actions had no sentence.** Every `apikey.*`, `matrix.*`, `run.*`, `schedule.*` and
+`team.*` event recorded since Phase G rendered as its own key — "audit.action.team.roleChanged" —
+because a missing label renders as itself and nothing complains. Two tests now scan the source for
+`AuditEntry("…")` in both directions: every recorded action needs a label, and every label needs
+something that records it. The second one found three `member.*` labels the code stopped using eight
+phases ago.
+
+**An unregistered icon renders as an empty box.** `mail-check` was never added to
+`Scripts/lib/icons.ts` — the registry is hand-written because lucide's barrel costs 660 kB — so the
+password-reset confirmation had a blank rounded square where its icon should be, and passed every
+test including axe. There is a test for that now too.
+
+**Switching language dropped the query string.** The reset link, an audit filter, a page number —
+all lost, because the switcher was built from `Request.Path` alone.
+
+**A role change asked in red.** The confirm dialog was danger-toned for everything; making somebody
+a Reviewer is not a deletion. Red on everything teaches people that red means nothing.
+
+### Known, not fixed here
+
+**`e2e/demo-run.ts` times out waiting for the console badge.** The run itself finishes and is
+correct — the runs list shows it Passed, and a console loaded afterwards shows Passed — but a console
+open *during* the run does not reach a verdict inside sixty seconds. That is Phase F's live feed, and
+it belongs to F.3/D-F rather than here.

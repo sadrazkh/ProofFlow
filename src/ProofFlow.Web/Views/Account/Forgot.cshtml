@@ -1,0 +1,29 @@
+@model ForgotPasswordViewModel
+@{
+    Layout = "_AuthLayout";
+    ViewData["Title"] = T["auth.forgotTitle"].Value;
+}
+
+<div class="stack-2">
+    <h1 class="page-title">@T["auth.forgotTitle"]</h1>
+    <p class="page-subtitle">@T["auth.forgotSubtitle"]</p>
+</div>
+
+<form method="post" action="/account/forgot" class="stack" novalidate>
+    @Html.AntiForgeryToken()
+
+    <div class="field">
+        <label class="field-label" for="Email">@T["auth.email"]</label>
+        <input class="input" id="Email" name="Email" type="email" value="@Model.Email"
+               autocomplete="username" required autofocus
+               aria-invalid="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "true" : "false")"
+               aria-describedby="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "Email-error" : null)" />
+        <partial name="Pieces/_FieldError" model="@("Email")" />
+    </div>
+
+    <button type="submit" class="btn btn-primary btn-lg btn-block">@T["auth.forgotAction"]</button>
+
+    <p class="text-xs subtle" style="text-align: center;">
+        <a href="/account/sign-in">@T["auth.backToSignIn"]</a>
+    </p>
+</form>

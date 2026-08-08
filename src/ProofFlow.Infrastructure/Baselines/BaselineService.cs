@@ -316,7 +316,9 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
     /// Approves a version and retires the one it replaced.
     ///
     /// The approver is recorded separately from the author because the separation is the point of
-    /// having a review at all.
+    /// having a review at all — and, from this phase on, that separation is enforced rather than
+    /// merely recorded. <see cref="Separation"/> holds the rule; the caller checks it, because the
+    /// message belongs to whoever can say it in the reader's language.
     /// </summary>
     public async Task ApproveAsync(BaselineVersion version, CancellationToken cancellationToken = default)
     {

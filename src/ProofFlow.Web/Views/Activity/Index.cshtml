@@ -7,6 +7,41 @@
     </div>
 </div>
 
+@*
+    Two filters and no more. An audit log is read to answer one of two questions — "what did this
+    person do" and "who did this kind of thing" — and a form with eight fields is one nobody fills
+    in. A GET, so a narrowed view is a URL somebody can send to a colleague.
+*@
+<form method="get" action="/activity" class="card card-pad audit-filter">
+    <div class="field">
+        <label class="field-label" for="audit-actor">@T["audit.filter.actor"]</label>
+        <input class="input" id="audit-actor" name="actor" value="@Model.Actor" maxlength="200" />
+    </div>
+
+    <div class="field">
+        <label class="field-label" for="audit-action">@T["audit.filter.action"]</label>
+        @* name="kind", not name="action": "action" is a routing token and would bind to the
+           controller method's name rather than to what the reader chose. *@
+        <select class="select" id="audit-action" name="kind">
+            <option value="">@T["audit.filter.any"]</option>
+            @foreach (var kind in Model.Kinds)
+            {
+                <option value="@kind" selected="@(kind == Model.Kind)">
+                    @T[$"audit.action.{kind}"]
+                </option>
+            }
+        </select>
+    </div>
+
+    <div class="row audit-filter-actions">
+        <button type="submit" class="btn btn-secondary">@T["audit.filter.apply"]</button>
+        @if (!string.IsNullOrWhiteSpace(Model.Actor) || !string.IsNullOrWhiteSpace(Model.Kind))
+        {
+            <a class="btn btn-ghost" href="/activity">@T["audit.filter.clear"]</a>
+        }
+    </div>
+</form>
+
 @if (Model.Events.Count == 0)
 {
     <div class="card">
@@ -58,14 +93,20 @@ else
 
     @if (Model.HasMore || Model.Page > 1)
     {
+        @* The filter travels with the page number. Losing it on page two would silently widen the
+           view somebody had narrowed, which is worse than not paging at all. *@
+        var narrowing =
+            (string.IsNullOrWhiteSpace(Model.Actor) ? "" : $"&actor={Uri.EscapeDataString(Model.Actor)}") +
+            (string.IsNullOrWhiteSpace(Model.Kind) ? "" : $"&kind={Uri.EscapeDataString(Model.Kind)}");
+
         <div class="row" style="justify-content: center; gap: var(--space-2); margin-block-start: var(--space-5);">
             @if (Model.Page > 1)
             {
-                <a class="btn btn-secondary btn-sm" href="/activity?page=@(Model.Page - 1)">@T["action.back"]</a>
+                <a class="btn btn-secondary btn-sm" href="/activity?page=@(Model.Page - 1)@narrowing">@T["action.back"]</a>
             }
             @if (Model.HasMore)
             {
-                <a class="btn btn-secondary btn-sm" href="/activity?page=@(Model.Page + 1)">@T["action.next"]</a>
+                <a class="btn btn-secondary btn-sm" href="/activity?page=@(Model.Page + 1)@narrowing">@T["action.next"]</a>
             }
         </div>
     }

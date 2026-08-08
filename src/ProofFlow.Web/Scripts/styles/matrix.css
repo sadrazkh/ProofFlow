@@ -359,3 +359,88 @@
   color: var(--ink);
   overflow-x: auto;
 }
+
+/* ---- team and audit --------------------------------------------------------------------------- */
+
+.team-person {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.team-role-form {
+  gap: var(--space-2);
+}
+
+.team-role-form .select {
+  inline-size: auto;
+  min-inline-size: 10rem;
+}
+
+/*
+  Each role and what it means, as a definition list — because that is what it is. Two columns where
+  there is room, so the names line up and can be compared.
+*/
+.team-roles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.team-roles > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.team-roles dt {
+  font-weight: var(--weight-medium);
+}
+
+.team-roles dd {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+/* The two filters sit on one line where there is room, and stack where there is not. */
+.audit-filter {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-block-end: var(--space-4);
+}
+
+.audit-filter .field {
+  flex: 1 1 14rem;
+  min-inline-size: 0;
+}
+
+.audit-filter-actions {
+  flex: 0 0 auto;
+}
+
+/* ---- the approval inbox ------------------------------------------------------------------------ */
+
+.approval-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/*
+  A row somebody cannot act on, because they recorded it.
+
+  Shown rather than hidden, and dimmed rather than removed: knowing that something is waiting on
+  a colleague is the reason to go and ask them.
+*/
+.approval-yours {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}

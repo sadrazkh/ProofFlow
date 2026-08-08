@@ -40,6 +40,7 @@ public static class Navigation
             sections.Add(new NavSection("nav.section_verify", [
                 new NavItem("nav.baselines", "target", $"{basePath}/baselines", Capability.ViewProject),
                 new NavItem("nav.captures", "inbox", $"{basePath}/captures", Capability.ViewProject),
+                new NavItem("approval.title", "check-check", $"{basePath}/approvals", Capability.ViewProject),
                 new NavItem("nav.runs", "history", $"{basePath}/runs", Capability.ViewRun),
                 new NavItem("nav.matrix", "layout-grid", $"{basePath}/matrix", Capability.ViewRun),
             ]));
@@ -51,6 +52,7 @@ public static class Navigation
         }
 
         sections.Add(new NavSection(null, [
+            new NavItem("nav.team", "users", "/team", Capability.ViewProject),
             new NavItem("nav.audit", "shield", "/activity", Capability.ViewAudit),
         ]));
 

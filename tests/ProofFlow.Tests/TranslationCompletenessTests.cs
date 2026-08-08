@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using ProofFlow.Domain.Baselines;
+using ProofFlow.Domain.Capture;
 using ProofFlow.TestEngine.Comparison;
 using ProofFlow.TestEngine.Nodes;
 
@@ -124,6 +125,173 @@ public class TranslationCompletenessTests
 
         missing.Should().BeEmpty(
             "these keys are used in markup but are not in en.json: {0}", string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// Every action the code records has a sentence to render it with.
+    ///
+    /// The audit log looks its labels up by the dotted key the call site wrote, and an unknown key
+    /// renders as itself — so a whole phase's worth of events can arrive in the log reading
+    /// "audit.action.team.roleChanged" while every test stays green. That is exactly what happened:
+    /// the schedule, matrix, run, API-key and team events were all recorded for several phases
+    /// before anybody noticed none of them had a label.
+    ///
+    /// Scanned from the source rather than kept as a list, because a list is a second place to
+    /// forget.
+    /// </summary>
+    [Fact]
+    public void Every_recorded_action_has_a_label()
+    {
+        var english = Flatten("en.json");
+        var (recorded, _) = RecordedActions();
+
+        recorded.Should().NotBeEmpty("the scan should find recorded actions at all");
+
+        var missing = recorded.Where(action => !english.ContainsKey($"audit.action.{action}")).ToArray();
+
+        missing.Should().BeEmpty(
+            "these actions are recorded but the log has no sentence for them: {0}",
+            string.Join(", ", missing));
+    }
+
+    /// <summary>
+    /// And nothing the other way round.
+    ///
+    /// A label for an action nothing records is a label nobody will ever see and nobody will think
+    /// to keep true — three <c>member.*</c> entries sat in both catalogues for eight phases while
+    /// the code wrote <c>team.*</c>.
+    /// </summary>
+    [Fact]
+    public void Every_label_belongs_to_an_action_something_records()
+    {
+        var english = Flatten("en.json");
+        var (recorded, families) = RecordedActions();
+
+        var orphans = english.Keys
+            .Where(key => key.StartsWith("audit.action.", StringComparison.Ordinal))
+            .Select(key => key["audit.action.".Length..])
+            .Where(action => !recorded.Contains(action)
+                             && !families.Any(prefix => action.StartsWith(prefix, StringComparison.Ordinal)))
+            .OrderBy(action => action)
+            .ToArray();
+
+        orphans.Should().BeEmpty("nothing records these: {0}", string.Join(", ", orphans));
+    }
+
+    /// <summary>
+    /// The one family built at run time, checked against the enum it is built from.
+    ///
+    /// <c>capture.{status}</c> is composed from the decision a reviewer made, so the scan above can
+    /// only see the prefix. Adding a status to the enum is a one-line change that would otherwise
+    /// leave an audit row reading "audit.action.capture.quarantined".
+    /// </summary>
+    [Fact]
+    public void Every_review_decision_has_a_label()
+    {
+        var english = Flatten("en.json");
+
+        var missing = Enum.GetNames<SampleStatus>()
+            .Select(name => $"audit.action.capture.{name.ToLowerInvariant()}")
+            .Where(key => !english.ContainsKey(key))
+            .ToArray();
+
+        // Not every status is one somebody chooses — Captured is what a sweep produces — so this
+        // reports what is missing rather than demanding all of them.
+        missing.Should().NotContain("audit.action.capture.approved");
+        missing.Should().NotContain("audit.action.capture.rejected");
+        missing.Should().NotContain("audit.action.capture.reviewed");
+    }
+
+    /// <summary>
+    /// Every action key the source records, and the prefixes of the ones it composes.
+    ///
+    /// The first argument of <c>AuditEntry</c> is read rather than the whole call, so a ternary
+    /// between two literals — which is how a create-or-update pair is written — yields both.
+    /// </summary>
+    private static (SortedSet<string> Literal, IReadOnlyList<string> Families) RecordedActions()
+    {
+        var source = Path.GetDirectoryName(Path.GetDirectoryName(ResourcesDirectory))!;
+
+        var literal = new SortedSet<string>(StringComparer.Ordinal);
+        var families = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in Directory.EnumerateFiles(source, "*.cs", SearchOption.AllDirectories)
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")))
+        {
+            var text = File.ReadAllText(file);
+
+            foreach (Match call in Regex.Matches(text, @"AuditEntry\(([^,)]*)"))
+            {
+                foreach (Match name in Regex.Matches(call.Groups[1].Value, @"""([a-z][a-zA-Z0-9]*\.[a-zA-Z0-9.]+)"""))
+                {
+                    literal.Add(name.Groups[1].Value);
+                }
+            }
+
+            foreach (Match composed in Regex.Matches(text, @"AuditEntry\(\s*\$""([a-z][a-zA-Z0-9]*\.)\{"))
+            {
+                families.Add(composed.Groups[1].Value);
+            }
+        }
+
+        return (literal, [.. families]);
+    }
+
+    /// <summary>
+    /// Every icon the markup names is one the bundle actually carries.
+    ///
+    /// The registry is hand-written on purpose — importing lucide's barrel takes the bundle from
+    /// about 140 kB to over 800 kB — and the cost of that decision is exactly this failure: an
+    /// unregistered name renders as an empty box. No error, no warning, no missing element. The
+    /// mail-check on the password-reset confirmation reached a screenshot that way.
+    /// </summary>
+    [Fact]
+    public void Every_icon_the_markup_names_is_in_the_bundle()
+    {
+        var web = Path.GetDirectoryName(ResourcesDirectory)!;
+        var registry = File.ReadAllText(Path.Combine(web, "Scripts", "lib", "icons.ts"));
+
+        var listed = registry[(registry.IndexOf("const used = {", StringComparison.Ordinal))..];
+        listed = listed[..listed.IndexOf("};", StringComparison.Ordinal)];
+
+        var registered = new HashSet<string>(
+            Regex.Matches(listed, "[A-Z][A-Za-z0-9]*").Select(match => match.Value),
+            StringComparer.Ordinal);
+
+        var named = new SortedSet<string>(StringComparer.Ordinal);
+
+        foreach (var file in Directory.EnumerateFiles(web, "*.*", SearchOption.AllDirectories)
+                     .Where(path => path.EndsWith(".cshtml") || path.EndsWith(".vue"))
+                     .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                                    && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}")))
+        {
+            var text = File.ReadAllText(file);
+
+            foreach (Match match in Regex.Matches(text, @"data-lucide=""([a-z0-9-]+)"""))
+            {
+                named.Add(match.Groups[1].Value);
+            }
+
+            // The Vue components ask for the same glyphs through a wrapper. Only the literal ones
+            // are visible to a scan; the ones bound to a variable are covered by the pages that
+            // render them.
+            foreach (Match match in Regex.Matches(text, @"<Icon\s+name=""([a-z0-9-]+)"""))
+            {
+                named.Add(match.Groups[1].Value);
+            }
+        }
+
+        named.Should().NotBeEmpty("the scan should find icon names at all");
+
+        var missing = named
+            .Where(name => !registered.Contains(
+                string.Concat(name.Split('-').Select(part => char.ToUpperInvariant(part[0]) + part[1..]))))
+            .ToArray();
+
+        missing.Should().BeEmpty(
+            "these icons are named in markup but not imported in Scripts/lib/icons.ts, so they render "
+            + "as empty boxes: {0}", string.Join(", ", missing));
     }
 
     /// <summary>

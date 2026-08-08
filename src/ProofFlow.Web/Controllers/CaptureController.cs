@@ -29,6 +29,7 @@ namespace ProofFlow.Web.Controllers;
 public sealed class CaptureController(
     ProofFlowDbContext db,
     CaptureService capture,
+    Separation separation,
     ICurrentUser me,
     IAuditLog audit,
     IStringLocalizer localizer) : Controller
@@ -237,9 +238,18 @@ public sealed class CaptureController(
         Guid projectId, Guid sessionId, [FromBody] ReviewSamplesCommand command,
         CancellationToken cancellationToken)
     {
-        var owns = await db.CaptureSessions
-            .AnyAsync(s => s.Id == sessionId && s.ProjectId == projectId, cancellationToken);
-        if (!owns) return NotFound();
+        var session = await db.CaptureSessions
+            .FirstOrDefaultAsync(s => s.Id == sessionId && s.ProjectId == projectId, cancellationToken);
+        if (session is null) return NotFound();
+
+        // Approving is the decision the separation of duties is about; marking something reviewed
+        // or rejected is not — those two do not bless anything, and blocking them would stop the
+        // person who found the problem from saying so.
+        if (string.Equals(command.Status, nameof(SampleStatus.Approved), StringComparison.OrdinalIgnoreCase)
+            && await separation.RefusalAsync(session.StartedByUserId, cancellationToken) is { } refusal)
+        {
+            return ValidationProblem(localizer[refusal].Value);
+        }
 
         int changed;
         try

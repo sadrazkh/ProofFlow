@@ -50,6 +50,42 @@ public sealed class SignUpViewModel
     public bool IsFirstAccount { get; set; }
 }
 
+public sealed class ForgotPasswordViewModel
+{
+    [Required(ErrorMessage = "error.required")]
+    [EmailAddress(ErrorMessage = "error.invalidEmail")]
+    public string Email { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// What the confirmation page shows.
+///
+/// Deliberately says nothing about whether an account exists. <see cref="Link"/> is filled in only
+/// on a development machine with no mail server, so that the flow can be walked without one.
+/// </summary>
+public sealed class CheckEmailViewModel
+{
+    public string? Link { get; init; }
+
+    /// <summary>True when a mail server is configured, which changes the sentence and nothing else.</summary>
+    public bool WasEmailed { get; init; }
+}
+
+public sealed class ResetPasswordViewModel
+{
+    public Guid UserId { get; set; }
+
+    public string Token { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "error.required")]
+    [DataType(DataType.Password)]
+    public string Password { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "error.required")]
+    [DataType(DataType.Password)]
+    public string ConfirmPassword { get; set; } = string.Empty;
+}
+
 public sealed class ProjectFormViewModel
 {
     public Guid? Id { get; set; }

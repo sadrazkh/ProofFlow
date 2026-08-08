@@ -252,6 +252,7 @@ function openConfirm(form: HTMLFormElement): void {
     body: form.dataset.confirm ?? '',
     confirm: form.dataset.confirmAction ?? t('action.delete'),
     phrase: form.dataset.confirmPhrase,
+    tone: form.dataset.confirmTone === 'primary' ? 'primary' : 'danger',
   }).then((agreed) => {
     if (!agreed) return;
 
@@ -274,6 +275,15 @@ export type Confirmation = {
    * reader expected the page.
    */
   phrase?: string;
+
+  /**
+   * What the button looks like.
+   *
+   * Danger by default, because most things worth confirming destroy something. A change that can
+   * simply be made again — a role, a setting — asks in the ordinary tone: red on everything teaches
+   * people that red means nothing.
+   */
+  tone?: 'danger' | 'primary';
 };
 
 /**
@@ -306,7 +316,7 @@ export function confirmAction(options: Confirmation): Promise<boolean> {
       </div>
       <div class="card-footer">
         <button type="button" class="btn btn-secondary" data-confirm-cancel>${escapeHtml(t('action.cancel'))}</button>
-        <button type="button" class="btn btn-danger" data-confirm-accept ${phrase ? 'disabled' : ''}>
+        <button type="button" class="btn btn-${options.tone === 'primary' ? 'primary' : 'danger'}" data-confirm-accept ${phrase ? 'disabled' : ''}>
           ${escapeHtml(options.confirm)}
         </button>
       </div>

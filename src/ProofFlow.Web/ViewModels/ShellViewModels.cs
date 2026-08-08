@@ -39,6 +39,24 @@ public sealed record AuditListViewModel
     public required IReadOnlyList<AuditRowViewModel> Events { get; init; }
     public int Page { get; init; }
     public bool HasMore { get; init; }
+
+    /// <summary>What the reader narrowed by, echoed back so the form keeps its state.</summary>
+    public string? Actor { get; init; }
+
+    /// <summary>
+    /// Named <c>Kind</c> rather than <c>Action</c> because the query parameter behind it has to be:
+    /// <c>action</c> is a routing token and binds to the method name instead of the query string.
+    /// </summary>
+    public string? Kind { get; init; }
+
+    /// <summary>
+    /// The kinds of thing that have actually happened here.
+    ///
+    /// Read from the log rather than listed from the code: most of what the code can emit has never
+    /// happened in this workspace, and a filter offering forty options that all return nothing is a
+    /// filter nobody opens twice.
+    /// </summary>
+    public IReadOnlyList<string> Kinds { get; init; } = [];
 }
 
 public sealed record AuditRowViewModel

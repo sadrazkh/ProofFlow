@@ -19,6 +19,8 @@ const PASSWORD = process.env.PROOFFLOW_PASSWORD ?? '';
 const ANONYMOUS = [
   { name: 'sign in', path: '/account/sign-in' },
   { name: 'sign up', path: '/account/sign-up' },
+  { name: 'forgot password', path: '/account/forgot' },
+  { name: 'check email', path: '/account/check-email' },
   { name: 'not found', path: '/no-such-page' },
 ];
 
@@ -27,6 +29,7 @@ const AUTHENTICATED = [
   { name: 'projects', path: '/projects' },
   { name: 'new project', path: '/projects/new' },
   { name: 'activity', path: '/activity' },
+  { name: 'team', path: '/team' },
   { name: 'design system', path: '/design' },
 ];
 
@@ -46,6 +49,7 @@ const PROJECT_PAGES = [
   { name: 'runs', path: (id: string) => `/projects/${id}/runs` },
   { name: 'matrix', path: (id: string) => `/projects/${id}/matrix` },
   { name: 'schedules', path: (id: string) => `/projects/${id}/schedules` },
+  { name: 'approvals', path: (id: string) => `/projects/${id}/approvals` },
   { name: 'project settings', path: (id: string) => `/projects/${id}/settings` },
 ];
 

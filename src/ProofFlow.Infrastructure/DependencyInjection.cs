@@ -54,10 +54,18 @@ public static class DependencyInjection
         services.AddScoped<IAuditLog, AuditLog>();
 
         services.AddSingleton<ISecretCipher, AesGcmSecretCipher>();
+
+        // Registered whether or not a relay is configured. The sender knows it has nothing to talk
+        // to and says so; the alternative is every caller asking configuration the same question.
+        services.Configure<Mail.SmtpOptions>(configuration.GetSection(Mail.SmtpOptions.Section));
+        services.AddSingleton<IEmailSender, Mail.SmtpEmailSender>();
+
         services.AddProofFlowHttpClients();
         services.AddScoped<IHttpExecutor, GuardedHttpExecutor>();
         services.AddScoped<EnvironmentContextBuilder>();
         services.AddScoped<Baselines.BaselineService>();
+        services.AddScoped<Baselines.Separation>();
+        services.AddScoped<Baselines.ApprovalInbox>();
         services.AddScoped<Capture.CaptureService>();
         services.AddScoped<Data.DataSetService>();
         services.AddScoped<Scenarios.ScenarioGraphService>();
@@ -66,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<Runs.EnvironmentComparison>();
         services.AddScoped<Scheduling.ScheduleService>();
         services.AddScoped<Scheduling.ApiKeyService>();
+        services.AddScoped<Workspaces.TeamService>();
         services.AddScoped<Runs.JUnitReport>();
         services.AddScoped<Runs.FlakyDetector>();
         services.AddHostedService<Scheduling.ScheduleWorker>();

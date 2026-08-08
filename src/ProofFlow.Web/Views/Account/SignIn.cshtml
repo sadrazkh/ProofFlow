@@ -32,7 +32,12 @@
     </div>
 
     <div class="field">
-        <label class="field-label" for="Password">@T["auth.password"]</label>
+        <div class="field-label-row">
+            <label class="field-label" for="Password">@T["auth.password"]</label>
+            @* Next to the field it is about, which is where somebody looks the moment they realise
+               they cannot remember it. *@
+            <a class="text-xs" href="/account/forgot">@T["auth.forgot"]</a>
+        </div>
         <input class="input" id="Password" name="Password" type="password"
                autocomplete="current-password" required
                aria-invalid="@(ViewData.ModelState["Password"]?.Errors.Count > 0 ? "true" : "false")" />

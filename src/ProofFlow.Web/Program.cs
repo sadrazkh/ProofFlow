@@ -167,6 +167,14 @@ builder.Services.AddSingleton<ViteManifest>();
 // Scoped: it reads the request's culture and time-zone cookie, and caches the resolved zone for
 // the life of the request so a page with fifty timestamps looks it up once.
 builder.Services.AddScoped<Dates>();
+builder.Services.AddScoped<SessionCookie>();
+
+// Where this installation lives, and the two messages it sends. Scoped for the mail because it
+// composes in the request's language; singleton for the address because it is configuration.
+builder.Services.Configure<PublicAddress>(builder.Configuration.GetSection(PublicAddress.Section));
+builder.Services.AddSingleton<PublicLinks>();
+builder.Services.AddScoped<AccountMail>();
+
 builder.Services.AddScoped<WorkspaceContextFilter>();
 builder.Services.AddScoped<ProofFlow.Web.Infrastructure.Seeding.DemoDataSeeder>();
 builder.Services.AddMemoryCache();

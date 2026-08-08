@@ -31,6 +31,8 @@ namespace ProofFlow.Web.Controllers;
 public sealed class BaselinesController(
     ProofFlowDbContext db,
     BaselineService baselines,
+    Separation separation,
+    ApprovalInbox inbox,
     EnvironmentContextBuilder environments,
     IHttpExecutor executor,
     ICurrentUser me,
@@ -408,6 +410,39 @@ public sealed class BaselinesController(
         return Json(new { versionId = version.Id, number = version.Number });
     }
 
+    /// <summary>
+    /// Everything in this project waiting on a decision, in one list.
+    ///
+    /// One list because that is the point: a proposed version lives on a baseline page and a
+    /// captured sample lives in a review queue, and a reviewer who has to visit both to find out
+    /// whether they have anything to do is a reviewer who checks neither.
+    /// </summary>
+    [HttpGet("/projects/{projectId:guid}/approvals")]
+    [Authorize(Policy = Policies.ViewProject)]
+    public async Task<IActionResult> Approvals(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects
+            .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
+
+        if (project is null) return NotFound();
+
+        ViewData["Title"] = localizer["approval.title"].Value;
+        ViewData["Breadcrumbs"] = new List<(string, string?)>
+        {
+            (localizer["project.title"].Value, "/projects"),
+            (project.Name, $"/projects/{projectId}"),
+            (localizer["approval.title"].Value, null),
+        };
+
+        return View("Approvals", new ApprovalViewModel
+        {
+            ProjectId = projectId,
+            ProjectName = project.Name,
+            Inbox = await inbox.ReadAsync(projectId, cancellationToken),
+            CanApprove = me.Can(Capability.ApproveBaseline),
+        });
+    }
+
     [HttpPost("{baselineId:guid}/versions/{versionId:guid}/approve")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.ApproveBaseline)]
@@ -417,6 +452,14 @@ public sealed class BaselinesController(
         var version = await db.BaselineVersions
             .FirstOrDefaultAsync(v => v.Id == versionId && v.BaselineId == baselineId, cancellationToken);
         if (version is null) return NotFound();
+
+        // Nobody approves their own recording while somebody else could. The check is here rather
+        // than in the service because the refusal has to be said in the reader's language.
+        if (await separation.RefusalAsync(version.CreatedByUserId, cancellationToken) is { } refusal)
+        {
+            TempData.Error(localizer[refusal]);
+            return Redirect($"/projects/{projectId}/baselines/{baselineId}");
+        }
 
         await baselines.ApproveAsync(version, cancellationToken);
 
