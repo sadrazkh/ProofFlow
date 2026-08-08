@@ -1,0 +1,126 @@
+@model ImportPreviewViewModel
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["portability.preview.title"]</h1>
+            <p class="page-subtitle">@T["portability.preview.subtitle"]</p>
+        </div>
+    </div>
+
+    <partial name="Pieces/_ImportSteps" model="2" />
+
+    <div class="stack-6">
+        @if (Model.Preview.Refusal is { Length: > 0 } refusal)
+        {
+            <div class="card card-pad form-summary-error" role="alert">
+                <i data-lucide="circle-alert" aria-hidden="true"></i>
+                <span>@T[refusal]</span>
+            </div>
+        }
+        else
+        {
+            <section class="card">
+                <div class="card-header">
+                    <div>
+                        <div class="card-title">
+                            @(Model.Preview.CreatesProject
+                                ? T["portability.preview.newProject", Model.Preview.ProjectName]
+                                : T["portability.preview.intoProject", Model.ProjectName])
+                        </div>
+                        <div class="card-subtitle">@T["portability.preview.counts"]</div>
+                    </div>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="table">
+                        <caption class="sr-only">@T["portability.preview.counts"]</caption>
+                        <thead>
+                        <tr>
+                            <th>@T["common.name"]</th>
+                            <th>@T["portability.adding"]</th>
+                            <th>@T["portability.existing"]</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var count in Model.Preview.Counts)
+                        {
+                            <tr>
+                                <td>@T[$"portability.kind.{count.Kind}"]</td>
+                                <td class="tabular semibold" dir="ltr">@count.Adding</td>
+                                <td class="tabular subtle" dir="ltr">
+                                    @(count.Existing == 0 ? "—" : count.Existing.ToString())
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (Model.Preview.Skipped.Count > 0)
+                {
+                    @* An import adds and never overwrites. Naming what it will leave alone is the
+                       difference between a rule and a surprise. *@
+                    <div class="card-body stack-2">
+                        <p class="text-xs semibold">@T["portability.preview.skipped"]</p>
+                        <p class="text-xs subtle" dir="auto">
+                            @string.Join("، ", Model.Preview.Skipped.Take(12))
+                            @if (Model.Preview.Skipped.Count > 12)
+                            {
+                                @T["portability.preview.andMore", Model.Preview.Skipped.Count - 12]
+                            }
+                        </p>
+                    </div>
+                }
+            </section>
+
+            @if (Model.Preview.SecretsToSupply.Count > 0)
+            {
+                <section class="card card-pad stack-2 export-warning" role="note">
+                    <div class="row" style="gap: var(--space-2); align-items: flex-start;">
+                        <i data-lucide="key-round" aria-hidden="true"></i>
+                        <div class="stack-2">
+                            <p class="semibold">@T["portability.preview.secrets"]</p>
+                            <p class="text-xs muted">@T["portability.preview.secrets.body"]</p>
+                            <ul class="export-secrets">
+                                @foreach (var secret in Model.Preview.SecretsToSupply)
+                                {
+                                    <li><code dir="ltr">@secret</code></li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            }
+
+            @if (Model.Notes.Count > 0)
+            {
+                @* Every importer drops something. One that says nothing about it produces a suite
+                   that quietly does less than the file it came from. *@
+                <section class="card card-pad stack-2">
+                    <h2 class="card-title">@T["portability.preview.notes"]</h2>
+                    <ul class="import-notes">
+                        @foreach (var note in Model.Notes)
+                        {
+                            <li>@T[note]</li>
+                        }
+                    </ul>
+                </section>
+            }
+
+            <form method="post" action="/projects/@Model.ProjectId/import/apply" class="row">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ticket" value="@Model.Ticket" />
+                <input type="hidden" name="asNewProject" value="@Model.AsNewProject.ToString().ToLowerInvariant()" />
+
+                <button type="submit" class="btn btn-primary" disabled="@(Model.Preview.Total == 0)">
+                    <i data-lucide="check" aria-hidden="true"></i>@T["portability.preview.confirm", Model.Preview.Total]
+                </button>
+
+                <a class="btn btn-ghost" href="/projects/@Model.ProjectId/import?source=@Model.Source">
+                    @T["action.back"]
+                </a>
+            </form>
+        }
+    </div>
+</div>

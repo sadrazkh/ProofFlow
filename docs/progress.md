@@ -689,3 +689,80 @@ two things it is not listening — and a run against a local service finishes in
 which is inside the handshake. The terminal message went to a group the connection had not joined
 yet, nothing polled, and the page sat on "Running" for ever while the database said otherwise.
 Nothing threw. It now reads once more after joining, which closes exactly that window.
+
+---
+
+## Phase J — A project in a file, and four ways in · **done**
+
+Taking a suite out of the building, bringing other people's in, and twelve places to start from.
+
+| | |
+|---|---|
+| Format | Versioned, indented, camel-cased JSON. No GUIDs — everything refers to everything by slug, node ids renumbered n1…nN in draw order |
+| Determinism | Two exports of an unchanged project are the same file; a moved node is a one-line diff |
+| Secrets | Never. Not the value, not the ciphertext, not the nonce. Only the names, so the far side knows what to create |
+| History | Not carried. No runs, no audit, no rejected proposals — those are the record of one installation |
+| Import | Three pages: the file, what it would do, done. It adds and never overwrites; an imported schedule arrives switched off |
+| cURL | A real shell parser — quoting, escapes, continuations — because a URL with `&` in it lives inside quotes |
+| OpenAPI | 3.x, JSON or YAML, one scenario per operation, checked at the status the document itself calls success |
+| Postman | v2.1, folders and all. Scripts are reported, not run |
+| Credentials | All three do the same thing: the header stays pointing at `{{secrets.name}}`, the value is dropped on the floor |
+| Templates | Twelve real graphs, each validated by the same validator the canvas uses; the card's drawing is generated from the graph |
+| Verified | `e2e/demo-portability.ts` downloads this project, imports it back as a new one, imports a cURL command and an OpenAPI document, and starts two scenarios from templates |
+| Tests | 612 passing — 465 unit, 106 integration, 41 component; 129 accessibility checks, 336 screenshots |
+
+### Five decisions worth recording
+
+**No identifier in the file.** A GUID is a fact about one installation's database. Putting one in a
+file means two exports of the same project never match, a diff is unreadable, and importing into a
+second instance either collides or silently makes orphans. Slugs everywhere, node ids renumbered.
+
+**An import adds and never overwrites.** Anything whose slug is taken is left alone and counted, and
+the preview says so before anybody presses anything. Merging would mean a file somebody was handed
+can silently change a baseline that a schedule runs against production tonight, and there is no undo
+for that. Somebody who wants the incoming version can delete theirs and import again.
+
+**The name of a credential travels; the value does not.** Somebody pastes a working cURL command out
+of their terminal and the bearer token is real. Writing it into a scenario would put it in the
+database as plain text, in every export, in the diff viewer, and in the first screenshot anybody
+takes of the page. So the header is kept pointing at `{{secrets.authorization}}`, the reader is told
+which secret to make, and what they pasted is never stored.
+
+**A template is checked by the validator, not by eye.** All twelve are asserted runnable in a test,
+and the only thing one is allowed to be missing is the data set or baseline the card tells you to
+choose. A template that will not run teaches somebody the product is broken before they have built
+anything of their own.
+
+**The card's drawing is made from the graph.** A stored picture has no way of being wrong — it
+drifts the first time anybody edits a template and nothing notices. This one is built from the same
+nodes the scenario is built from, so if the shape on the card is wrong, the scenario is wrong.
+
+### What the run and the audit caught
+
+**Every export was a different file.** Nothing orders the connections table, so the edges came back
+in whatever order the database felt like — two projects with identical graphs could produce files
+differing in nothing but line order, which is exactly the diff that makes people stop reading diffs.
+Canonicalised in the same step that renumbers the nodes.
+
+**`authToken` became `authtoken`.** The camel-caser lower-cased the whole first word, so a name
+somebody had already written in that shape came out different — and the reference in the scenario
+then did not match the secret they were told to create.
+
+**`-d ''` turned a POST into a GET.** curl sends an empty body; the parser could not tell "no `-d` at
+all" from "`-d` with nothing in it".
+
+**"This is not JSON" and "this is not one of these" were the same message.** Parsed before
+deserialised now, because the two send somebody to different places.
+
+**Every driver quietly switched projects.** The project list is ordered by when it last changed, so
+importing three files put three new projects above the demo one, and every script that took the
+first card moved to a project with no runs and nothing to photograph. Nothing failed — the pages all
+render — and the evidence would have looked complete. They name the project now, and match it
+exactly: `Catalog API (2)` contains `Catalog API` and sorts above it.
+
+**Contrast on the chosen import source.** Tinting the whole card put the help text on
+`--accent-soft`, where `--ink-subtle` stops meeting contrast in dark mode. It is a ring now — a
+tinted panel with body text on it is where contrast bugs live.
+
+**The sketch had no edges.** They were stroked with `var(--border)`, which is not a token this
+project has, so every line was invisible and nothing complained.

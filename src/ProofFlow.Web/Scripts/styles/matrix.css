@@ -444,3 +444,172 @@
   font-size: var(--text-xs);
   color: var(--ink-subtle);
 }
+
+/* ================================================================================================ */
+/* Templates, import and export                                                                     */
+/* ================================================================================================ */
+
+/*
+  A gallery of cards, each showing the shape of the graph it produces.
+
+  auto-fill rather than a fixed column count, so twelve cards read as a grid on a desktop, two
+  columns on a tablet and one on a phone without a media query per size.
+*/
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-4);
+}
+
+.template-card { display: flex; flex-direction: column; }
+.template-card .card-footer { margin-block-start: auto; }
+
+/* The drawing sits on the canvas colour, so it reads as a small canvas rather than as an image. */
+.template-sketch {
+  background: var(--canvas-bg);
+  border-block-end: 1px solid var(--line);
+  border-start-start-radius: var(--radius-lg);
+  border-start-end-radius: var(--radius-lg);
+  padding: var(--space-3);
+}
+.template-sketch .sketch { display: block; inline-size: 100%; block-size: auto; }
+
+.template-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  flex: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+
+.template-name { font-size: var(--text-sm); font-weight: var(--weight-semibold); margin: 0; }
+
+.template-summary {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: var(--leading-relaxed);
+  margin: 0;
+}
+
+.template-facts { gap: var(--space-2); flex-wrap: wrap; }
+
+.template-needs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--warn-ink);
+  margin: 0;
+}
+.template-needs svg { inline-size: 13px; block-size: 13px; flex: none; }
+
+/*
+  Three steps, drawn as a rail rather than a progress bar: an import has a fixed number of steps and
+  a reader who can see all three knows there is a check before anything happens.
+*/
+.import-steps {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  list-style: none;
+  margin: 0 0 var(--space-6);
+  padding: 0;
+  flex-wrap: wrap;
+}
+
+.import-step { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); }
+
+.import-step-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--line);
+  color: var(--ink-subtle);
+}
+.import-step-mark svg { inline-size: 13px; block-size: 13px; }
+
+.import-step.is-here .import-step-mark { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.import-step.is-done .import-step-mark { background: var(--pass-soft); border-color: var(--pass-border); color: var(--pass-ink); }
+
+.import-step-name { color: var(--ink-subtle); }
+.import-step.is-here .import-step-name { color: var(--ink); font-weight: var(--weight-medium); }
+
+/* One card per source, chosen with a radio that fills the whole card. */
+.import-sources { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
+
+.import-source {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+/*
+  Chosen is a ring, not a wash.
+
+  Tinting the whole card put the help text on --accent-soft, where --ink-subtle stops meeting
+  contrast — axe caught it in dark mode. A tinted panel with body text on it is where contrast bugs
+  live; the border and the ring say the same thing and leave the text on the surface it was designed
+  for.
+*/
+.import-source:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.import-source:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.import-source-body { display: flex; flex-direction: column; gap: 2px; }
+
+/* The sentence about secrets, and the one about what was left behind. */
+.export-warning { border-inline-start: 3px solid var(--warn-border); }
+.export-warning > .row > svg { inline-size: 16px; block-size: 16px; flex: none; color: var(--warn-ink); }
+
+.export-secrets, .import-notes {
+  margin: 0;
+  padding-inline-start: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  line-height: var(--leading-relaxed);
+}
+
+.export-filename {
+  display: inline-block;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+}
+
+/*
+  The file picker.
+
+  A bare input[type=file] draws the operating system's own button, which is light grey on every
+  platform and sits badly on a dark panel. ::file-selector-button is the one hook browsers give for
+  it, so it gets the same treatment as a secondary button and stops being the one control on the
+  page that ignores the theme.
+*/
+.input[type='file'] { padding: var(--space-2); cursor: pointer; }
+
+.input[type='file']::file-selector-button {
+  margin-inline-end: var(--space-3);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.input[type='file']::file-selector-button:hover { background: var(--surface-sunken); }

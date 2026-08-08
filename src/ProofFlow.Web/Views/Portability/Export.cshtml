@@ -1,0 +1,81 @@
+@model ExportViewModel
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["portability.export"]</h1>
+            <p class="page-subtitle">@T["portability.export.subtitle"]</p>
+        </div>
+    </div>
+
+    <div class="stack-6">
+        @*
+            The sentence about secrets, in the place somebody reads before they press anything, and
+            stated as a fact rather than a reassurance. It is followed by the names, because "no
+            secrets are exported" is abstract and "apiToken and stripeKey will be missing" is not.
+        *@
+        <section class="card card-pad stack-2 export-warning" role="note">
+            <div class="row" style="gap: var(--space-2); align-items: flex-start;">
+                <i data-lucide="lock" aria-hidden="true"></i>
+                <div class="stack-2">
+                    <p class="semibold">@T["portability.export.secrets"]</p>
+                    <p class="text-xs muted">@T["portability.export.secrets.body"]</p>
+
+                    @if (Model.Secrets.Count > 0)
+                    {
+                        <ul class="export-secrets">
+                            @foreach (var secret in Model.Secrets)
+                            {
+                                <li><code dir="ltr">@secret</code></li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">@T["portability.export.contents"]</div>
+                    <div class="card-subtitle">@T["portability.export.contents.subtitle"]</div>
+                </div>
+            </div>
+
+            <div class="table-wrap">
+                <table class="table">
+                    <caption class="sr-only">@T["portability.export.contents"]</caption>
+                    <thead>
+                    <tr>
+                        <th>@T["common.name"]</th>
+                        <th><span class="sr-only">@T["portability.count"]</span></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var count in Model.Counts)
+                    {
+                        <tr>
+                            <td>@T[$"portability.kind.{count.Kind}"]</td>
+                            <td class="tabular" dir="ltr">@count.Adding</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card card-pad stack">
+            <div class="stack-2">
+                <h2 class="card-title">@T["portability.export.file"]</h2>
+                <p class="text-xs muted">@T["portability.export.file.body"]</p>
+                <code class="export-filename" dir="ltr">@Model.FileName</code>
+            </div>
+
+            <div>
+                <a class="btn btn-primary" href="/projects/@Model.ProjectId/export/download" download>
+                    <i data-lucide="download" aria-hidden="true"></i>@T["portability.export.download"]
+                </a>
+            </div>
+        </section>
+    </div>
+</div>

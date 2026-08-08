@@ -1,0 +1,78 @@
+@model ImportStartViewModel
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["portability.import"]</h1>
+            <p class="page-subtitle">@T["portability.import.subtitle"]</p>
+        </div>
+    </div>
+
+    @* Three steps, and the reader can see there are three. An import is not undoable, so the shape
+       of the journey matters as much as the pages in it. *@
+    <partial name="Pieces/_ImportSteps" model="1" />
+
+    <form method="post" action="/projects/@Model.ProjectId/import/preview"
+          enctype="multipart/form-data" class="stack-6">
+        @Html.AntiForgeryToken()
+
+        <section class="card card-pad stack">
+            <h2 class="card-title">@T["portability.import.source"]</h2>
+
+            <div class="import-sources">
+                @foreach (var source in ImportStartViewModel.Sources)
+                {
+                    <label class="import-source">
+                        <input type="radio" name="source" value="@source"
+                               checked="@(source == Model.Source)" />
+                        <span class="import-source-body">
+                            <span class="semibold">@T[$"portability.source.{source}"]</span>
+                            <span class="text-xs subtle">@T[$"portability.source.{source}.help"]</span>
+                        </span>
+                    </label>
+                }
+            </div>
+        </section>
+
+        <section class="card card-pad stack">
+            <h2 class="card-title">@T["portability.import.file"]</h2>
+
+            <div class="field">
+                <label class="field-label" for="import-file">@T["portability.import.upload"]</label>
+                <input class="input" id="import-file" name="file" type="file"
+                       accept=".json,.yaml,.yml,.txt,application/json,text/yaml,text/plain" />
+                <p class="field-hint">@T["portability.import.upload.help"]</p>
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="import-pasted">
+                    @T["portability.import.paste"]
+                    <span class="field-optional">@T["common.optional"]</span>
+                </label>
+                <textarea class="input input-mono" id="import-pasted" name="pasted" rows="6"
+                          dir="ltr" spellcheck="false"
+                          placeholder="curl https://api.example.com/products"></textarea>
+                <p class="field-hint">@T["portability.import.paste.help"]</p>
+            </div>
+        </section>
+
+        <section class="card card-pad stack">
+            <h2 class="card-title">@T["portability.import.target"]</h2>
+
+            <label class="check-row">
+                <input class="checkbox" type="checkbox" name="asNewProject" value="true" />
+                <span class="check-row-text">
+                    <span class="check-row-title">@T["portability.import.asNew"]</span>
+                    <span class="check-row-help">@T["portability.import.asNew.help", Model.ProjectName]</span>
+                </span>
+            </label>
+        </section>
+
+        <div class="row">
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="arrow-right" aria-hidden="true"></i>@T["portability.import.look"]
+            </button>
+            <a class="btn btn-ghost" href="/projects/@Model.ProjectId">@T["action.cancel"]</a>
+        </div>
+    </form>
+</div>

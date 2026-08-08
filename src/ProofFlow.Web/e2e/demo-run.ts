@@ -1,6 +1,7 @@
 import { chromium, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { projectId as pickProject } from './tools/project';
 
 /**
  * Runs a scenario through the interface, for real.
@@ -33,9 +34,7 @@ async function signIn(page: Page): Promise<void> {
 }
 
 async function firstProjectId(page: Page): Promise<string> {
-  await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle' });
-  const href = await page.locator('a.project-card').first().getAttribute('href');
-  const id = href?.split('/').pop();
+  const id = await pickProject(page, BASE);
 
   if (!id) throw new Error('No project found. Is Demo:Seed on?');
   return id;

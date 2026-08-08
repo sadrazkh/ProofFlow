@@ -31,6 +31,7 @@ public static class Navigation
             sections.Add(new NavSection("nav.section_build", [
                 new NavItem("nav.suites", "square-stack", $"{basePath}/suites", Capability.ViewProject),
                 new NavItem("nav.scenarios", "workflow", $"{basePath}/scenarios", Capability.ViewProject),
+                new NavItem("template.title", "square-stack", $"{basePath}/templates", Capability.ViewProject),
                 new NavItem("nav.datasets", "table-2", $"{basePath}/datasets", Capability.ViewProject),
                 new NavItem("nav.wizard", "wand-sparkles", $"{basePath}/wizard", Capability.ViewProject),
                 new NavItem("nav.environments", "globe", $"{basePath}/environments", Capability.ViewProject),
@@ -47,6 +48,8 @@ public static class Navigation
 
             sections.Add(new NavSection("nav.section_operate", [
                 new NavItem("nav.schedules", "calendar-clock", $"{basePath}/schedules", Capability.ViewProject),
+                new NavItem("portability.import", "upload", $"{basePath}/import", Capability.ImportProject),
+                new NavItem("portability.export", "download", $"{basePath}/export", Capability.ExportProject),
                 new NavItem("nav.settings", "settings", $"{basePath}/settings", Capability.ManageProject),
             ]));
         }

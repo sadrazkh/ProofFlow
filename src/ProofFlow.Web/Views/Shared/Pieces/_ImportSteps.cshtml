@@ -1,0 +1,29 @@
+@model int
+
+@*
+    Where somebody is in an import, and how far there is to go.
+
+    Three steps rather than one button, because an import cannot be undone: the middle one exists so
+    the reader can check what would happen against what they expected. Showing the shape of the
+    journey is part of making that middle step feel like a decision rather than an obstacle.
+*@
+<ol class="import-steps" aria-label="@T["portability.import"]">
+    @for (var step = 1; step <= 3; step++)
+    {
+        var state = step < Model ? "done" : step == Model ? "here" : "ahead";
+
+        <li class="import-step is-@state" aria-current="@(step == Model ? "step" : null)">
+            <span class="import-step-mark tabular" dir="ltr" aria-hidden="true">
+                @if (step < Model)
+                {
+                    <i data-lucide="check"></i>
+                }
+                else
+                {
+                    @step
+                }
+            </span>
+            <span class="import-step-name">@T[$"portability.step.{step}"]</span>
+        </li>
+    }
+</ol>

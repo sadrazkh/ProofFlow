@@ -1,6 +1,7 @@
 import { chromium, devices, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { projectId as pickProject } from './tools/project';
 
 type StorageState = Awaited<ReturnType<BrowserContext['storageState']>>;
 
@@ -73,6 +74,9 @@ const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
   { name: 'matrix', path: (id) => `/projects/${id}/matrix` },
   { name: 'schedules', path: (id) => `/projects/${id}/schedules` },
   { name: 'approvals', path: (id) => `/projects/${id}/approvals` },
+  { name: 'templates', path: (id) => `/projects/${id}/templates` },
+  { name: 'import', path: (id) => `/projects/${id}/import` },
+  { name: 'export', path: (id) => `/projects/${id}/export` },
   { name: 'project-settings', path: (id) => `/projects/${id}/settings` },
 ];
 
@@ -135,9 +139,7 @@ async function establishSession(browser: Browser): Promise<
 
   const state = await context.storageState();
 
-  await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle' });
-  const href = await page.locator('a.project-card').first().getAttribute('href').catch(() => null);
-  const projectId = href?.split('/').pop() ?? null;
+  const projectId = await pickProject(page, BASE);
 
   // The baseline detail page is worth shooting and its address is only known once one exists.
   // e2e/demo.ts creates it; without that run this stays null and the skip is reported.

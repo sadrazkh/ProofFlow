@@ -1,0 +1,66 @@
+@model TemplateGalleryViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["template.title"]</h1>
+        <p class="page-subtitle">@T["template.subtitle"]</p>
+    </div>
+</div>
+
+@*
+    A card per template, each showing the shape of the graph it will produce.
+
+    The drawing is generated from the same nodes the scenario is built from, so it cannot drift
+    from what pressing the button actually makes. A stored picture has no way of being wrong.
+*@
+<div class="template-grid">
+    @foreach (var template in Model.Templates)
+    {
+        <article class="card template-card">
+            <div class="template-sketch">
+                @Html.Raw(template.Sketch)
+            </div>
+
+            <div class="card-pad stack-2">
+                <div class="row" style="gap: var(--space-2);">
+                    <span class="template-icon" aria-hidden="true">
+                        <i data-lucide="@template.Icon"></i>
+                    </span>
+                    <h2 class="template-name">@T[$"template.{template.Key}.title"]</h2>
+                </div>
+
+                <p class="template-summary">@T[$"template.{template.Key}.summary"]</p>
+
+                <div class="row template-facts">
+                    <span class="badge badge-idle tabular">@T["template.steps", template.Steps]</span>
+
+                    @foreach (var tag in template.Tags)
+                    {
+                        <span class="text-xs subtle">@T[$"template.tag.{tag}"]</span>
+                    }
+                </div>
+
+                @if (template.NeedsChoosing)
+                {
+                    @* Said on the card rather than after the press. A template that cannot run until
+                       something is chosen is fine; one that does not say so is not. *@
+                    <p class="text-xs template-needs">
+                        <i data-lucide="info" aria-hidden="true"></i>@T["template.needsChoosing"]
+                    </p>
+                }
+            </div>
+
+            @if (Model.CanCreate)
+            {
+                <div class="card-footer">
+                    <form method="post" action="/projects/@Model.ProjectId/templates/@template.Key/use">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-secondary btn-sm btn-block">
+                            @T["template.use"]
+                        </button>
+                    </form>
+                </div>
+            }
+        </article>
+    }
+</div>

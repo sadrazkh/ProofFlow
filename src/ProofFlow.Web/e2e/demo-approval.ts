@@ -1,4 +1,5 @@
 import { chromium, type Page } from '@playwright/test';
+import { projectId as pickProject } from './tools/project';
 
 /**
  * Leaves the approval inbox with both halves of the rule in it.
@@ -33,9 +34,7 @@ async function signIn(page: Page, email: string): Promise<void> {
 }
 
 async function firstProjectId(page: Page): Promise<string> {
-  await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle' });
-  const href = await page.locator('a.project-card').first().getAttribute('href');
-  const id = href?.split('/').pop();
+  const id = await pickProject(page, BASE);
 
   if (!id) throw new Error('No project found. Is Demo:Seed on?');
   return id;

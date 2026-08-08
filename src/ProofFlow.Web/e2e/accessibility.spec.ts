@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { projectId as pickProject } from './tools/project';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -50,6 +51,9 @@ const PROJECT_PAGES = [
   { name: 'matrix', path: (id: string) => `/projects/${id}/matrix` },
   { name: 'schedules', path: (id: string) => `/projects/${id}/schedules` },
   { name: 'approvals', path: (id: string) => `/projects/${id}/approvals` },
+  { name: 'templates', path: (id: string) => `/projects/${id}/templates` },
+  { name: 'import', path: (id: string) => `/projects/${id}/import` },
+  { name: 'export', path: (id: string) => `/projects/${id}/export` },
   { name: 'project settings', path: (id: string) => `/projects/${id}/settings` },
 ];
 
@@ -58,9 +62,7 @@ let projectId: string | null = null;
 async function firstProject(page: Page): Promise<string | null> {
   if (projectId) return projectId;
 
-  await page.goto(`${BASE}/projects`, { waitUntil: 'networkidle' });
-  const href = await page.locator('a.project-card').first().getAttribute('href').catch(() => null);
-  projectId = href?.split('/').pop() ?? null;
+  projectId = await pickProject(page, BASE);
   return projectId;
 }
 

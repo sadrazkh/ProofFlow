@@ -179,6 +179,7 @@ builder.Services.AddScoped<WorkspaceContextFilter>();
 builder.Services.AddScoped<ProofFlow.Web.Infrastructure.Seeding.DemoDataSeeder>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ComparisonScratch>();
+builder.Services.AddSingleton<ImportScratch>();
 builder.Services.AddScoped<ProofFlow.Application.Abstractions.IProblemText, ProblemText>();
 builder.Services.AddAntiforgery(options =>
 {
