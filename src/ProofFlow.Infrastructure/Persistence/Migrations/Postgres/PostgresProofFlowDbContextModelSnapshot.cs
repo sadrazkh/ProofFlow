@@ -902,6 +902,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<int>("RetentionDays")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -1224,6 +1227,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<string>("Outcome")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("PayloadsCleared")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");

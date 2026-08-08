@@ -40,6 +40,24 @@
                         }
                     </div>
                 </fieldset>
+
+                @*
+                    Retention. A policy decision, so it is offered as the handful of answers anybody
+                    actually gives rather than as a box somebody types 3650 into once and forgets.
+                *@
+                <div class="field">
+                    <label class="field-label" for="RetentionDays">@T["retention.label"]</label>
+                    <select class="select" id="RetentionDays" name="RetentionDays"
+                            aria-describedby="retention-help">
+                        @foreach (var days in ProjectFormViewModel.RetentionChoices)
+                        {
+                            <option value="@days" selected="@(days == Model.RetentionDays)">
+                                @(days == 0 ? T["retention.forever"] : T["retention.days", days])
+                            </option>
+                        }
+                    </select>
+                    <p class="field-hint" id="retention-help">@T["retention.help"]</p>
+                </div>
             </div>
 
             <div class="card-footer">

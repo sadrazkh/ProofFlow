@@ -1565,5 +1565,13 @@
     "validation.summary": "Post an invalid payload and check the refusal names the field that was wrong.",
     "cleanup.title": "Tidy up afterwards",
     "cleanup.summary": "Make something, test it, and take it away again whatever happened."
+  },
+
+  "retention": {
+    "label": "Keep response bodies and logs for",
+    "days": "{0} days",
+    "forever": "For ever",
+    "help": "What a run decided — passed or failed, how long it took, which checks held — is kept for ever. This is about the bulk: the bodies each step produced, the log lines and the artefacts. Those are what make a database grow without limit, and what is most likely to still hold somebody's personal data long after anybody needed it.",
+    "cleared": "The bodies and log for this run have been cleared."
   }
 }

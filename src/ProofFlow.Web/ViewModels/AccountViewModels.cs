@@ -99,6 +99,16 @@ public sealed class ProjectFormViewModel
 
     public string Accent { get; set; } = "indigo";
 
+    /// <summary>
+    /// How many days of response bodies and log lines to keep. Zero keeps them for ever.
+    ///
+    /// Offered as a small fixed set rather than a free number: the answer is a policy decision, and
+    /// a text box invites somebody to type 3650 and never think about it again.
+    /// </summary>
+    public int RetentionDays { get; set; } = ProofFlow.Domain.Projects.Project.DefaultRetentionDays;
+
+    public static readonly int[] RetentionChoices = [7, 30, 90, 365, 0];
+
     /// <summary>The colours a project may be given. Fixed, so none of them can fail contrast.</summary>
     public static readonly string[] Accents =
         ["indigo", "violet", "teal", "amber", "rose", "sky", "emerald", "slate"];

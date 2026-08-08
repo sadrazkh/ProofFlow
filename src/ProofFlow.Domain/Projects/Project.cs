@@ -28,6 +28,22 @@ public class Project : Entity, IWorkspaceOwned
     /// </summary>
     public string Accent { get; set; } = "indigo";
 
+    /// <summary>
+    /// How many days of response bodies and log lines to keep. Zero means keep them for ever.
+    ///
+    /// The setting is about payloads, not about history. A run's verdict, its timings and its
+    /// assertion results stay for ever — they are what a trend is made of, and they are small. What
+    /// goes is the bulk: the bodies the steps produced, the log lines, and the artefacts. Those are
+    /// what make a testing tool's database grow without limit, and they are also the part most
+    /// likely to hold somebody's personal data six months after anybody needed it.
+    ///
+    /// Thirty days by default, which is long enough to investigate last month's failure and short
+    /// enough that nobody discovers a hundred gigabytes of stale response bodies.
+    /// </summary>
+    public int RetentionDays { get; set; } = DefaultRetentionDays;
+
+    public const int DefaultRetentionDays = 30;
+
     public Guid CreatedByUserId { get; set; }
 
     public DateTimeOffset? ArchivedAt { get; set; }

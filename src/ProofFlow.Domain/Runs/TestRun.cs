@@ -83,6 +83,16 @@ public class TestRun : Entity, IWorkspaceOwned
     /// </summary>
     public string? Outcome { get; set; }
 
+    /// <summary>
+    /// True once retention has thrown away this run's bodies, log and artefacts.
+    ///
+    /// Recorded rather than inferred from the age, and shown rather than hidden: a run whose console
+    /// is empty because it was cleared and one that genuinely produced nothing look identical, and
+    /// somebody investigating last quarter's failure needs to know which of the two they are looking
+    /// at. It also stops the sweep from walking the same rows every hour for ever.
+    /// </summary>
+    public bool PayloadsCleared { get; set; }
+
     public Guid? StartedByUserId { get; set; }
 
     /// <summary>Who asked it to stop, when somebody did.</summary>

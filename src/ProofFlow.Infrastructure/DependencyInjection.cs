@@ -79,6 +79,8 @@ public static class DependencyInjection
         services.AddScoped<Portability.BundleImporter>();
         services.AddScoped<Runs.JUnitReport>();
         services.AddScoped<Runs.FlakyDetector>();
+        services.AddScoped<Runs.RetentionService>();
+        services.AddHostedService<Runs.RetentionWorker>();
         services.AddHostedService<Scheduling.ScheduleWorker>();
         services.AddSingleton<Runs.ScenarioGraphSnapshots>();
 

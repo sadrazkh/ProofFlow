@@ -137,6 +137,7 @@ public sealed class ProjectsController(
             Name = project.Name,
             Description = project.Description,
             Accent = project.Accent,
+            RetentionDays = project.RetentionDays,
 
             // Carried once, from the request that created it. There is no other way to see a key —
             // not this page, not the database, not a support engineer.
@@ -222,6 +223,13 @@ public sealed class ProjectsController(
         project.Name = model.Name.Trim();
         project.Description = string.IsNullOrWhiteSpace(model.Description) ? null : model.Description.Trim();
         project.Accent = model.Accent;
+
+        // Only a value from the list. A number that arrived some other way is a number nobody
+        // chose on the page that says what it means.
+        if (ProjectFormViewModel.RetentionChoices.Contains(model.RetentionDays))
+        {
+            project.RetentionDays = model.RetentionDays;
+        }
 
         await db.SaveChangesAsync(cancellationToken);
         await audit.RecordAsync(new AuditEntry(
