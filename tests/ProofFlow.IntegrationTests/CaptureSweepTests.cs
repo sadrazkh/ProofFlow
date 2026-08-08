@@ -21,7 +21,7 @@ using ProofFlow.Infrastructure.Capture;
 using ProofFlow.Infrastructure.Common;
 using ProofFlow.Infrastructure.Data;
 using ProofFlow.Infrastructure.Environments;
-using ProofFlow.Infrastructure.Http;
+
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Security;
 using ProofFlow.Infrastructure.Tenancy;

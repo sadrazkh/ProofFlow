@@ -155,7 +155,10 @@ static async Task<int> RunAsync(Options options)
 
             await client.PostAsJsonAsync("/api/v1/runners/jobs/result", result, stopping.Token);
 
-            Console.WriteLine($"Reported {result.Status} in {result.DurationMs:0}ms.");
+            Console.WriteLine(
+                $"Reported {result.Status} in {result.DurationMs:0}ms "
+                + $"({result.Steps} steps, {result.AssertionsPassed} checks passed, "
+                + $"{result.AssertionsFailed} failed).");
         }
         catch (OperationCanceledException)
         {

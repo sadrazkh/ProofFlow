@@ -1,132 +1,221 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using ProofFlow.Contracts.Runners;
 using ProofFlow.Contracts.Scenarios;
 using ProofFlow.TestEngine.Http;
 using ProofFlow.TestEngine.Nodes;
+using ProofFlow.TestEngine.Redaction;
+using ProofFlow.TestEngine.Running;
+using ProofFlow.TestEngine.Variables;
 
 namespace ProofFlow.Agent;
 
 /// <summary>
-/// Checks one job, and — for now — refuses to pretend it ran it.
+/// Runs one verified job, with the same engine the server runs.
 ///
-/// What is finished here is the part that had to be: the signature is verified, the graph is
-/// validated against the same validator the canvas uses, and the environment's own limits are read
-/// off the job rather than taken from anything on this machine.
+/// There is no second engine and there is not going to be one. <see cref="ScenarioRunner"/>,
+/// <see cref="NodeExecutors"/>, the URL guard and the redactor are the assemblies the server loads,
+/// executing the same graph against the same policy. What differs is where the data came from — a
+/// package rather than a database — and where the record goes — back over HTTP rather than into
+/// rows. Both of those are behind interfaces the engine already declared.
 ///
-/// What is not finished is execution. The engine is deliberately a project of its own with no
-/// database in it, so it can run here — but the object that supplies it with baselines, data sets
-/// and an HTTP executor still reaches for a DbContext, and the agent must not have one. Until that
-/// seam is opened, this reports <c>Errored</c> and says so.
-///
-/// It does not report <c>Passed</c>. A testing tool that returns a green result for work it did not
-/// do is worse than one that returns nothing, and it is worse in the specific way that takes months
-/// to notice.
+/// A scenario cannot tell which side it ran on, which is the only claim that makes a remote runner
+/// worth having.
 /// </summary>
 internal static class JobRunner
 {
     private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNameCaseInsensitive = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
     };
 
-    public static async Task<JobResult> ExecuteAsync(SignedJob job, CancellationToken cancellation)
+    public static async Task<JobReport> ExecuteAsync(SignedJob job, CancellationToken cancellation)
     {
         var started = Stopwatch.GetTimestamp();
+        var sink = new CollectingSink();
 
         try
         {
-            var work = JsonSerializer.Deserialize<JobPayload>(job.Payload, Json)
+            var package = JsonSerializer.Deserialize<JobPackage>(job.Payload, Json)
                 ?? throw new InvalidOperationException("The job payload could not be read.");
 
-            var graph = JsonSerializer.Deserialize<GraphDto>(work.Definition ?? "{}", Json);
+            var graph = Read(package.Definition);
 
-            if (graph is null || graph.Nodes.Count == 0)
+            if (graph.Nodes.Count == 0)
             {
-                return Finished(job, "Errored", started, "That job carried no graph to run.");
+                return Failed(job, started, sink, "That job carried no graph to run.");
             }
 
-            // The environment's own limits travel with the job, so an agent cannot be talked into
-            // being more permissive than the environment says — the policy is the server's, and the
-            // agent only supplies the route.
-            var policy = new UrlPolicy
-            {
-                AllowedHosts = Split(work.Environment?.AllowedHosts),
-                AllowPrivateNetwork = work.Environment?.AllowPrivateNetwork ?? false,
-                AllowInvalidCertificate = work.Environment?.AllowInvalidCertificate ?? false,
-                MaxRedirects = work.Environment?.MaxRedirects ?? 5,
-                MaxResponseBytes = (work.Environment?.MaxResponseKilobytes ?? 4096) * 1024L,
-                Timeout = TimeSpan.FromSeconds(work.Environment?.TimeoutSeconds ?? 30),
-            };
-
-            var problems = GraphValidator.Validate(new Graph(
-                [.. graph.Nodes.Select(node => new GraphNode(
-                    node.Id, node.Key, node.Name, node.Properties, node.ParentId, node.Disabled))],
-                [.. graph.Edges.Select(edge => new GraphEdge(
-                    edge.FromId, edge.FromPort, edge.ToId, edge.ToPort))]));
+            // Validated here as well as on the server. The graph was sound when it was published; if
+            // it is not sound now, something changed it on the way, and running it anyway would be
+            // the opposite of what the signature is for.
+            var problems = GraphValidator.Validate(graph);
 
             if (problems.Any(problem => problem.Severity == GraphSeverity.Error))
             {
-                // Refused here as well as on the server. The graph was valid when it was published;
-                // if it is not valid now, something changed it in transit and running it anyway
-                // would be the opposite of what the signature is for.
-                return Finished(job, "Errored", started,
-                    "That graph does not validate on this agent.");
+                var first = problems.First(problem => problem.Severity == GraphSeverity.Error);
+
+                return Failed(job, started, sink,
+                    $"That graph does not validate on this agent ({first.Code}).");
             }
 
-            // The policy is built and the graph is sound. What is missing is the engine's services
-            // object, which still needs a database — see the note on this class.
-            _ = policy;
+            var policy = PolicyFor(package.Environment);
 
-            return Finished(job, "Errored", started,
-                "This agent verified the job and the graph but cannot run it yet: executing a "
-                + "scenario off the database is not finished. Point this environment back at the "
-                + "server, or wait for an agent that reports a real result.");
+            // The redactor learns the secrets before anything runs, so a value cannot reach a log
+            // line or a stored output on its way to being hidden.
+            var redaction = new RedactionScope();
+
+            foreach (var secret in package.Secrets.Values) redaction.Remember(secret);
+
+            var scopes = ScopesFor(package);
+
+            using var provider = HttpProvider();
+
+            var services = new PackagedRunServices(
+                package,
+                new GuardedHttpExecutor(
+                    provider.GetRequiredService<IHttpClientFactory>(),
+                    NullLogger<GuardedHttpExecutor>.Instance),
+                policy,
+                redaction);
+
+            var runner = new ScenarioRunner(new NodeExecutors(services), sink);
+
+            var summary = await runner.RunAsync(graph, new RunScopes(scopes, redaction), cancellation);
+
+            return new JobReport
+            {
+                JobId = job.JobId,
+                Status = summary.Status.ToString(),
+                Outcome = Outcome(summary.Outcome, sink),
+                Steps = summary.Steps,
+                StepsFailed = summary.StepsFailed,
+                AssertionsPassed = summary.AssertionsPassed,
+                AssertionsFailed = summary.AssertionsFailed,
+                DurationMs = summary.DurationMs,
+                Nodes = sink.Nodes,
+                Log = sink.Lines,
+                Captures = services.Captures,
+            };
         }
         catch (OperationCanceledException)
         {
-            return Finished(job, "Cancelled", started, "The agent was asked to stop.");
+            return new JobReport
+            {
+                JobId = job.JobId,
+                Status = "Cancelled",
+                Outcome = "The agent was asked to stop.",
+                DurationMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+                Nodes = sink.Nodes,
+                Log = sink.Lines,
+            };
         }
         catch (Exception exception)
         {
-            // Errored, not Failed. "Your API is broken" and "our agent is broken" are different
-            // news, and conflating them sends somebody looking in the wrong place.
-            return Finished(job, "Errored", started, $"The agent could not carry this out: {exception.Message}");
+            // Errored, not Failed. "Your API is broken" and "our agent is broken" are different news,
+            // and conflating them sends somebody looking in the wrong place.
+            return Failed(job, started, sink,
+                $"The agent could not carry this out: {exception.Message}");
         }
     }
 
-    private static JobResult Finished(SignedJob job, string status, long started, string outcome) =>
+    /// <summary>
+    /// The environment's own limits, as the server stated them.
+    ///
+    /// Built from the job rather than from anything on this machine, so an agent cannot be talked
+    /// into being more permissive than the environment says. The policy belongs to the installation;
+    /// all the agent supplies is a route.
+    /// </summary>
+    private static UrlPolicy PolicyFor(JobEnvironment? environment) => new()
+    {
+        AllowedHosts = Split(environment?.AllowedHosts),
+        DeniedHosts = Split(environment?.DeniedHosts),
+        AllowPrivateNetwork = environment?.AllowPrivateNetwork ?? false,
+        AllowInvalidCertificate = environment?.AllowInvalidCertificate ?? false,
+        MaxRedirects = environment?.MaxRedirects ?? 5,
+        MaxResponseBytes = (environment?.MaxResponseKilobytes ?? 4096) * 1024L,
+        Timeout = TimeSpan.FromSeconds(environment?.TimeoutSeconds ?? 30),
+    };
+
+    private static VariableScopes ScopesFor(JobPackage package)
+    {
+        var scopes = new VariableScopes();
+
+        if (package.Environment?.BaseUrl is { Length: > 0 } baseUrl)
+        {
+            scopes.Environment["baseUrl"] = JsonValue.Create(baseUrl);
+        }
+
+        if (package.Environment?.Name is { Length: > 0 } name)
+        {
+            scopes.Environment["name"] = JsonValue.Create(name);
+        }
+
+        foreach (var (key, value) in package.Variables) scopes.Variables[key] = JsonValue.Create(value);
+        foreach (var (key, value) in package.Secrets) scopes.Secrets[key] = JsonValue.Create(value);
+
+        scopes.Run["startedAt"] = JsonValue.Create(DateTimeOffset.UtcNow.ToString("O"));
+
+        return scopes;
+    }
+
+    /// <summary>
+    /// A provider for the one thing the executor needs.
+    ///
+    /// The connect callback that closes the DNS-rebinding window is registered by
+    /// <c>AddProofFlowHttpClients</c>, so the agent gets exactly the same socket-level guard the
+    /// server has. Building it here rather than at start-up keeps the handler's lifetime tied to
+    /// the job, which for a process that runs one thing at a time is the simpler arrangement.
+    /// </summary>
+    private static ServiceProvider HttpProvider()
+    {
+        var services = new ServiceCollection();
+
+        services.AddLogging();
+        services.AddProofFlowHttpClients();
+
+        return services.BuildServiceProvider();
+    }
+
+    private static Graph Read(string? definition)
+    {
+        var graph = string.IsNullOrWhiteSpace(definition)
+            ? null
+            : JsonSerializer.Deserialize<GraphDto>(definition, Json);
+
+        if (graph is null) return new Graph([], []);
+
+        return new Graph(
+            [.. graph.Nodes.Select(node => new GraphNode(
+                node.Id, node.Key, node.Name, node.Properties, node.ParentId, node.Disabled))],
+            [.. graph.Edges.Select(edge => new GraphEdge(
+                edge.FromId, edge.FromPort, edge.ToId, edge.ToPort))]);
+    }
+
+    /// <summary>Says out loud when the log was cut, rather than letting a short log look complete.</summary>
+    private static string? Outcome(string? outcome, CollectingSink sink) =>
+        sink.Dropped == 0
+            ? outcome
+            : $"{outcome} ({sink.Dropped:N0} further log lines were not kept.)";
+
+    private static JobReport Failed(
+        SignedJob job, long started, CollectingSink sink, string outcome) =>
         new()
         {
             JobId = job.JobId,
-            Status = status,
+            Status = "Errored",
             Outcome = outcome,
             DurationMs = Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+            Nodes = sink.Nodes,
+            Log = sink.Lines,
         };
 
     private static IReadOnlyList<string> Split(string? value) =>
         string.IsNullOrWhiteSpace(value)
             ? []
             : [.. value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
-
-    /// <summary>The shape the server signs. Read here, never trusted before the signature holds.</summary>
-    private sealed record JobPayload
-    {
-        public Guid RunId { get; init; }
-        public string? Definition { get; init; }
-        public JobEnvironment? Environment { get; init; }
-    }
-
-    private sealed record JobEnvironment
-    {
-        public string? Name { get; init; }
-        public string? BaseUrl { get; init; }
-        public int TimeoutSeconds { get; init; }
-        public int MaxRedirects { get; init; }
-        public int MaxResponseKilobytes { get; init; }
-        public string? AllowedHosts { get; init; }
-        public bool AllowPrivateNetwork { get; init; }
-        public bool AllowInvalidCertificate { get; init; }
-        public string? DefaultHeadersJson { get; init; }
-    }
 }

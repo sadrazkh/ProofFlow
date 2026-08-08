@@ -1,9 +1,8 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
-using ProofFlow.TestEngine.Http;
 
-namespace ProofFlow.Infrastructure.Http;
+namespace ProofFlow.TestEngine.Http;
 
 /// <summary>
 /// Where the SSRF guard actually holds.

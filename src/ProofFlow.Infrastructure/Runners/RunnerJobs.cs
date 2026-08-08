@@ -23,7 +23,7 @@ namespace ProofFlow.Infrastructure.Runners;
 /// private network: did this instruction come from the installation I enrolled with, unchanged.
 /// </summary>
 public sealed class RunnerJobs(
-    ProofFlowDbContext db, RunnerService runners, IClock clock)
+    ProofFlowDbContext db, RunnerService runners, JobPackaging packaging, IClock clock)
 {
     /// <summary>
     /// How long a claimed run may stay unreported before it is offered again.
@@ -64,33 +64,9 @@ public sealed class RunnerJobs(
         run.ClaimedAt = clock.UtcNow;
         await db.SaveChangesAsync(cancellation);
 
-        var environment = run.EnvironmentId is { } id
-            ? await db.Environments.IgnoreQueryFilters()
-                .FirstOrDefaultAsync(candidate => candidate.Id == id, cancellation)
-            : null;
-
-        // The graph as it stood when the run was queued, not as it stands now. The same rule the
-        // rest of the product follows: a run is a record, and the first thing anybody does after a
-        // failure is edit the scenario.
-        var payload = JsonSerializer.Serialize(new
-        {
-            runId = run.Id,
-            projectId = run.ProjectId,
-            scenarioId = run.ScenarioId,
-            definition = run.DefinitionJson,
-            environment = environment is null ? null : new
-            {
-                environment.Name,
-                environment.BaseUrl,
-                environment.TimeoutSeconds,
-                environment.MaxRedirects,
-                environment.MaxResponseKilobytes,
-                environment.AllowedHosts,
-                environment.AllowPrivateNetwork,
-                environment.AllowInvalidCertificate,
-                environment.DefaultHeadersJson,
-            },
-        }, Json);
+        // Everything execution actually needs, and nothing else — the graph, the environment, the
+        // variables and secrets it references, and the data sets and baselines the graph names.
+        var payload = JsonSerializer.Serialize(await packaging.PackAsync(run, cancellation), Json);
 
         return new SignedJob
         {
@@ -108,39 +84,7 @@ public sealed class RunnerJobs(
     /// workspace, and an agent that could report on somebody else's run could mark a failing test
     /// green from the other side of a firewall.
     /// </summary>
-    public async Task<bool> ReportAsync(
-        Runner runner, JobResult result, CancellationToken cancellation = default)
-    {
-        var run = await db.Runs
-            .IgnoreQueryFilters()
-            .FirstOrDefaultAsync(candidate => candidate.Id == result.JobId
-                                              && candidate.RunnerId == runner.Id, cancellation);
-
-        if (run is null) return false;
-
-        // Terminal already: a duplicate report from an agent that retried after a timeout is not an
-        // error, and overwriting a finished run with a second verdict would be.
-        if (run.Status is not (RunStatus.Queued or RunStatus.Running)) return true;
-
-        run.Status = Enum.TryParse<RunStatus>(result.Status, ignoreCase: true, out var status)
-                     && status is RunStatus.Passed or RunStatus.Failed
-                         or RunStatus.Errored or RunStatus.Cancelled
-            ? status
-            // An agent that reports something this does not understand has failed in a way worth
-            // seeing, and «Errored» is exactly the word for "our runner is broken".
-            : RunStatus.Errored;
-
-        run.StartedAt ??= run.ClaimedAt ?? clock.UtcNow;
-        run.FinishedAt = clock.UtcNow;
-        run.DurationMs = result.DurationMs;
-        run.StepsRun = result.Steps;
-        run.StepsFailed = result.StepsFailed;
-        run.AssertionsPassed = result.AssertionsPassed;
-        run.AssertionsFailed = result.AssertionsFailed;
-        run.Outcome = result.Outcome;
-
-        await db.SaveChangesAsync(cancellation);
-
-        return true;
-    }
+    public Task<bool> ReportAsync(
+        Runner runner, JobReport report, CancellationToken cancellation = default) =>
+        packaging.RecordAsync(runner, report, cancellation);
 }

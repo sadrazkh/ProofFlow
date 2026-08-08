@@ -5,7 +5,8 @@
 
     It knows nothing about EF Core, ASP.NET, or the browser. Everything it needs from the outside —
     a way to send an HTTP request, the time, a secret's value — arrives through an interface
-    declared in this project and implemented in Infrastructure. That is what makes a scenario
+    declared in this project. Most are implemented in Infrastructure; the HTTP executor is
+    implemented here, because it needs no database and a remote agent needs it. That is what makes a scenario
     runnable inside a unit test with no database and no web host, which is the only way the
     assertion and diff logic can be tested at the granularity it needs.
   -->
@@ -21,6 +22,10 @@
     <PackageReference Include="JsonPath.Net" Version="3.0.2" />
     <PackageReference Include="JsonSchema.Net" Version="9.4.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.10" />
+    <!-- The guarded executor and its connect-callback live here, because the guard is the engine's
+         own door to the network and nothing about it needs a database. Moving it out of
+         Infrastructure is what lets a remote agent run a scenario without one. -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
   </ItemGroup>
 
 </Project>

@@ -5,10 +5,9 @@ using System.Net.Sockets;
 using System.Security.Authentication;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using ProofFlow.TestEngine.Http;
 using ProofFlow.TestEngine.Redaction;
 
-namespace ProofFlow.Infrastructure.Http;
+namespace ProofFlow.TestEngine.Http;
 
 /// <summary>
 /// The real network, behind the guard.

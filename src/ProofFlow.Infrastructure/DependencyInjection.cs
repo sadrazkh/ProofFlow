@@ -5,7 +5,7 @@ using ProofFlow.Application.Abstractions;
 using ProofFlow.Infrastructure.Auditing;
 using ProofFlow.Infrastructure.Common;
 using ProofFlow.Infrastructure.Environments;
-using ProofFlow.Infrastructure.Http;
+
 using ProofFlow.Infrastructure.Security;
 using ProofFlow.TestEngine.Http;
 using ProofFlow.Infrastructure.Persistence;
@@ -76,6 +76,7 @@ public static class DependencyInjection
         services.AddScoped<Scheduling.ApiKeyService>();
         services.AddScoped<Workspaces.TeamService>();
         services.AddScoped<Runners.RunnerService>();
+        services.AddScoped<Runners.JobPackaging>();
         services.AddScoped<Runners.RunnerJobs>();
         services.AddScoped<Portability.BundleExporter>();
         services.AddScoped<Portability.BundleImporter>();

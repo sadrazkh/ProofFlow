@@ -56,15 +56,21 @@ public sealed class EngineRunServices(
 
         var result = await executor.SendAsync(definition, policy, cancellation);
 
+        // The address as well as the body. A secret used in a path — «/records/{{secrets.token}}»
+        // is an ordinary shape — ends up in the resolved URL, and that URL is written into the
+        // step's output, shown in the console and carried into a report. Redacting the body and
+        // leaving the address is the same as not redacting.
+        var url = redaction.Apply(result.ResolvedUrl);
+
         Exchanges.Add(new RequestRecord(
-            request.Method, result.ResolvedUrl, result.StatusCode,
+            request.Method, url, result.StatusCode,
             result.Duration.TotalMilliseconds, clock.UtcNow));
 
         if (!result.Succeeded)
         {
             return new HttpNodeResult(false, result.StatusCode, result.ReasonPhrase, [],
                 string.Empty, null, result.Duration.TotalMilliseconds,
-                result.Failure!.Message, result.ResolvedUrl);
+                redaction.Apply(result.Failure!.Message), url);
         }
 
         // Redacted here rather than at the edge. Anything a node reads out of a body ends up in a
@@ -76,7 +82,7 @@ public sealed class EngineRunServices(
         return new HttpNodeResult(
             true, result.StatusCode, result.ReasonPhrase,
             [.. headers.Select(entry => (entry.Name, entry.Value))],
-            body, result.ContentType, result.Duration.TotalMilliseconds, null, result.ResolvedUrl);
+            body, result.ContentType, result.Duration.TotalMilliseconds, null, url);
     }
 
     private static BodyKind ParseBody(string? kind) => kind switch

@@ -15,6 +15,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ProofFlow.Web\ProofFlow.Web.csproj" />
+    <!-- The agent, so the remote-execution tests run the classes that ship rather than a copy. -->
+    <ProjectReference Include="..\..\src\ProofFlow.Agent\ProofFlow.Agent.csproj" />
     <ProjectReference Include="..\..\src\ProofFlow.Worker\ProofFlow.Worker.csproj" />
     <ProjectReference Include="..\..\src\ProofFlow.FakeApi\ProofFlow.FakeApi.csproj" />
   </ItemGroup>

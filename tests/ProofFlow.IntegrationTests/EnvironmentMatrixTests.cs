@@ -1,3 +1,4 @@
+using ProofFlow.TestEngine.Http;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
@@ -20,7 +21,7 @@ using ProofFlow.FakeApi;
 using ProofFlow.Infrastructure.Baselines;
 using ProofFlow.Infrastructure.Common;
 using ProofFlow.Infrastructure.Environments;
-using ProofFlow.Infrastructure.Http;
+
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Runs;
 using ProofFlow.Infrastructure.Scenarios;

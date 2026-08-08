@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Contracts.Runners;
 using ProofFlow.Domain.Runners;
+using Microsoft.Extensions.DependencyInjection;
 using ProofFlow.Infrastructure.Runners;
 using ProofFlow.Infrastructure.Tenancy;
 
@@ -24,7 +25,7 @@ namespace ProofFlow.Web.Controllers;
 [Route("api/v1/runners")]
 public sealed class RunnerApiController(
     RunnerService runners,
-    RunnerJobs jobs,
+    IServiceScopeFactory scopes,
     BackgroundWorkspace workspace,
     IAuditLog audit,
     ILogger<RunnerApiController> logger) : ControllerBase
@@ -84,7 +85,10 @@ public sealed class RunnerApiController(
     {
         if (await AuthenticateAsync(cancellationToken) is not { } runner) return Unauthorized();
 
-        var job = await jobs.ClaimAsync(runner, cancellationToken);
+        using var scope = ActingFor(runner);
+
+        var job = await scope.ServiceProvider.GetRequiredService<RunnerJobs>()
+            .ClaimAsync(runner, cancellationToken);
 
         return job is null ? NoContent() : Ok(job);
     }
@@ -92,13 +96,39 @@ public sealed class RunnerApiController(
     /// <summary>Reports what happened.</summary>
     [HttpPost("jobs/result")]
     public async Task<IActionResult> Result(
-        [FromBody] JobResult result, CancellationToken cancellationToken)
+        [FromBody] JobReport report, CancellationToken cancellationToken)
     {
         if (await AuthenticateAsync(cancellationToken) is not { } runner) return Unauthorized();
 
+        using var scope = ActingFor(runner);
+
         // Not found rather than forbidden when the run is not this runner's. Telling an agent that
         // a run exists but belongs to somebody else is telling it something it has no use for.
-        return await jobs.ReportAsync(runner, result, cancellationToken) ? Ok() : NotFound();
+        return await scope.ServiceProvider.GetRequiredService<RunnerJobs>()
+            .ReportAsync(runner, report, cancellationToken)
+            ? Ok()
+            : NotFound();
+    }
+
+    /// <summary>
+    /// A scope that belongs to this runner's workspace, made after the token has been read.
+    ///
+    /// A fresh scope rather than the request's own, and this is not a nicety. The tenant filter is
+    /// decided when <c>IWorkspaceScope</c> is first resolved, and by then the request has already
+    /// built a DbContext to check the token with — as an anonymous caller, in no workspace. Reusing
+    /// it means every read that follows returns nothing: a job package with no environment, no data
+    /// sets and no baselines, handed to an agent that would run it and report a failure nobody could
+    /// explain.
+    ///
+    /// The same pattern the schedule and retention workers use, and for the same reason.
+    /// </summary>
+    private IServiceScope ActingFor(Runner runner)
+    {
+        var scope = scopes.CreateScope();
+
+        scope.ServiceProvider.GetRequiredService<BackgroundWorkspace>().ActFor(runner.WorkspaceId);
+
+        return scope;
     }
 
     /// <summary>
