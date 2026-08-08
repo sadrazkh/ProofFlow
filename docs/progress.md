@@ -547,3 +547,62 @@ nothing to show. It now seeds three: Local and Staging both answering the built-
 is exactly the shape of a blue/green pair and makes a comparison demonstrate something, and
 Production as a placeholder that deliberately does not resolve — a demo workspace must not have a
 working route to anything anybody could mistake for real.
+
+---
+
+## Phase H — Nobody has to remember · **done**
+
+Tests that run on their own, a door a build agent comes through, and the ones that cannot make up
+their minds.
+
+| | |
+|---|---|
+| Schedules | A cron expression, an IANA time zone, and a set of scenarios × environments — one instruction, one batch |
+| Worker | Wakes every 30s, fires what is due, never catches up on what it missed |
+| Keys | 256 random bits, stored only as a hash, shown exactly once, revocable and attributable |
+| CI | `POST /api/v1/projects/{id}/runs` → 202; poll `finished`; fetch JUnit. No cookie, no browser |
+| JUnit | One suite per run, environment in the suite name, seconds with a point, ISO Gregorian in every language |
+| Flaky | Same scenario, same version, same environment, both passing and failing — over a fortnight, minimum three runs |
+| Quarantine | The test still runs and still reports; its failures become skips. Never deleted, never hidden |
+| Verified | `e2e/demo-ci.ts` issues a key through the interface, then does the rest over plain HTTP: 401 without it, 202 with it, poll, fetch, check the XML |
+| Tests | 466 passing — 355 unit, 70 integration, 41 component; 101 accessibility checks, 252 screenshots |
+
+### Five decisions worth recording
+
+**A missed schedule fires once, not once per missed hour.** If the process was down for a day, an
+hourly schedule fires once when it returns. A catch-up storm against somebody's production API is a
+far worse failure than a missed window, and nobody has ever wanted the twenty-four.
+
+**The schedule advances before the batch starts.** If starting throws, it has still moved on —
+otherwise it stays due, is retried every thirty seconds, and turns one broken scenario into a
+permanent load against whatever it points at.
+
+**The time zone is stored, not derived.** "Every day at six" means six where the team is. The
+author leaves and the schedule stays, so the zone belongs to the schedule.
+
+**A key is hashed with plain SHA-256, deliberately.** This is a 256-bit random value, not a
+person's password: there is nothing to brute force, and a slow hash on every CI request would be a
+denial of service somebody built for themselves. What matters is that only the hash is stored.
+
+**Quarantine reports failures as skips.** That is its whole meaning — the test still runs, still
+records what it found, and stops being allowed to fail the build. Deleting a flaky test takes its
+coverage away and nobody notices for six months.
+
+### What the run and the audit caught
+
+**"Next run" said "just now" for a time tomorrow morning.** `RelativeTime` deliberately clamps
+future instants to zero — a stored timestamp in the future is clock skew — but a scheduled time in
+the future is the whole point of that column. It has a forward-looking counterpart now, and the two
+disagree about the same input on purpose.
+
+**The same bug on the key expiry**, which read "just now" for a date ninety days out — the opposite
+of the truth on the one column that governs when something stops working.
+
+**The production environment read "Production Production"** in both pickers, the same stutter the
+matrix header had. Marked by an icon now, which survives the column being called "live" or «اصلی».
+
+**The keys card rendered outside the settings page's narrow column**, hanging off beside it.
+
+**A route that already existed.** `/projects/{id}/settings` was not the dead nav link it looked
+like — `ProjectsController.Settings` was already there, and a second controller on the same route
+produced an ambiguous-match 500. The keys joined the page that existed.

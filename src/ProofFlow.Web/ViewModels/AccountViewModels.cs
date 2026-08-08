@@ -66,4 +66,15 @@ public sealed class ProjectFormViewModel
     /// <summary>The colours a project may be given. Fixed, so none of them can fail contrast.</summary>
     public static readonly string[] Accents =
         ["indigo", "violet", "teal", "amber", "rose", "sky", "emerald", "slate"];
+
+    /// <summary>The keys a build agent can hold. Empty on the create form, which has no project yet.</summary>
+    public IReadOnlyList<ApiKeyRow> Keys { get; set; } = [];
+
+    /// <summary>
+    /// A key just issued, shown once and then gone.
+    ///
+    /// Null on every other render, including a refresh — which is the point, and which the page has
+    /// to say out loud so nobody closes the tab expecting to come back for it.
+    /// </summary>
+    public string? IssuedSecret { get; set; }
 }

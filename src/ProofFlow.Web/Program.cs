@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authentication;
 using ProofFlow.Infrastructure.Runs;
 using ProofFlow.Infrastructure.Tenancy;
 using System.Globalization;
@@ -36,9 +37,19 @@ builder.Services.AddHttpContextAccessor();
 // and gets the request's own identity. One registration, two callers, no way for a URL to reach the
 // system scope.
 builder.Services.AddScoped<ICurrentUser>(sp =>
-    sp.GetRequiredService<BackgroundWorkspace>().WorkspaceId is { } workspace
-        ? new SystemUser(workspace)
-        : ActivatorUtilities.CreateInstance<HttpCurrentUser>(sp));
+{
+    if (sp.GetRequiredService<BackgroundWorkspace>().WorkspaceId is { } workspace)
+        return new SystemUser(workspace);
+
+    // A request authenticated by an API key carries the key's workspace and the Runner role. It has
+    // to become the current user like any other caller, so everything underneath stays unaware that
+    // CI exists.
+    var principal = sp.GetService<IHttpContextAccessor>()?.HttpContext?.User;
+
+    return principal?.Identity?.AuthenticationType == ApiKeyAuthenticationHandler.Scheme
+        ? new ApiKeyCurrentUser(principal)
+        : ActivatorUtilities.CreateInstance<HttpCurrentUser>(sp);
+});
 
 builder.Services.AddScoped<IWorkspaceScope>(sp =>
     sp.GetRequiredService<BackgroundWorkspace>().WorkspaceId is { } workspace
@@ -50,6 +61,11 @@ builder.Services.AddProofFlowInfrastructure(builder.Configuration);
 // AddIdentityCore rather than AddIdentity: authorisation here is by workspace membership, so
 // Identity's role tables would sit empty and invite a second, disagreeing source of truth.
 builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
+    // A second scheme for build agents. Separate rather than folded into the cookie, because the
+    // cookie challenges by redirecting to a sign-in page — which a pipeline receives as a 200 and
+    // an HTML form where it expected JSON.
+    .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.Scheme, _ => { })
     .AddIdentityCookies(options =>
     {
         options.ApplicationCookie?.Configure(cookie =>

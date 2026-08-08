@@ -7,6 +7,7 @@ using ProofFlow.Application.Common;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Infrastructure.Persistence;
+using ProofFlow.Infrastructure.Scheduling;
 using ProofFlow.Web.Infrastructure;
 using ProofFlow.Web.ViewModels;
 
@@ -17,6 +18,7 @@ namespace ProofFlow.Web.Controllers;
 [ServiceFilter<WorkspaceContextFilter>]
 public sealed class ProjectsController(
     ProofFlowDbContext db,
+    ApiKeyService keys,
     ICurrentUser me,
     IAuditLog audit,
     IStringLocalizer localizer) : Controller
@@ -135,7 +137,75 @@ public sealed class ProjectsController(
             Name = project.Name,
             Description = project.Description,
             Accent = project.Accent,
+
+            // Carried once, from the request that created it. There is no other way to see a key —
+            // not this page, not the database, not a support engineer.
+            IssuedSecret = TempData["IssuedKey"] as string,
+            Keys = await db.ApiKeys
+                .Where(key => key.ProjectId == projectId || key.ProjectId == null)
+                .OrderByDescending(key => key.CreatedAt)
+                .Select(key => new ApiKeyRow(
+                    key.Id,
+                    key.Name,
+                    key.Preview,
+                    key.ProjectId == null,
+                    key.CreatedAt,
+                    key.LastUsedAt,
+                    key.ExpiresAt,
+                    key.RevokedAt))
+                .ToListAsync(cancellationToken),
         });
+    }
+
+    /// <summary>
+    /// Issues a key and shows it once.
+    ///
+    /// Under the same capability as the rest of this page: a key can start runs, and handing one
+    /// out is a decision about what reaches somebody's API.
+    /// </summary>
+    [HttpPost("{projectId:guid}/settings/keys")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageProject)]
+    public async Task<IActionResult> IssueKey(
+        Guid projectId, [FromForm] string name, [FromForm] int? expiresInDays,
+        CancellationToken cancellationToken)
+    {
+        var project = await db.Projects
+            .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
+
+        if (project is null) return NotFound();
+
+        var (key, secret) = await keys.IssueAsync(
+            project.WorkspaceId, projectId, name,
+            expiresInDays is > 0 ? DateTimeOffset.UtcNow.AddDays(expiresInDays.Value) : null,
+            cancellationToken);
+
+        await audit.RecordAsync(
+            new AuditEntry("apikey.issued", projectId, "ApiKey", key.Id, key.Name), cancellationToken);
+
+        TempData["IssuedKey"] = secret;
+
+        return RedirectToAction(nameof(Settings), new { projectId });
+    }
+
+    [HttpPost("{projectId:guid}/settings/keys/{keyId:guid}/revoke")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageProject)]
+    public async Task<IActionResult> RevokeKey(
+        Guid projectId, Guid keyId, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects
+            .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
+
+        if (project is null) return NotFound();
+
+        if (await keys.RevokeAsync(project.WorkspaceId, keyId, cancellationToken))
+        {
+            await audit.RecordAsync(
+                new AuditEntry("apikey.revoked", projectId, "ApiKey", keyId), cancellationToken);
+        }
+
+        return RedirectToAction(nameof(Settings), new { projectId });
     }
 
     [HttpPost("{projectId:guid}/settings")]

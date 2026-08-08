@@ -266,3 +266,96 @@
 .matrix-picker-row:hover {
   background: var(--surface-hover);
 }
+
+/* ---- schedules -------------------------------------------------------------------------------- */
+
+/*
+  The description and the expression, together.
+
+  A cron translated into English is a convenience; the expression is the truth. Showing only the
+  first would leave whoever has to change it guessing, and showing only the second makes everybody
+  else look it up.
+*/
+.schedule-when {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.schedule-cron {
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.schedule-presets {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin-block-end: var(--space-2);
+}
+
+/*
+  A row that is switched off, or a test in quarantine.
+
+  Dimmed and still legible — never hidden. Something that vanishes from a list is something nobody
+  comes back to fix, and both of these are states somebody is supposed to leave.
+*/
+.table tr.is-off > * {
+  opacity: 0.62;
+}
+
+/* ---- keys ------------------------------------------------------------------------------------- */
+
+/*
+  A value shown once.
+
+  Given the accent surface rather than a success tint: this is not a congratulation, it is an
+  instruction with a deadline, and the reader has to notice it before they navigate away.
+*/
+.key-issued {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.key-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.key-value code {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  word-break: break-all;
+}
+
+/*
+  A command somebody will paste.
+
+  Scrolls rather than wraps: a wrapped shell command is one that has to be reassembled by hand, and
+  the line breaks in it are the ones that matter.
+*/
+.code-block {
+  margin: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--ink);
+  overflow-x: auto;
+}

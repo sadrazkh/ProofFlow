@@ -126,3 +126,31 @@ public sealed record ComparisonStepDto
     /// <summary>Fields that look like they differ by nature rather than by fault.</summary>
     public IReadOnlyList<Baselines.SuggestionDto> Suggestions { get; init; } = [];
 }
+
+/// <summary>
+/// A test that cannot make up its mind, and where.
+///
+/// The rate is computed rather than stored, because it is only ever read alongside the counts it
+/// comes from — and a stored percentage is a number that stops agreeing with them.
+/// </summary>
+public sealed record FlakyScenarioDto
+{
+    public required Guid ScenarioId { get; init; }
+
+    public required string Name { get; init; }
+
+    public Guid? EnvironmentId { get; init; }
+
+    public string? EnvironmentName { get; init; }
+
+    public int Runs { get; init; }
+
+    public int Failed { get; init; }
+
+    public DateTimeOffset LastSeen { get; init; }
+
+    public bool Quarantined { get; init; }
+
+    /// <summary>How often it fails, between 0 and 1. What the list is sorted by.</summary>
+    public double Rate => Runs == 0 ? 0 : (double)Failed / Runs;
+}

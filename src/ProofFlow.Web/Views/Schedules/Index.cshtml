@@ -1,0 +1,308 @@
+@using ProofFlow.Infrastructure.Scheduling
+@model ScheduleListViewModel
+@inject Dates Dates
+
+@{
+    string Describe(string cron) =>
+        CronSchedule.Describe(cron) is { } key ? T[key].Value : cron;
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.schedules"]</h1>
+        <p class="page-subtitle">@T["schedule.subtitle"]</p>
+    </div>
+</div>
+
+@if (Model.Schedules.Count == 0)
+{
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="calendar-clock" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["schedule.empty.title"]</h2>
+            <p class="empty-body">@T["schedule.empty.body"]</p>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table">
+                <caption class="sr-only">@T["nav.schedules"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["schedule.when"]</th>
+                    <th>@T["schedule.covers"]</th>
+                    <th>@T["schedule.next"]</th>
+                    @if (Model.CanEdit)
+                    {
+                        <th><span class="sr-only">@T["common.actions"]</span></th>
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var schedule in Model.Schedules)
+                {
+                    <tr class="@(schedule.Enabled ? null : "is-off")">
+                        <td>
+                            <span dir="auto">@schedule.Name</span>
+                            @if (!schedule.Enabled)
+                            {
+                                <span class="badge badge-idle">@T["schedule.off"]</span>
+                            }
+                        </td>
+                        <td>
+                            @* The translation for a reader, the expression for whoever edits it.
+                               A cron description on its own is a claim nobody can check. *@
+                            <div class="schedule-when">
+                                <span>@Describe(schedule.Cron)</span>
+                                <code class="schedule-cron" dir="ltr">@schedule.Cron</code>
+                                <span class="text-xs subtle" dir="ltr">@schedule.TimeZoneId</span>
+                            </div>
+                        </td>
+                        <td class="tabular" dir="ltr">
+                            @schedule.ScenarioCount × @schedule.EnvironmentCount
+                        </td>
+                        <td>
+                            @if (schedule.Problem is not null)
+                            {
+                                <span class="badge badge-fail">
+                                    <i data-lucide="circle-alert" aria-hidden="true"></i>@T[schedule.Problem]
+                                </span>
+                            }
+                            else if (!schedule.Enabled)
+                            {
+                                <span class="subtle">—</span>
+                            }
+                            else if (schedule.NextRunAt is { } next)
+                            {
+                                @* Forward-looking, because this has not happened yet. The relative
+                                   helper reads a future instant as clock skew and says "just now",
+                                   which on the one column that matters here would be a lie. *@
+                                <time datetime="@Dates.Iso(next)" title="@Dates.Absolute(next)">
+                                    @Dates.Ahead(next)
+                                </time>
+                            }
+                            else
+                            {
+                                <span class="subtle">—</span>
+                            }
+                        </td>
+                        @if (Model.CanEdit)
+                        {
+                            <td>
+                                <div class="row">
+                                    @if (schedule.LastBatchId is { } batchId)
+                                    {
+                                        <a class="btn btn-ghost btn-sm"
+                                           href="/projects/@Model.ProjectId/matrix/@batchId">
+                                            @T["schedule.lastRun"]
+                                        </a>
+                                    }
+
+                                    <form method="post"
+                                          action="/projects/@Model.ProjectId/schedules/@schedule.Id/enabled">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="enabled" value="@(!schedule.Enabled)" />
+                                        <button type="submit" class="btn btn-ghost btn-sm">
+                                            @(schedule.Enabled ? T["schedule.turnOff"] : T["schedule.turnOn"])
+                                        </button>
+                                    </form>
+
+                                    <form method="post"
+                                          action="/projects/@Model.ProjectId/schedules/@schedule.Id/delete"
+                                          data-confirm="@T["schedule.delete.body"]"
+                                          data-confirm-title="@T["schedule.delete.title"]"
+                                          data-confirm-action="@T["action.delete"]">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-ghost btn-icon btn-sm"
+                                                aria-label="@T["action.delete"]">
+                                            <i data-lucide="trash-2" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (Model.CanEdit && Model.Scenarios.Count > 0 && Model.Environments.Count > 0)
+{
+    <div class="card card-pad stack">
+        <h2 class="card-title">@T["schedule.new"]</h2>
+
+        <form method="post" action="/projects/@Model.ProjectId/schedules/save" class="stack">
+            @Html.AntiForgeryToken()
+
+            <div class="field">
+                <label class="field-label" for="schedule-name">@T["common.name"]</label>
+                <input class="input" id="schedule-name" name="name" required maxlength="200"
+                       placeholder="@T["schedule.name.placeholder"]" />
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="schedule-cron">@T["schedule.when"]</label>
+
+                @* Buttons before the box. Cron's field order is something people look up every
+                   single time, and the six rhythms anybody actually wants are one click. *@
+                <div class="schedule-presets">
+                    @foreach (var preset in Model.Presets)
+                    {
+                        <button type="button" class="btn btn-secondary btn-sm"
+                                data-cron="@preset" data-cron-target="schedule-cron">
+                            @Describe(preset)
+                        </button>
+                    }
+                </div>
+
+                <input class="input input-mono" id="schedule-cron" name="cron" required
+                       maxlength="120" dir="ltr" value="0 6 * * 1-5" />
+                <p class="field-hint">@T["schedule.cron.hint"]</p>
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="schedule-zone">@T["schedule.zone"]</label>
+                <input class="input input-mono" id="schedule-zone" name="timeZoneId" dir="ltr"
+                       maxlength="80" value="@Model.ViewerZone" />
+                <p class="field-hint">@T["schedule.zone.hint"]</p>
+            </div>
+
+            <div class="matrix-pickers">
+                <fieldset class="matrix-picker">
+                    <legend class="field-label">@T["matrix.column.scenario"]</legend>
+                    <div class="matrix-picker-list">
+                        @foreach (var scenario in Model.Scenarios)
+                        {
+                            <label class="matrix-picker-row">
+                                <input class="checkbox" type="checkbox" name="scenarioIds"
+                                       value="@scenario.Id" />
+                                <span dir="auto">@scenario.Name</span>
+                            </label>
+                        }
+                    </div>
+                </fieldset>
+
+                <fieldset class="matrix-picker">
+                    <legend class="field-label">@T["run.column.environment"]</legend>
+                    <div class="matrix-picker-list">
+                        @foreach (var environment in Model.Environments)
+                        {
+                            <label class="matrix-picker-row">
+                                <input class="checkbox" type="checkbox" name="environmentIds"
+                                       value="@environment.Id" />
+                                <span dir="auto">@environment.Name</span>
+                                @if (environment.IsProduction)
+                                {
+                                    @* An icon, not the word: most people call their production
+                                       environment "Production", and a badge beside it saying so is
+                                       a stutter. *@
+                                    <span class="matrix-live" title="@T["matrix.production"]">
+                                        <i data-lucide="shield-alert" aria-hidden="true"></i>
+                                        <span class="sr-only">@T["matrix.production"]</span>
+                                    </span>
+                                }
+                            </label>
+                        }
+                    </div>
+                </fieldset>
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="calendar-clock" aria-hidden="true"></i>@T["schedule.new"]
+                </button>
+            </div>
+        </form>
+    </div>
+}
+
+@*
+    The flaky list sits with the schedules because that is where somebody meets the problem: a
+    nightly run that keeps going red for no reason is why they came to this page.
+*@
+<div class="card">
+    <div class="card-header">
+        <div>
+            <div class="card-title">@T["flaky.title"]</div>
+            <div class="card-subtitle">@T["flaky.subtitle"]</div>
+        </div>
+    </div>
+
+    @if (Model.Flaky.Count == 0)
+    {
+        <div class="card-body">
+            <p class="muted">@T["flaky.none"]</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="table">
+                <caption class="sr-only">@T["flaky.title"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["matrix.column.scenario"]</th>
+                    <th>@T["run.column.environment"]</th>
+                    <th>@T["flaky.rate"]</th>
+                    <th>@T["flaky.lastSeen"]</th>
+                    @if (Model.CanQuarantine)
+                    {
+                        <th><span class="sr-only">@T["common.actions"]</span></th>
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var entry in Model.Flaky)
+                {
+                    @* Quarantined rows are dimmed and labelled, never hidden. A flaky test that
+                       disappears from the list is one nobody ever fixes. *@
+                    <tr class="@(entry.Quarantined ? "is-off" : null)">
+                        <td>
+                            <a href="/projects/@Model.ProjectId/scenarios/@entry.ScenarioId" dir="auto">
+                                @entry.Name
+                            </a>
+                            @if (entry.Quarantined)
+                            {
+                                <span class="badge badge-idle">@T["flaky.quarantined"]</span>
+                            }
+                        </td>
+                        <td dir="auto">@(entry.EnvironmentName ?? "—")</td>
+                        <td>
+                            <span class="badge badge-warn"
+                                  title="@T["flaky.tooltip", entry.Failed, entry.Runs]">
+                                <i data-lucide="triangle-alert" aria-hidden="true"></i>
+                                <span class="tabular" dir="ltr">@($"{entry.Rate:P0}")</span>
+                            </span>
+                            <span class="text-xs subtle tabular" dir="ltr">
+                                @entry.Failed/@entry.Runs
+                            </span>
+                        </td>
+                        <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(entry.LastSeen))" /></td>
+                        @if (Model.CanQuarantine)
+                        {
+                            <td>
+                                <form method="post" action="/projects/@Model.ProjectId/schedules/quarantine">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="scenarioId" value="@entry.ScenarioId" />
+                                    <input type="hidden" name="quarantined" value="@(!entry.Quarantined)" />
+                                    <input type="hidden" name="reason" value="@T["flaky.reason"]" />
+                                    <button type="submit" class="btn btn-ghost btn-sm">
+                                        @(entry.Quarantined ? T["flaky.release"] : T["flaky.quarantine"])
+                                    </button>
+                                </form>
+                            </td>
+                        }
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

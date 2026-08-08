@@ -48,9 +48,14 @@
                                     <span dir="auto">@environment.Name</span>
                                     @if (environment.IsProduction)
                                     {
-                                        @* Marked here as well as in the grid. This is the moment
-                                           somebody decides to send traffic at production. *@
-                                        <span class="badge badge-warn">@T["matrix.production"]</span>
+                                        @* Marked here as well as in the grid — this is the moment
+                                           somebody decides to send traffic at production — and by
+                                           an icon rather than the word, which most people have
+                                           already used as the environment's name. *@
+                                        <span class="matrix-live" title="@T["matrix.production"]">
+                                            <i data-lucide="shield-alert" aria-hidden="true"></i>
+                                            <span class="sr-only">@T["matrix.production"]</span>
+                                        </span>
                                     }
                                 </label>
                             }

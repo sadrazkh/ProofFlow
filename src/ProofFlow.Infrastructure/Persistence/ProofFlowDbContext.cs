@@ -7,6 +7,7 @@ using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Capture;
 using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Runs;
+using ProofFlow.Domain.Scheduling;
 using ProofFlow.Domain.Scenarios;
 using ProofFlow.Domain.Common;
 using ProofFlow.Domain.Environments;
@@ -69,6 +70,10 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<AssertionResult> AssertionResults => Set<AssertionResult>();
     public DbSet<RunEvent> RunEvents => Set<RunEvent>();
     public DbSet<RunArtifact> RunArtifacts => Set<RunArtifact>();
+    public DbSet<RunSchedule> RunSchedules => Set<RunSchedule>();
+    public DbSet<ScheduleScenario> ScheduleScenarios => Set<ScheduleScenario>();
+    public DbSet<ScheduleEnvironment> ScheduleEnvironments => Set<ScheduleEnvironment>();
+    public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

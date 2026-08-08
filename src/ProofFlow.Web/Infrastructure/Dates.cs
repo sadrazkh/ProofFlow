@@ -81,6 +81,30 @@ public sealed class Dates(IHttpContextAccessor accessor, IStringLocalizer locali
         };
     }
 
+    /// <summary>
+    /// "in 12 minutes", "in 6 hours" — and a date once the phrase stops helping.
+    ///
+    /// The counterpart to <see cref="Relative"/>, and deliberately not the same method with a sign
+    /// flipped: a past timestamp in the future is clock skew, and a scheduled time in the future is
+    /// the whole point of the column.
+    /// </summary>
+    public string Ahead(DateTimeOffset when)
+    {
+        var span = RelativeTime.Ahead(when, clock.UtcNow);
+
+        return span.Unit switch
+        {
+            RelativeUnit.JustNow => localizer["time.due"].Value,
+            RelativeUnit.Minutes => Ahead("time.minute", span.Value),
+            RelativeUnit.Hours => Ahead("time.hour", span.Value),
+            RelativeUnit.Days => Ahead("time.day", span.Value),
+            _ => Absolute(when),
+        };
+    }
+
+    private string Ahead(string stem, int value) =>
+        value == 1 ? localizer[$"{stem}Ahead"].Value : localizer[$"{stem}sAhead", value].Value;
+
     private string Count(string stem, int value) =>
         value == 1 ? localizer[$"{stem}Ago"].Value : localizer[$"{stem}sAgo", value].Value;
 

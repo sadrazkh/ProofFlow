@@ -41,6 +41,33 @@ public static class RelativeTime
 
         return new RelativeSpan(RelativeUnit.Days, (int)elapsed.TotalDays);
     }
+
+    /// <summary>
+    /// How long until something happens, which is a different question from how long ago.
+    ///
+    /// Its own method rather than a sign on <see cref="From"/>, because the two disagree about the
+    /// same input on purpose. A stored timestamp in the future is clock skew and reads as "just
+    /// now"; a scheduled time in the future is a fact and reads as "in six hours". Folding them
+    /// together would mean one of the two lying.
+    /// </summary>
+    public static RelativeSpan Ahead(DateTimeOffset when, DateTimeOffset now)
+    {
+        var remaining = when - now;
+
+        // Already due, or as good as. A schedule the worker has not reached yet is a minute of
+        // waiting, not a negative number.
+        if (remaining <= TimeSpan.FromMinutes(1)) return new RelativeSpan(RelativeUnit.JustNow, 0);
+
+        if (remaining >= AbsoluteAfter) return new RelativeSpan(RelativeUnit.Absolute, 0);
+
+        if (remaining.TotalHours < 1)
+            return new RelativeSpan(RelativeUnit.Minutes, (int)remaining.TotalMinutes);
+
+        if (remaining.TotalDays < 1)
+            return new RelativeSpan(RelativeUnit.Hours, (int)remaining.TotalHours);
+
+        return new RelativeSpan(RelativeUnit.Days, (int)remaining.TotalDays);
+    }
 }
 
 public enum RelativeUnit

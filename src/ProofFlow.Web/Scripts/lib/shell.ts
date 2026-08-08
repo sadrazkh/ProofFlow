@@ -1,4 +1,5 @@
 import { t } from './i18n';
+import { toast } from './toast';
 
 /**
  * The chrome around every page: sidebar, dropdown menus, the command palette, confirmations.
@@ -353,6 +354,55 @@ function escapeHtml(value: string): string {
  * Compares against the values the page loaded with rather than tracking every keystroke, so
  * typing something and undoing it does not count as a change.
  */
+/**
+ * The cron presets.
+ *
+ * A button that writes an expression into a box, rather than a select that replaces it. Cron's
+ * field order is something people look up every single time, and the six rhythms anybody actually
+ * wants should be one click — but the box stays editable, because the seventh rhythm always exists.
+ */
+export function mountCronPresets(): void {
+  document.querySelectorAll<HTMLButtonElement>('button[data-cron]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const target = document.getElementById(button.dataset.cronTarget ?? '');
+      if (!(target instanceof HTMLInputElement)) return;
+
+      target.value = button.dataset.cron ?? '';
+      target.dispatchEvent(new Event('input', { bubbles: true }));
+      target.focus();
+    });
+  });
+}
+
+/**
+ * Copy buttons.
+ *
+ * For values that exist once and cannot be fetched again — an API key, most of all. Selecting
+ * forty characters of base64 by hand is how somebody loses the last character and spends an
+ * afternoon on a 401.
+ */
+export function mountCopyButtons(): void {
+  document.querySelectorAll<HTMLButtonElement>('button[data-copy]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const value = button.dataset.copy ?? '';
+
+      try {
+        await navigator.clipboard.writeText(value);
+      } catch {
+        // Refused, usually because the page is not on a secure origin. Said rather than swallowed:
+        // a button that appears to work and does not is worse than one that admits it cannot.
+        toast(t('action.copyFailed'), 'warn');
+        return;
+      }
+
+      const original = button.textContent;
+      button.textContent = t('action.copied');
+
+      window.setTimeout(() => { button.textContent = original; }, 1600);
+    });
+  });
+}
+
 export function mountUnsavedGuard(): void {
   document.querySelectorAll<HTMLFormElement>('form[data-guard-unsaved]').forEach((form) => {
     const initial = new FormData(form);

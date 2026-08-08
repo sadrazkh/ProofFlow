@@ -67,7 +67,8 @@
     "open": "Open",
     "more": "More",
     "approve": "Approve",
-    "reject": "Reject"
+    "reject": "Reject",
+    "copyFailed": "The browser would not copy it."
   },
   "common": {
     "name": "Name",
@@ -85,7 +86,8 @@
     "dangerZone": "Irreversible actions",
     "typeToConfirm": "Type {0} to confirm.",
     "status": "Status",
-    "saving": "Saving…"
+    "saving": "Saving…",
+    "actions": "Actions"
   },
   "auth": {
     "signInTitle": "Sign in",
@@ -255,7 +257,14 @@
     "milliseconds": "{0}ms",
     "minuteAgo": "1 minute ago",
     "hourAgo": "1 hour ago",
-    "dayAgo": "yesterday"
+    "dayAgo": "yesterday",
+    "due": "Due now",
+    "minuteAhead": "in a minute",
+    "minutesAhead": "in {0} minutes",
+    "hourAhead": "in an hour",
+    "hoursAhead": "in {0} hours",
+    "dayAhead": "tomorrow",
+    "daysAhead": "in {0} days"
   },
   "projectHome": {
     "title": "This project is ready for its first environment",
@@ -1257,5 +1266,77 @@
     "stepsNotShown": "{0} further steps are not shown.",
     "noSharedSteps": "These two runs share no step that returned a response.",
     "failedCount": "{0} failed"
+  },
+  "schedule": {
+    "subtitle": "What runs on its own, and when.",
+    "new": "Add a schedule",
+    "when": "When",
+    "covers": "Runs",
+    "next": "Next",
+    "off": "Off",
+    "turnOn": "Turn on",
+    "turnOff": "Turn off",
+    "lastRun": "Last run",
+    "zone": "Time zone",
+    "zone.hint": "«Every morning» means morning here. Written as an IANA name, like Asia/Tehran.",
+    "cron.hint": "Five fields: minute, hour, day of month, month, day of week.",
+    "name.placeholder": "Nightly regression",
+    "delete.title": "Delete this schedule?",
+    "delete.body": "It stops running. The runs it already started are kept.",
+    "empty.title": "Nothing runs on its own yet",
+    "empty.body": "A suite nobody remembers to run is a suite that finds problems late. Add a schedule and it will tell you."
+  },
+  "cron": {
+    "empty": "No expression was given.",
+    "unreadable": "That expression cannot be read.",
+    "zone": "That time zone is not known here.",
+    "nothingToRun": "Everything it covered has been deleted.",
+    "everyMinute": "Every minute",
+    "everyFiveMinutes": "Every five minutes",
+    "everyQuarterHour": "Every quarter hour",
+    "everyHalfHour": "Every half hour",
+    "hourly": "Every hour",
+    "midnight": "Every day at midnight",
+    "everyMorning": "Every day at 06:00",
+    "everyWeekdayMorning": "Weekdays at 06:00",
+    "weekly": "Every Sunday",
+    "monthly": "The first of every month"
+  },
+  "flaky": {
+    "title": "Tests that cannot make up their minds",
+    "subtitle": "The same test, the same version, the same environment — passing sometimes and failing others.",
+    "none": "Nothing here is flaky, over the last fortnight.",
+    "rate": "How often it fails",
+    "lastSeen": "Last seen",
+    "tooltip": "{0} of {1} runs failed",
+    "quarantine": "Quarantine",
+    "release": "Release",
+    "quarantined": "Quarantined",
+    "reason": "Too unreliable to fail a build on."
+  },
+  "apikey": {
+    "title": "Keys",
+    "subtitle": "What a build agent uses to start a run.",
+    "list.subtitle": "Revoked keys stay listed, so the trail still names them.",
+    "none": "No key has been issued for this project.",
+    "new": "Issue a key",
+    "name.placeholder": "GitHub Actions",
+    "name.hint": "Name it after what will hold it, so revoking is obvious later.",
+    "preview": "Starts with",
+    "lastUsed": "Last used",
+    "expiry": "Expires",
+    "expiry.90": "In 90 days",
+    "expiry.365": "In a year",
+    "expiry.never": "Never",
+    "expiry.hint": "A key that never expires is a real choice. A key that does is the better one.",
+    "wholeWorkspace": "Whole workspace",
+    "revoked": "Revoked",
+    "revoke": "Revoke",
+    "revoke.title": "Revoke this key?",
+    "revoke.body": "Anything using it stops working immediately. It cannot be undone.",
+    "issued.title": "Here is the key. This is the only time it is shown.",
+    "issued.body": "Nothing here stores it — not this page, not the database. Copy it now, or issue another one later.",
+    "howto": "Using it from a build",
+    "howto.body": "Start a run, wait for it to finish, then fetch the report your build system already reads."
   }
 }

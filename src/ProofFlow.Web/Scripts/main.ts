@@ -21,6 +21,8 @@ import {
   mountCommandPalette,
   mountConfirmations,
   mountUnsavedGuard,
+  mountCronPresets,
+  mountCopyButtons,
 } from './lib/shell';
 
 /**
@@ -38,6 +40,8 @@ mountMenus();
 mountCommandPalette();
 mountConfirmations();
 mountUnsavedGuard();
+mountCronPresets();
+mountCopyButtons();
 // Registered before mounting, which is the only ordering that matters here.
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);

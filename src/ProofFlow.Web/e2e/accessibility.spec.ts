@@ -45,6 +45,8 @@ const PROJECT_PAGES = [
   { name: 'scenarios', path: (id: string) => `/projects/${id}/scenarios` },
   { name: 'runs', path: (id: string) => `/projects/${id}/runs` },
   { name: 'matrix', path: (id: string) => `/projects/${id}/matrix` },
+  { name: 'schedules', path: (id: string) => `/projects/${id}/schedules` },
+  { name: 'project settings', path: (id: string) => `/projects/${id}/settings` },
 ];
 
 let projectId: string | null = null;

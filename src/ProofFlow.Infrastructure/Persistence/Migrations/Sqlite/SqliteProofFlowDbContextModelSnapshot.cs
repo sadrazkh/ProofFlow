@@ -1405,6 +1405,15 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<Guid?>("PublishedVersionId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("QuarantineReason")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("QuarantinedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("QuarantinedByUserId")
+                        .HasColumnType("TEXT");
+
                     b.Property<Guid?>("TestSuiteId")
                         .HasColumnType("TEXT");
 
@@ -1593,6 +1602,194 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasIndex("ScenarioVersionId", "ParentNodeId");
 
                     b.ToTable("WorkflowNodes", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ApiKey", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ExpiresAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Hash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastUsedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Preview")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("RevokedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Hash")
+                        .IsUnique();
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("WorkspaceId", "RevokedAt");
+
+                    b.ToTable("ApiKeys", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.RunSchedule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Cron")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid?>("LastBatchId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastRunAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NextRunAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Problem")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Enabled", "NextRunAt");
+
+                    b.HasIndex("ProjectId", "Name");
+
+                    b.ToTable("RunSchedules", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleEnvironment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RunScheduleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("RunScheduleId", "EnvironmentId")
+                        .IsUnique();
+
+                    b.ToTable("ScheduleEnvironments", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleScenario", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("RunScheduleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ScenarioId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ScenarioId");
+
+                    b.HasIndex("RunScheduleId", "ScenarioId")
+                        .IsUnique();
+
+                    b.ToTable("ScheduleScenarios", (string)null);
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Tagging.Tag", b =>
@@ -2191,6 +2388,64 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Navigation("Version");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ApiKey", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.RunSchedule", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleEnvironment", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
+                        .WithMany()
+                        .HasForeignKey("EnvironmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scheduling.RunSchedule", "Schedule")
+                        .WithMany("Environments")
+                        .HasForeignKey("RunScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Environment");
+
+                    b.Navigation("Schedule");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleScenario", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Scheduling.RunSchedule", "Schedule")
+                        .WithMany("Scenarios")
+                        .HasForeignKey("RunScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scenarios.TestScenario", "Scenario")
+                        .WithMany()
+                        .HasForeignKey("ScenarioId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Scenario");
+
+                    b.Navigation("Schedule");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Tagging.TagAssignment", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Tagging.Tag", "Tag")
@@ -2265,6 +2520,13 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
             modelBuilder.Entity("ProofFlow.Domain.Scenarios.TestScenario", b =>
                 {
                     b.Navigation("Versions");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.RunSchedule", b =>
+                {
+                    b.Navigation("Environments");
+
+                    b.Navigation("Scenarios");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Workspaces.Workspace", b =>

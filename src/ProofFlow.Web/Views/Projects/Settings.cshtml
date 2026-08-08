@@ -1,4 +1,5 @@
 @model ProjectFormViewModel
+@inject Dates Dates
 
 <div class="page page-narrow" style="padding: 0;">
     <div class="page-head">
@@ -69,5 +70,161 @@
                 </form>
             </div>
         </section>
+
+        @*
+            The keys a build agent holds.
+
+            On this page rather than one of its own: issuing a key is a project setting, and the person who
+            came here to rename the project is the person who came here to wire up CI.
+        *@
+        @if (Model.Id is { } projectId)
+        {
+            @if (Model.IssuedSecret is { Length: > 0 } secret)
+            {
+                @* Shown once. Not a style choice — nothing in this product can produce it again, and a page
+                   that showed it twice would mean the database held it. *@
+                <div class="card card-pad stack key-issued" role="status">
+                    <h2 class="card-title">@T["apikey.issued.title"]</h2>
+                    <p class="muted">@T["apikey.issued.body"]</p>
+
+                    <div class="key-value">
+                        <code dir="ltr">@secret</code>
+                        <button type="button" class="btn btn-secondary btn-sm" data-copy="@secret">
+                            <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <div class="card card-pad stack">
+                <h2 class="card-title">@T["apikey.title"]</h2>
+                <p class="muted">@T["apikey.subtitle"]</p>
+
+                @if (Model.Keys.Count > 0)
+                {
+                    <div class="table-wrap">
+                        <table class="table">
+                            <caption class="sr-only">@T["apikey.title"]</caption>
+                            <thead>
+                            <tr>
+                                <th>@T["common.name"]</th>
+                                <th>@T["apikey.preview"]</th>
+                                <th>@T["apikey.lastUsed"]</th>
+                                <th>@T["apikey.expiry"]</th>
+                                <th><span class="sr-only">@T["common.actions"]</span></th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var key in Model.Keys)
+                            {
+                                @* Revoked keys stay listed, dimmed. The audit trail names the key that
+                                   started a run, and a deleted row turns that into a dangling id. *@
+                                <tr class="@(key.RevokedAt is null ? null : "is-off")">
+                                    <td>
+                                        <span dir="auto">@key.Name</span>
+                                        @if (key.WholeWorkspace)
+                                        {
+                                            <span class="badge badge-warn">@T["apikey.wholeWorkspace"]</span>
+                                        }
+                                        @if (key.RevokedAt is not null)
+                                        {
+                                            <span class="badge badge-idle">@T["apikey.revoked"]</span>
+                                        }
+                                    </td>
+                                    <td><code class="schedule-cron" dir="ltr">@key.Preview…</code></td>
+                                    <td>
+                                        @if (key.LastUsedAt is { } used)
+                                        {
+                                            <partial name="Pieces/_Timestamp" model="@(new TimestampView(used))" />
+                                        }
+                                        else
+                                        {
+                                            @* An em dash, not "never": one says it has not been used, the
+                                               other reads as a promise about the future. *@
+                                            <span class="subtle">—</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (key.ExpiresAt is { } expires)
+                                        {
+                                            @* Ahead, not ago. An expiry ninety days away rendered
+                                               by the past-tense helper reads "just now", which on
+                                               this column says the opposite of the truth. *@
+                                            <time datetime="@Dates.Iso(expires)"
+                                                  title="@Dates.Absolute(expires)">@Dates.Ahead(expires)</time>
+                                        }
+                                        else
+                                        {
+                                            <span class="subtle">@T["apikey.expiry.never"]</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (key.RevokedAt is null)
+                                        {
+                                            <form method="post"
+                                                  action="/projects/@projectId/settings/keys/@key.Id/revoke"
+                                                  data-confirm="@T["apikey.revoke.body"]"
+                                                  data-confirm-title="@T["apikey.revoke.title"]"
+                                                  data-confirm-action="@T["apikey.revoke"]">
+                                                @Html.AntiForgeryToken()
+                                                <button type="submit" class="btn btn-ghost btn-sm">
+                                                    @T["apikey.revoke"]
+                                                </button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+                else
+                {
+                    <p class="muted">@T["apikey.none"]</p>
+                }
+
+                <form method="post" action="/projects/@projectId/settings/keys" class="stack">
+                    @Html.AntiForgeryToken()
+
+                    <div class="field">
+                        <label class="field-label" for="key-name">@T["apikey.new"]</label>
+                        <input class="input" id="key-name" name="name" required maxlength="200"
+                               placeholder="@T["apikey.name.placeholder"]" />
+                        <p class="field-hint">@T["apikey.name.hint"]</p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="key-expiry">@T["apikey.expiry"]</label>
+                        <select class="select" id="key-expiry" name="expiresInDays">
+                            <option value="90">@T["apikey.expiry.90"]</option>
+                            <option value="365">@T["apikey.expiry.365"]</option>
+                            <option value="0">@T["apikey.expiry.never"]</option>
+                        </select>
+                        <p class="field-hint">@T["apikey.expiry.hint"]</p>
+                    </div>
+
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i data-lucide="key-round" aria-hidden="true"></i>@T["apikey.new"]
+                        </button>
+                    </div>
+                </form>
+
+                <details class="key-howto">
+                    <summary>@T["apikey.howto"]</summary>
+                    <p class="muted">@T["apikey.howto.body"]</p>
+                    <pre class="code-block" dir="ltr"><code>curl -X POST \
+          -H "Authorization: Bearer pf_..." \
+          -H "Content-Type: application/json" \
+          -d '{"environments":["Staging"]}' \
+          @(Context.Request.Scheme)://@(Context.Request.Host)/api/v1/projects/@projectId/runs
+
+        # then, once it has finished
+        curl -H "Authorization: Bearer pf_..." \
+          @(Context.Request.Scheme)://@(Context.Request.Host)/api/v1/runs/RUN_ID/junit -o junit.xml</code></pre>
+                </details>
+            </div>
+        }
     </div>
 </div>

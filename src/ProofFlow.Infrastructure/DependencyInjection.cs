@@ -64,6 +64,11 @@ public static class DependencyInjection
         services.AddScoped<Runs.RunService>();
         services.AddScoped<Runs.MatrixService>();
         services.AddScoped<Runs.EnvironmentComparison>();
+        services.AddScoped<Scheduling.ScheduleService>();
+        services.AddScoped<Scheduling.ApiKeyService>();
+        services.AddScoped<Runs.JUnitReport>();
+        services.AddScoped<Runs.FlakyDetector>();
+        services.AddHostedService<Scheduling.ScheduleWorker>();
         services.AddSingleton<Runs.ScenarioGraphSnapshots>();
 
         // Scoped, and set by whatever starts a piece of background work before anything that reads

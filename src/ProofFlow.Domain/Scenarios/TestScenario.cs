@@ -73,6 +73,21 @@ public class TestScenario : Entity, IWorkspaceOwned
 
     public DateTimeOffset? ArchivedAt { get; set; }
 
+    /// <summary>
+    /// Set when somebody decides this test is too unreliable to fail a build on.
+    ///
+    /// Quarantine is not deletion and not disabling. The scenario still runs, still records what it
+    /// found, and still shows in every list — it simply stops being allowed to fail the suite. A
+    /// flaky test that gets deleted takes its coverage with it and nobody ever notices; a flaky test
+    /// that gets quarantined stays visible until somebody fixes it.
+    /// </summary>
+    public DateTimeOffset? QuarantinedAt { get; set; }
+
+    /// <summary>Why, in the words of whoever decided. A quarantine with no reason is a mystery.</summary>
+    public string? QuarantineReason { get; set; }
+
+    public Guid? QuarantinedByUserId { get; set; }
+
     public ICollection<ScenarioVersion> Versions { get; set; } = [];
 }
 
