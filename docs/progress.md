@@ -103,7 +103,12 @@ asserts which page it is actually on before measuring anything.
 
 ---
 
-## Phase B — Environments, secrets, HTTP execution · **engine done, interface next**
+## Phase B — Environments, secrets, HTTP execution · **done, with the interface**
+
+The heading read "engine done, interface next" for several phases after the interface shipped. The
+pages arrived in D-B — environments as master-detail, secrets with a gated reveal, the request
+builder with live variable highlighting, and the response viewer — and the acceptance run drives all
+four.
 
 ### Done and tested
 
@@ -903,3 +908,19 @@ there are tests for all four. The two real leaks this pass would have looked for
 resolved URL, a job package with no tenant — were found earlier, by making the agent run for real.
 
 Nothing new. That is the honest result rather than a shortage of looking.
+
+---
+
+## Backlog
+
+Everything found and deliberately not done. None of it blocks using the product; each entry says why
+it was left, so the next person can disagree with the reasoning rather than rediscover the problem.
+
+| | Why it is here, and why it waited |
+|---|---|
+| The engine's messages are English | They are written for a non-programmer — "Expected 200, got 500", "«vars» has no value, so «recordId» cannot be read from it" — and the one family that already carries a code, a request that could not be made, is localised where somebody first meets it. Translating the rest means giving the engine a message code and persisting it on every node run and every assertion: a taxonomy and a schema change |
+| A data set shows its first 200 rows | It says so, and pasting replaces the whole set, so there is a way out. Virtualising an *editable* table — focus, scroll anchoring, per-cell inputs — is real work; the read-only run log was worth it, this is not yet |
+| Runs and Activity are tables on a phone | They scroll sideways and the leading columns carry the verdict, so the answer is readable without scrolling. Turning them into cards is a redesign, not a fix |
+| One process only | The run queue is in memory, so the deployment is one app container. A second replica needs a queue both processes can see and a lease on the scheduler. `ProofFlow.Worker` is the placeholder and refuses to start until then |
+| Payloads live in table columns | `IPayloadStore` was designed for and never needed. Retention keeps the size honest; object storage is the answer when somebody's database says otherwise |
+| Two runners can share a name | The list shows both and the id disambiguates. Unique names are a constraint with a migration and an error message, for a confusion nobody has had yet |

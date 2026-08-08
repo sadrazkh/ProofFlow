@@ -69,20 +69,20 @@ Payload بزرگ هرگز مستقیم در ستون: `IPayloadStore` (Db/File) 
 
 - **A — Foundation** ✅ (مخزن، ۷ پروژه، EF دوگانه، Identity/Workspace، Localization فا/en با RTL،
   Theme، Design Tokens و Shell، Audit پایه، CI)
-- **B — Environment، Secret، Request Builder** — موتور ✅ (Secretها، UrlGuard/SSRF، HttpExecutor،
-  Redaction، Variable Resolver، FakeApi)؛ **UI مانده** (صفحات محیط/Secret، Request Builder،
+- **B — Environment، Secret، Request Builder** ✅ (Secretها، UrlGuard/SSRF، HttpExecutor،
+  Redaction، Variable Resolver، FakeApi، و UI کامل: صفحات محیط/Secret، Request Builder،
   Response Viewer با منوی کلیک روی فیلد)
-- **C — Assertion، Baseline، Semantic Diff** ⇒ گام‌های ۵–۱۰ پذیرش
-- **D — Sample-based Regression، Capture Mode، Guided Wizard** ⇒ گام‌های ۴–۱۰ کامل
-- **E — Workflow Builder (Canvas)** ⇒ گام ۱۱
-- **F — Workflow Runner** (اجرای گراف، Branch/Loop/Retry/Poll/Cleanup، Cancel، Log زنده) ⇒ گام‌های ۱۲–۱۵ و ۱۸
-- **G — Multi-environment** (Matrix، مقایسه محیط‌ها) ⇒ گام‌های ۱۶–۱۷
-- **H — Schedule، Worker، CI** (Cronos، JUnit Export، Trigger از API/CLI، Flaky Detection) ⇒ گام ۱۹
-- **I — Team و Approval** (شش Role، Permissionها به‌صورت Policy، چرخه تأیید Baseline، Audit UI)
-- **J — Import/Export و Templates** (OpenAPI، cURL، Postman، فرمت داخلی Git-friendly، ۱۲ Template + دمو)
-- **K — Security و Private Runner** (تست‌های SSRF به‌عنوان Gate، Retention، Runner Agent با Job امضاشده)
-- **L — UI/UX Polish** (Onboarding، Empty/Error States، Responsive، Keyboard، a11y، Virtual Scrolling)
-- **M — Hardening نهایی** (Docker، مستندات، Backup/Restore، تست Migration، **اجرای عملی سناریوی
+- **C — Assertion، Baseline، Semantic Diff** ✅ ⇒ گام‌های ۵–۱۰ پذیرش
+- **D — Sample-based Regression، Capture Mode، Guided Wizard** ✅ ⇒ گام‌های ۴–۱۰ کامل
+- **E — Workflow Builder (Canvas)** ✅ ⇒ گام ۱۱
+- **F — Workflow Runner** ✅ (اجرای گراف، Branch/Loop/Retry/Poll/Cleanup، Cancel، Log زنده) ⇒ گام‌های ۱۲–۱۵ و ۱۸
+- **G — Multi-environment** ✅ (Matrix، مقایسه محیط‌ها) ⇒ گام‌های ۱۶–۱۷
+- **H — Schedule، Worker، CI** ✅ (Cronos، JUnit Export، Trigger از API/CLI، Flaky Detection) ⇒ گام ۱۹
+- **I — Team و Approval** ✅ (شش Role، Permissionها به‌صورت Policy، چرخه تأیید Baseline، Audit UI)
+- **J — Import/Export و Templates** ✅ (OpenAPI، cURL، Postman، فرمت داخلی Git-friendly، ۱۲ Template + دمو)
+- **K — Security و Private Runner** ✅ (تست‌های SSRF به‌عنوان Gate، Retention، Runner Agent با Job امضاشده)
+- **L — UI/UX Polish** ✅ (Onboarding، Empty/Error States، Responsive، Keyboard، a11y، Virtual Scrolling)
+- **M — Hardening نهایی** ✅ (Docker، مستندات، Backup/Restore، تست Migration، **اجرای عملی سناریوی
   ۲۰ گامی بخش ۲۱ به‌عنوان معیار پایان**)
 
 ## ریسک‌ها
