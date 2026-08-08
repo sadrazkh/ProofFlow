@@ -568,8 +568,15 @@
 
 .import-source-body { display: flex; flex-direction: column; gap: 2px; }
 
-/* The sentence about secrets, and the one about what was left behind. */
-.export-warning { border-inline-start: 3px solid var(--warn-border); }
+/*
+  The sentence about secrets, and the one about what was left behind.
+
+  The whole border rather than a thick rail down one side. This project already has a treatment for
+  a card worth reading once — the issued-key card two hundred lines up — and it colours the border,
+  not one edge of it. The icon carries the tone; the text stays on the surface it was designed for,
+  which is also how it stays out of the contrast trouble a tinted panel invites.
+*/
+.export-warning { border-color: var(--warn-border); }
 .export-warning > .row > svg { inline-size: 16px; block-size: 16px; flex: none; color: var(--warn-ink); }
 
 .export-secrets, .import-notes {
