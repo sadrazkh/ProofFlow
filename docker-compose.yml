@@ -1,0 +1,64 @@
+# ProofFlow and a database. That is the whole deployment.
+#
+#   cp .env.example .env      # then edit it — it will not start without a master key
+#   docker compose up --build
+#
+# Then http://localhost:8080 and create the first account, which also creates the workspace.
+#
+# One app container on purpose. The run queue lives in memory, so a second replica would not share
+# the work — it would run its own scheduler and its own retention sweeper against the same database
+# while its run queue sat empty. `docker compose up --scale app=2` is not a supported way to make
+# this faster; a bigger machine is.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: proofflow
+      POSTGRES_USER: proofflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      # The app waits on this rather than on a sleep. Postgres accepts connections for a moment
+      # during initialisation and then restarts, which is exactly long enough to fail a migration.
+      test: ["CMD-SHELL", "pg_isready -U proofflow -d proofflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      Database__Provider: postgres
+      ConnectionStrings__Default: >-
+        Host=db;Port=5432;Database=proofflow;Username=proofflow;Password=${POSTGRES_PASSWORD}
+
+      # On here, and only because this is the single-container deployment above: one process, so
+      # there is nobody to race with. The README explains why it is off by default for PostgreSQL.
+      Database__AutoMigrate: "true"
+
+      # What every secret in this installation is encrypted with. There is no default and there
+      # must not be one: a master key that ships in an image is a master key everybody has.
+      ProofFlow__MasterKey: ${PROOFFLOW_MASTER_KEY:?set PROOFFLOW_MASTER_KEY in .env}
+
+      # Behind a reverse terminating TLS, this is what makes the app believe the scheme it was
+      # actually reached on — otherwise every generated link comes out http.
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
+    ports:
+      - "${PROOFFLOW_PORT:-8080}:8080"
+    volumes:
+      # The keyring, not the database: on PostgreSQL the database is in the volume above. Losing
+      # this one signs everybody out on the next deploy.
+      - keys:/app/keys
+
+volumes:
+  db:
+  keys:

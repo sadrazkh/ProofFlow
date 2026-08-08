@@ -32,11 +32,27 @@ knows nothing about the database or the web, so a scenario can be executed insid
 | Engine | `ProofFlow.TestEngine` | Compiler, executor, assertions, normaliser, semantic diff, nodes. |
 | Infrastructure | `ProofFlow.Infrastructure` | EF Core, migrations, identity, HTTP, secrets, jobs. |
 | Web | `ProofFlow.Web` | MVC, Razor, internal API, SignalR, and the Vue/Vite frontend. |
-| Worker | `ProofFlow.Worker` | The test runner and scheduler, as their own process. |
+| Worker | `ProofFlow.Worker` | A second home for the background work, for the day the run queue is shared. It refuses to start today, because running it beside the web application means two schedulers on one database. |
 
 `ArchitectureTests` enforces the direction of those arrows on every build.
 
-## Running it
+## Deploying it
+
+One container and a database:
+
+```bash
+cp .env.example .env    # fill in the two values it will not start without
+```
+
+```bash
+docker compose up --build
+```
+
+Then <http://localhost:8080>. Backing it up, restoring it and upgrading it are in
+[docs/operations.md](docs/operations.md), which also says which of those have been verified and
+where.
+
+## Running it from source
 
 Nothing to install beyond the .NET 10 SDK and Node 22. The default database is a SQLite file
 created on first run.

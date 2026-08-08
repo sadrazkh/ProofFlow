@@ -860,3 +860,46 @@ build. Backlog.
 **A data set shows its first two hundred rows.** It says so, and pasting replaces the whole set, so
 the way out exists. Virtualising an editable table is a real piece of work for a case that has a
 workaround; the read-only log was worth it, this is not yet. Backlog.
+
+---
+
+## Phase M — Somewhere to run it, and a way back · **done**
+
+| | |
+|---|---|
+| Deployment | One image, one compose file, one app container and a database. `cp .env.example .env`, fill in two values, `docker compose up --build` |
+| One container, deliberately | The run queue is in memory, so a second replica would run a second scheduler and a second sweeper against the same database while its own queue sat empty. `ProofFlow.Worker` refuses to start for the same reason, and says so |
+| Verified | In CI, because Docker is not on the machine this was built on: the `docker` job builds the image, brings the stack up with `--wait`, and fails unless the application answers on `/healthz` and serves a page with its built assets on it |
+| Backup | The database and the keyring. Nothing else — artefacts and payloads are rows, not files |
+| Restore | Verified on a real installation: backed up, deleted the database and the keyring, confirmed the account was gone, restored both, signed in, and revealed a stored secret to its original value. Signing in proves the database came back; revealing a secret is the only thing that proves the master key did |
+| Upgrade | Verified with a database created and filled by the previous release, handed to this build, which applied the migration it was missing on start and came up with everything intact |
+| Documentation | [operations.md](operations.md) — deploy, back up, restore, upgrade. It says which steps were verified and where |
+| Acceptance | Twenty steps, from an empty project, through the interface, on both the local runner and a real agent process. `e2e/acceptance.ts` |
+| Tests | 645 passing — 502 unit, 143 integration, 43 component; 125 accessibility checks, 348 screenshots |
+
+### What this phase found
+
+**A backup of `proofflow.db` would have restored an almost empty product.** SQLite runs in WAL mode
+and on the installation this was verified against the database file was 4 KB while the write-ahead
+log beside it was 1.4 MB. Copying the one file everybody thinks of as "the database" loses almost
+everything, and does it without an error. The procedure says to copy the directory.
+
+**The Worker was a loaded gun.** Its comment said the schedulers "are registered by the phases that
+introduce them" — they were, in the shared infrastructure registration that both processes call. So
+running it beside the web application meant two schedulers deciding independently that a nightly
+suite was due, and two sweepers deleting the same rows, while its own run queue sat empty. It
+refuses to start now and explains why.
+
+**The README described a deployment that did not exist**, listing the worker as "the test runner and
+scheduler, as their own process".
+
+### The hardening pass, and what it did not find
+
+Checked, because they are the things that would actually matter here: the fake API and the design
+reference are both gated to Development and neither is mounted in Production; the import path holds
+an uploaded file's name as data and never builds a path from it; the runner API authenticates every
+call against a token and acts only in that runner's workspace; the export carries no secret, and
+there are tests for all four. The two real leaks this pass would have looked for — a secret in a
+resolved URL, a job package with no tenant — were found earlier, by making the agent run for real.
+
+Nothing new. That is the honest result rather than a shortage of looking.

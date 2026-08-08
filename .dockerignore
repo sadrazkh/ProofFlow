@@ -1,0 +1,30 @@
+# What must not go into the build context.
+#
+# Not only for speed. `bin` and `obj` from a Windows machine landing in a Linux build produce
+# restore errors that read as package problems, and a local node_modules shadows the one `npm ci`
+# installs for the right platform.
+
+**/bin/
+**/obj/
+**/node_modules/
+**/.vs/
+**/.vscode/
+**/.idea/
+
+# Built output. The image builds its own.
+src/ProofFlow.Web/wwwroot/build/
+
+# Local state, some of it secret.
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/App_Data/
+**/keys/
+.env
+
+# Evidence and history, neither of which the application runs on.
+docs/ui/
+test-results/
+playwright-report/
+.git/
+.github/
