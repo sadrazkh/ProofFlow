@@ -780,6 +780,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("RunnerId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(80)
@@ -1279,6 +1282,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<Guid?>("CancelledByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTimeOffset?>("ClaimedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1305,6 +1311,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("boolean");
 
                     b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("RunnerId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ScenarioId")

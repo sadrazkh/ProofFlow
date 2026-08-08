@@ -81,6 +81,15 @@ public class ProjectEnvironment : Entity, IWorkspaceOwned
     /// </summary>
     public bool IsProduction { get; set; }
 
+    /// <summary>
+    /// The runner that reaches this environment, or null when the server can reach it itself.
+    ///
+    /// It belongs to the environment rather than to a scenario or a schedule because that is where
+    /// the fact lives: a staging API inside somebody's network is unreachable from here whoever is
+    /// asking and whatever they are running. Everything else follows from it.
+    /// </summary>
+    public Guid? RunnerId { get; set; }
+
     public int SortOrder { get; set; }
 
     public ICollection<EnvironmentVariable> Variables { get; set; } = [];

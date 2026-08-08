@@ -94,6 +94,16 @@ public sealed class RunService(
             Status = RunStatus.Queued,
             Trigger = trigger,
             StartedByUserId = me.UserId,
+
+            // Copied now rather than read through the environment later. An environment can be
+            // pointed at a different agent tomorrow, and a run already waiting must not change hands
+            // because somebody edited a setting.
+            RunnerId = environment is { } target
+                ? await db.Environments
+                    .Where(candidate => candidate.Id == target)
+                    .Select(candidate => candidate.RunnerId)
+                    .FirstOrDefaultAsync(cancellation)
+                : null,
         };
 
         db.Runs.Add(run);
@@ -117,6 +127,16 @@ public sealed class RunService(
         if (run.Status is not RunStatus.Queued)
         {
             logger.LogWarning("Run {RunId} is {Status}, not queued.", runId, run.Status);
+            return;
+        }
+
+        // Somebody else's work. A run bound to a runner waits for that agent to claim it, and this
+        // process cannot reach the environment anyway — that is the entire reason the runner exists.
+        // Leaving it Queued is correct; taking it would mean a run that fails for a reason nobody
+        // can see from here.
+        if (run.RunnerId is not null)
+        {
+            logger.LogDebug("Run {RunId} belongs to runner {Runner}; leaving it.", runId, run.RunnerId);
             return;
         }
 

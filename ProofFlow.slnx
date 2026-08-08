@@ -6,6 +6,7 @@
     <Project Path="src/ProofFlow.TestEngine/ProofFlow.TestEngine.csproj" />
     <Project Path="src/ProofFlow.Infrastructure/ProofFlow.Infrastructure.csproj" />
     <Project Path="src/ProofFlow.Web/ProofFlow.Web.csproj" />
+    <Project Path="src/ProofFlow.Agent/ProofFlow.Agent.csproj" />
     <Project Path="src/ProofFlow.Worker/ProofFlow.Worker.csproj" />
     <Project Path="src/ProofFlow.FakeApi/ProofFlow.FakeApi.csproj" />
   </Folder>

@@ -93,6 +93,18 @@ public class TestRun : Entity, IWorkspaceOwned
     /// </summary>
     public bool PayloadsCleared { get; set; }
 
+    /// <summary>
+    /// The runner this run is waiting for, or null when it runs here.
+    ///
+    /// Copied from the environment when the run is queued rather than read through it later: an
+    /// environment can be pointed at a different agent tomorrow, and a run that is halfway through
+    /// must not change hands because somebody edited a setting.
+    /// </summary>
+    public Guid? RunnerId { get; set; }
+
+    /// <summary>When an agent took it. Null while it is still waiting for one.</summary>
+    public DateTimeOffset? ClaimedAt { get; set; }
+
     public Guid? StartedByUserId { get; set; }
 
     /// <summary>Who asked it to stop, when somebody did.</summary>

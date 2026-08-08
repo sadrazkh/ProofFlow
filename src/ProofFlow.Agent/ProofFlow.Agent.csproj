@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The agent that runs inside somebody else's network.
+
+    What it references is the design. Domain, Contracts and TestEngine — and deliberately not
+    Infrastructure, because Infrastructure is where the database lives and this process must not be
+    able to reach one. A runner that could open the application's database would defeat the entire
+    reason for having a runner: it would need a route back in, and the whole arrangement exists so
+    that nothing does.
+
+    Everything it knows arrives over HTTP, signed.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>proofflow-agent</AssemblyName>
+    <RootNamespace>ProofFlow.Agent</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ProofFlow.Domain\ProofFlow.Domain.csproj" />
+    <ProjectReference Include="..\ProofFlow.Contracts\ProofFlow.Contracts.csproj" />
+    <ProjectReference Include="..\ProofFlow.TestEngine\ProofFlow.TestEngine.csproj" />
+  </ItemGroup>
+
+</Project>

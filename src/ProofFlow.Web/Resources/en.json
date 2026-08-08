@@ -236,6 +236,7 @@
       "scenario.released": "took a scenario out of quarantine",
       "schedule.enabled": "switched a schedule on",
       "schedule.disabled": "switched a schedule off",
+      "runner.enrolled": "enrolled a runner",
       "user.signedIn": "signed in",
       "user.passwordResetRequested": "asked to reset a password",
       "user.passwordReset": "changed a password",

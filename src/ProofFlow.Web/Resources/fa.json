@@ -236,6 +236,7 @@
       "scenario.released": "سناریو را از قرنطینه درآورد",
       "schedule.enabled": "زمان‌بندی را روشن کرد",
       "schedule.disabled": "زمان‌بندی را خاموش کرد",
+      "runner.enrolled": "یک Runner را ثبت کرد",
       "user.signedIn": "وارد شد",
       "user.passwordResetRequested": "بازیابی گذرواژه را درخواست کرد",
       "user.passwordReset": "گذرواژه را عوض کرد",

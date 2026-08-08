@@ -1,14 +1,18 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace ProofFlow.Infrastructure.Runners;
+namespace ProofFlow.Contracts.Runners;
 
 /// <summary>
 /// Signs a job, and checks a signature.
 ///
-/// One implementation for both sides. The server signs with it and the agent verifies with it, and
-/// having a single function means the two cannot drift into disagreeing about what exactly is being
-/// signed — which is the way signature schemes usually fail.
+/// One implementation for both sides, and it lives in Contracts for the same reason the wire
+/// formats do: the server signs with it and the agent verifies with it, and the agent cannot
+/// reference Infrastructure — that is where the database is, and a runner that could open the
+/// application's database would defeat the whole point of having a runner.
+///
+/// Having a single function also means the two sides cannot drift into disagreeing about what
+/// exactly is being signed, which is the way signature schemes usually fail.
 ///
 /// HMAC-SHA256 over the payload bytes as written. Not over a re-serialised object: two JSON
 /// serialisers that differ in key order or whitespace produce two different signatures for the same

@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using FluentAssertions;
+using ProofFlow.Contracts.Runners;
 using ProofFlow.Infrastructure.Runners;
 
 namespace ProofFlow.Tests;
