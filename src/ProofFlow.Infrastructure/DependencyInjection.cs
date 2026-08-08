@@ -75,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<Scheduling.ScheduleService>();
         services.AddScoped<Scheduling.ApiKeyService>();
         services.AddScoped<Workspaces.TeamService>();
+        services.AddScoped<Runners.RunnerService>();
         services.AddScoped<Portability.BundleExporter>();
         services.AddScoped<Portability.BundleImporter>();
         services.AddScoped<Runs.JUnitReport>();

@@ -924,6 +924,79 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.ToTable("Projects", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Runners.Runner", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("EnrolledAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("EnrollmentExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EnrollmentHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Hostname")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset?>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SigningKeyCipher")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SigningKeyNonce")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SigningKeyTag")
+                        .HasColumnType("text");
+
+                    b.Property<int>("SigningKeyVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TokenHash")
+                        .HasColumnType("text");
+
+                    b.Property<string>("TokenPreview")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Version")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Runners");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Runs.AssertionResult", b =>
                 {
                     b.Property<Guid>("Id")

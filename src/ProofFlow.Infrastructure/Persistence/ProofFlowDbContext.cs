@@ -7,6 +7,7 @@ using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Capture;
 using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Runs;
+using ProofFlow.Domain.Runners;
 using ProofFlow.Domain.Scheduling;
 using ProofFlow.Domain.Scenarios;
 using ProofFlow.Domain.Common;
@@ -75,6 +76,7 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<ScheduleEnvironment> ScheduleEnvironments => Set<ScheduleEnvironment>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<WorkspaceInvitation> WorkspaceInvitations => Set<WorkspaceInvitation>();
+    public DbSet<Runner> Runners => Set<Runner>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
