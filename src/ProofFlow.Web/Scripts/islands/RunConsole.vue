@@ -178,6 +178,16 @@ async function connect(): Promise<void> {
     await connection.start();
     await connection.invoke('Watch', props.runId);
     connected.value = true;
+
+    // Read once more, now that we are actually listening.
+    //
+    // Between the read in onMounted and this line, the run is unwatched: anything it published in
+    // that window went to a group this connection had not joined. Most runs are slower than the
+    // handshake and never notice. A run that finishes in thirty milliseconds — which is every run
+    // against a local service — finishes inside it, and without this the console sits on "Running"
+    // for ever while the database says Passed. Nothing throws, nothing retries, and the page is
+    // simply wrong until somebody reloads it.
+    await refresh();
   } catch {
     // A blocked WebSocket is somebody else's proxy, not a broken run. Polling is slower and works.
     connected.value = false;

@@ -679,9 +679,13 @@ all lost, because the switcher was built from `Request.Path` alone.
 **A role change asked in red.** The confirm dialog was danger-toned for everything; making somebody
 a Reviewer is not a deletion. Red on everything teaches people that red means nothing.
 
-### Known, not fixed here
+### And one from Phase F, found here and fixed here
 
-**`e2e/demo-run.ts` times out waiting for the console badge.** The run itself finishes and is
-correct — the runs list shows it Passed, and a console loaded afterwards shows Passed — but a console
-open *during* the run does not reach a verdict inside sixty seconds. That is Phase F's live feed, and
-it belongs to F.3/D-F rather than here.
+**A console open during a run never reached a verdict.** `e2e/demo-run.ts` timed out waiting for the
+badge, while the runs list said Passed and a console loaded afterwards said Passed.
+
+The console read the run's state, then opened the socket and joined the run's group. Between those
+two things it is not listening — and a run against a local service finishes in thirty milliseconds,
+which is inside the handshake. The terminal message went to a group the connection had not joined
+yet, nothing polled, and the page sat on "Running" for ever while the database said otherwise.
+Nothing threw. It now reads once more after joining, which closes exactly that window.
