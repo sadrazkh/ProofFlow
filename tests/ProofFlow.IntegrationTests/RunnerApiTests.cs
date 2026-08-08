@@ -14,6 +14,7 @@ using ProofFlow.Domain.Scenarios;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Runners;
+using ProofFlow.Infrastructure.Runs;
 using ProofFlow.Infrastructure.Tenancy;
 using ProofFlow.Web.Controllers;
 
@@ -95,6 +96,68 @@ public sealed class RunnerApiTests(ProofFlowApplication app) : IClassFixture<Pro
         run.DurationMs.Should().Be(128);
         run.Outcome.Should().Be("Everything that was checked held.");
         run.FinishedAt.Should().NotBeNull();
+    }
+
+    /// <summary>
+    /// The console has to be told, or the page lies.
+    ///
+    /// It subscribes over the socket and only falls back to polling when the socket will not open,
+    /// so on a healthy connection nothing arrives unless the server publishes: the agent is not
+    /// connected to the hub. Before this, a remote run sat on «Queued» for ever while the database
+    /// said Passed — and every existing test still went green, because they all read the database.
+    /// </summary>
+    [Fact]
+    public async Task Reporting_a_remote_run_tells_whoever_is_watching_it()
+    {
+        var (workspaceId, runnerId, runId) = await SeedAsync();
+
+        var heard = new RecordingWatchers();
+
+        using var application = app.WithWebHostBuilder(builder =>
+            builder.ConfigureServices(services =>
+                services.AddScoped<IRunWatchers>(_ => heard)));
+
+        var client = application.CreateClient();
+        var enrolled = await EnrolAsync(client, workspaceId, runnerId);
+
+        client.DefaultRequestHeaders.Add(RunnerApiController.TokenHeader, enrolled.Token);
+        await client.PostAsync("/api/v1/runners/jobs/claim", null);
+
+        await client.PostAsJsonAsync("/api/v1/runners/jobs/result", new JobResult
+        {
+            JobId = runId,
+            Status = "Failed",
+            Outcome = "Expected 200, got 500.",
+            Steps = 2,
+            StepsFailed = 1,
+            AssertionsFailed = 1,
+            DurationMs = 44,
+        });
+
+        heard.Statuses.Should().ContainSingle();
+
+        var (published, status, totals) = heard.Statuses[0];
+
+        published.Should().Be(runId);
+        status.Should().Be(RunStatus.Failed);
+
+        // The verdict and the sentence with it, so the page can stop saying Queued and say why.
+        totals.Outcome.Should().Be("Expected 200, got 500.");
+        totals.StepsFailed.Should().Be(1);
+    }
+
+    private sealed class RecordingWatchers : IRunWatchers
+    {
+        public List<(Guid Run, RunStatus Status, RunTotals Totals)> Statuses { get; } = [];
+
+        public void NodeChanged(Guid runId, NodeUpdate update) { }
+
+        public void AssertionRecorded(Guid runId, AssertionUpdate update) { }
+
+        public void Logged(Guid runId, LogLine line) { }
+
+        public void StatusChanged(Guid runId, RunStatus status, RunTotals totals) =>
+            Statuses.Add((runId, status, totals));
     }
 
     [Fact]

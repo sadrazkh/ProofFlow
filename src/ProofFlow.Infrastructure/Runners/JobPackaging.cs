@@ -10,6 +10,7 @@ using ProofFlow.Domain.Runs;
 using ProofFlow.Infrastructure.Baselines;
 using ProofFlow.Infrastructure.Environments;
 using ProofFlow.Infrastructure.Persistence;
+using ProofFlow.Infrastructure.Runs;
 
 namespace ProofFlow.Infrastructure.Runners;
 
@@ -25,6 +26,7 @@ public sealed class JobPackaging(
     ProofFlowDbContext db,
     EnvironmentContextBuilder environments,
     BaselineService baselines,
+    IRunWatchers watchers,
     IClock clock)
 {
     private static readonly JsonSerializerOptions Json = new()
@@ -197,6 +199,22 @@ public sealed class JobPackaging(
         run.Outcome = report.Outcome;
 
         await db.SaveChangesAsync(cancellation);
+
+        // Tell whoever is watching, through the same channel a local run uses.
+        //
+        // Without this the console is simply wrong for every remote run. It subscribes over the
+        // socket and only falls back to polling when the socket will not open, so on a healthy
+        // connection nothing ever arrives: the agent is not connected to the hub, and the server
+        // wrote these rows without saying so. The page sits on «Queued» while the database says
+        // Passed, for ever, until somebody reloads.
+        //
+        // One message rather than a replay of the run. An agent reports once, at the end — there is
+        // no live stream from inside somebody else's network, and pretending otherwise by dribbling
+        // out the recorded steps would be a story about a run that had already finished. The status
+        // change is what the reader is waiting for, and the console reads the detail when it lands.
+        watchers.StatusChanged(run.Id, run.Status, new RunTotals(
+            report.Steps, report.StepsFailed, report.AssertionsPassed, report.AssertionsFailed,
+            report.DurationMs, report.Outcome));
 
         return true;
     }

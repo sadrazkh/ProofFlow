@@ -16,6 +16,20 @@ using ProofFlow.Contracts.Runners;
 // It never listens on a port. Nothing connects to an agent — there is nothing to connect to, which
 // is the whole reason for having one.
 
+// Everything below is written in the same words the product uses, guillemets and all, and a
+// Windows console defaults to a code page that cannot render them — so «Office network» arrives as
+// question marks around the one thing the reader needed: the name of the machine they just
+// enrolled. Set before anything is printed, and harmless where the console was already UTF-8.
+try
+{
+    Console.OutputEncoding = System.Text.Encoding.UTF8;
+}
+catch (IOException)
+{
+    // No console at all — running as a service, or with output redirected somewhere that will not
+    // take an encoding. Not worth failing to start over.
+}
+
 var command = args.FirstOrDefault();
 var options = Options.Read(args);
 
