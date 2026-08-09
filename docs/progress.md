@@ -795,7 +795,7 @@ inwards, and an agent on the inside asks whether there is work, does it, and rep
 | Choosing one | On the environment, because that is where the fact lives: an API inside somebody's network is unreachable from here whoever is asking |
 | Redaction | Both paths redact the resolved URL as well as the body, and a value the redactor removed is rendered as a chip rather than as a string |
 | Verified | Seven tests run real scenarios through the shipped agent classes against a real HTTP server with no database anywhere; four more cover the page and the environment's choice |
-| Tests | 643 passing — 500 unit, 142 integration, 43 component; 113 accessibility checks, 336 screenshots |
+| Tests | 685 passing — 500 unit, 142 integration, 43 component; 113 accessibility checks, 336 screenshots |
 
 ### What making it real caught
 
@@ -838,7 +838,10 @@ Prioritised by what the acceptance run put in front of a reader, not by the leng
 | Getting started | Four steps on the dashboard, read from the database rather than remembered, and gone once the fourth is true. What a project is, what an environment is, what a test is, where the result lives. Nothing to dismiss |
 | Dialogs | Focus is trapped while one is open, returns to whatever opened it, the dialog carries its own title as its accessible name, and Escape works after a click on the backdrop. `aria-modal` was promising all four and delivering none |
 | Virtual scrolling | Where a list genuinely gets long: the run log already windows, and runs and activity page at thirty and fifty. Not everywhere |
-| Tests | 645 passing — 502 unit, 143 integration, 43 component; 125 accessibility checks, 348 screenshots |
+| Tests | 688 passing — 502 unit, 143 integration, 43 component; 133 accessibility checks, 348 screenshots |
+
+The accessibility figure moves with how much demo data is present — pages that need a baseline or a
+run to exist are skipped when they do not. 113 on a bare seed, 133 once the demo drivers have run.
 
 ### What the dashboard was saying
 
@@ -880,7 +883,7 @@ workaround; the read-only log was worth it, this is not yet. Backlog.
 | Upgrade | Verified with a database created and filled by the previous release, handed to this build, which applied the migration it was missing on start and came up with everything intact |
 | Documentation | [operations.md](operations.md) — deploy, back up, restore, upgrade. It says which steps were verified and where |
 | Acceptance | Twenty steps, from an empty project, through the interface, on both the local runner and a real agent process. `e2e/acceptance.ts` |
-| Tests | 645 passing — 502 unit, 143 integration, 43 component; 125 accessibility checks, 348 screenshots |
+| Tests | 688 passing — 502 unit, 143 integration, 43 component; 133 accessibility checks, 348 screenshots |
 
 ### What this phase found
 
