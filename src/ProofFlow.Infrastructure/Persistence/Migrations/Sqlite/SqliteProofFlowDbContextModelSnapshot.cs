@@ -1342,6 +1342,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<string>("FinishedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("InputsJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Outcome")
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
@@ -1485,6 +1488,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .HasColumnType("TEXT");
 
                     b.Property<Guid?>("EnvironmentId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("InputsJson")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -1962,6 +1968,27 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AiBaseUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AiKeyCipher")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AiKeyNonce")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AiKeyPreview")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AiKeyTag")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("AiKeyVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("AiModel")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("CreatedAt")

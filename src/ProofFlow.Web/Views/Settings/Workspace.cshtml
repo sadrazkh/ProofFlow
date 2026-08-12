@@ -1,0 +1,78 @@
+@model WorkspaceSettingsViewModel
+
+<div class="page page-narrow" style="padding: 0;">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">@T["workspaceSettings.title"]</h1>
+            <p class="page-subtitle" dir="auto">@Model.Name</p>
+        </div>
+    </div>
+
+    <div class="stack-6">
+        <section class="card card-pad stack">
+            <div>
+                <h2 class="card-title">@T["ai.title"]</h2>
+                <p class="card-subtitle">@T["ai.subtitle"]</p>
+            </div>
+
+            @*
+                The key is a credential with somebody's balance behind it, so it is stored like every
+                other credential here — sealed with the master key, never returned to this page, and
+                shown as four characters so two keys can be told apart.
+            *@
+            <form method="post" action="/settings/workspace" class="stack">
+                @Html.AntiForgeryToken()
+
+                <div class="field">
+                    <label class="field-label" for="ai-key">@T["ai.key"]</label>
+                    <input class="input input-mono" id="ai-key" name="aiKey" type="password"
+                           autocomplete="off" dir="ltr"
+                           placeholder="@(Model.HasKey ? T["ai.key.kept"].Value : "sk-or-v1-…")" />
+                    <p class="field-hint">
+                        @if (Model.HasKey)
+                        {
+                            <span>@T["ai.key.stored", Model.AiKeyPreview!]</span>
+                        }
+                        else
+                        {
+                            <span>@T["ai.key.hint"]</span>
+                        }
+                    </p>
+                </div>
+
+                <div class="design-two-up">
+                    <div class="field">
+                        <label class="field-label" for="ai-model">@T["ai.model"]</label>
+                        <input class="input input-mono" id="ai-model" name="aiModel" dir="ltr"
+                               value="@Model.AiModel" placeholder="@Model.DefaultModel" />
+                        <p class="field-hint">@T["ai.model.hint", Model.DefaultModel]</p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field-label" for="ai-url">@T["ai.baseUrl"]</label>
+                        <input class="input input-mono" id="ai-url" name="aiBaseUrl" dir="ltr"
+                               value="@Model.AiBaseUrl" placeholder="@Model.DefaultBaseUrl" />
+                        <p class="field-hint">@T["ai.baseUrl.hint"]</p>
+                    </div>
+                </div>
+
+                <p class="inputs-hint">@T["ai.cost"]</p>
+
+                <div class="row">
+                    <button type="submit" class="btn btn-primary">@T["action.save"]</button>
+
+                    @if (Model.HasKey)
+                    {
+                        <button type="submit" name="forget" value="true" class="btn btn-ghost btn-sm"
+                                style="color: var(--fail-ink);"
+                                data-confirm="@T["ai.key.forget.body"]"
+                                data-confirm-title="@T["ai.key.forget.title"]"
+                                data-confirm-action="@T["ai.key.forget"]">
+                            @T["ai.key.forget"]
+                        </button>
+                    }
+                </div>
+            </form>
+        </section>
+    </div>
+</div>

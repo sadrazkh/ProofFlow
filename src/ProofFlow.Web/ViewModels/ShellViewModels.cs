@@ -103,3 +103,20 @@ public sealed record AuditRowViewModel
     public string? TargetType { get; init; }
     public required DateTimeOffset OccurredAt { get; init; }
 }
+
+/// <summary>The workspace's own settings. One section today, and it says what it costs.</summary>
+public sealed record WorkspaceSettingsViewModel
+{
+    public required string Name { get; init; }
+
+    public string? AiBaseUrl { get; init; }
+    public string? AiModel { get; init; }
+
+    /// <summary>The last four characters of the stored key, or null when there is none.</summary>
+    public string? AiKeyPreview { get; init; }
+
+    public required string DefaultBaseUrl { get; init; }
+    public required string DefaultModel { get; init; }
+
+    public bool HasKey => !string.IsNullOrWhiteSpace(AiKeyPreview);
+}

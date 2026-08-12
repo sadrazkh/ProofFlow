@@ -78,6 +78,7 @@ public static class DependencyInjection
         services.AddScoped<Runners.RunnerService>();
         services.AddScoped<Runners.JobPackaging>();
         services.AddScoped<Runners.RunnerJobs>();
+        services.AddScoped<Ai.ScenarioAuthor>();
         services.AddScoped<Portability.BundleExporter>();
         services.AddScoped<Portability.BundleImporter>();
         services.AddScoped<Runs.JUnitReport>();

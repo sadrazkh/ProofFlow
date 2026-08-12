@@ -17,5 +17,33 @@ public class Workspace : Entity
 
     public Guid CreatedByUserId { get; set; }
 
+    /// <summary>
+    /// Which model writes a scenario when somebody asks for one, and where to ask it.
+    ///
+    /// Per workspace rather than per installation because the key is somebody's money. A team that
+    /// wants this pays for it and knows what it costs; a team that does not never sees the button.
+    /// </summary>
+    public string? AiBaseUrl { get; set; }
+
+    public string? AiModel { get; set; }
+
+    /// <summary>
+    /// The key, sealed with the same cipher as every other secret here.
+    ///
+    /// It is a credential to somebody's account with a balance on it, so it is stored the way the
+    /// credentials in tests are stored — encrypted at rest, never returned to a page, and shown as
+    /// a four-character preview so two keys can be told apart.
+    /// </summary>
+    public string? AiKeyCipher { get; set; }
+
+    public string? AiKeyNonce { get; set; }
+
+    public string? AiKeyTag { get; set; }
+
+    public int AiKeyVersion { get; set; } = 1;
+
+    /// <summary>The last four characters, so somebody can see which key is in place.</summary>
+    public string? AiKeyPreview { get; set; }
+
     public ICollection<WorkspaceMember> Members { get; set; } = [];
 }

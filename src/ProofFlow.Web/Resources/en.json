@@ -262,6 +262,10 @@
       "runner.created": "added a runner",
       "runner.codeIssued": "issued a runner code",
       "runner.revoked": "revoked a runner",
+      "scenario.inputsChanged": "changed what a test is told",
+      "scenario.drawn": "had a test drawn by a model",
+      "workspace.aiChanged": "changed the model settings",
+      "workspace.aiKeyRemoved": "removed the model key",
       "user.signedIn": "signed in",
       "user.passwordResetRequested": "asked to reset a password",
       "user.passwordReset": "changed a password",
@@ -1608,6 +1612,57 @@
     "forever": "For ever",
     "help": "What a run decided — passed or failed, how long it took, which checks held — is kept for ever. This is about the bulk: the bodies each step produced, the log lines and the artefacts. Those are what make a database grow without limit, and what is most likely to still hold somebody's personal data long after anybody needed it.",
     "cleared": "The bodies and log for this run have been cleared."
+  },
+
+  "input": {
+    "title": "What this test needs to be told",
+    "hint": "An input is answered per run — the order to look up, the customer to sign in as. Use it in any step as {{inputs.name}}. A variable belongs to an environment and is the same every time; this is not.",
+    "name": "Name",
+    "name.placeholder": "orderId",
+    "name.shape": "«{0}» cannot be used in a reference. Letters, digits and underscores, not starting with a digit.",
+    "label": "Label",
+    "default": "Default",
+    "required": "Required",
+    "missing": "This test needs a value for: {0}.",
+    "given": "Given"
+  },
+
+  "workspaceSettings": {
+    "title": "Workspace settings",
+    "saved": "Saved."
+  },
+
+  "ai": {
+    "title": "Writing a test with a model",
+    "subtitle": "Describe what to check and a first draft appears on the canvas, for you to read and change. Nothing is saved until you save it.",
+    "key": "API key",
+    "key.hint": "An OpenRouter key, or any provider that speaks the same API. Stored encrypted and never shown again.",
+    "key.kept": "Leave empty to keep the stored key",
+    "key.stored": "A key ending {0} is in place.",
+    "key.forget": "Forget the key",
+    "key.forget.title": "Forget this key?",
+    "key.forget.body": "The button that draws a scenario disappears until another key is put in. Nothing else changes.",
+    "model": "Model",
+    "model.hint": "Empty means {0}.",
+    "baseUrl": "Address",
+    "baseUrl.hint": "Empty means OpenRouter. Anything that answers /chat/completions the way OpenAI does will work.",
+    "cost": "Every press is a request your provider bills you for. Only Owners and Admins can put a key in, and the button is hidden until one is.",
+    "ask": "What should this test check?",
+    "ask.placeholder": "Sign in, read the first order, and check it comes back 200",
+    "draw": "Draw it",
+    "drawing": "Drawing…",
+    "drawn": "Drawn. Nothing is saved yet — read it, change it, then save.",
+    "notConfigured": "No model key is set for this workspace.",
+    "noRequest": "Say what the test should check first.",
+    "badAddress": "That model address is not one ProofFlow will call.",
+    "unreachable": "The model could not be reached. It may be down, or the address may be wrong.",
+    "keyRefused": "The provider refused the key.",
+    "outOfCredit": "The provider says this account is out of credit.",
+    "tooFast": "The provider is rate-limiting this key. Try again in a moment.",
+    "providerFailed": "The provider answered with an error.",
+    "emptyAnswer": "The model answered with nothing.",
+    "unreadable": "The model answered with something ProofFlow could not read as a scenario.",
+    "invalidGraph": "The model drew a scenario that would not run, so it was not used. Try saying it differently."
   },
 
   "runner": {

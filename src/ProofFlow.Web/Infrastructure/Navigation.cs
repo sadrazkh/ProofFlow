@@ -58,6 +58,7 @@ public static class Navigation
             new NavItem("nav.team", "users", "/team", Capability.ViewProject),
             new NavItem("runner.title", "server", "/runners", Capability.ManageRunner),
             new NavItem("nav.audit", "shield", "/activity", Capability.ViewAudit),
+            new NavItem("workspaceSettings.title", "sliders-horizontal", "/settings/workspace", Capability.ManageMembers),
         ]));
 
         return sections
