@@ -28,14 +28,16 @@ public static class Navigation
         {
             var basePath = $"/projects/{id}";
 
+            // Two entries used to sit here that went nowhere: «suites», which exists in the schema
+            // and has no page, and «variables», which is part of the environment it belongs to and
+            // is edited there. A sidebar that 404s is worse than a shorter sidebar, and the command
+            // palette reads this same map — so it offered them too.
             sections.Add(new NavSection("nav.section_build", [
-                new NavItem("nav.suites", "square-stack", $"{basePath}/suites", Capability.ViewProject),
                 new NavItem("nav.scenarios", "workflow", $"{basePath}/scenarios", Capability.ViewProject),
                 new NavItem("template.title", "square-stack", $"{basePath}/templates", Capability.ViewProject),
                 new NavItem("nav.datasets", "table-2", $"{basePath}/datasets", Capability.ViewProject),
                 new NavItem("nav.wizard", "wand-sparkles", $"{basePath}/wizard", Capability.ViewProject),
                 new NavItem("nav.environments", "globe", $"{basePath}/environments", Capability.ViewProject),
-                new NavItem("nav.variables", "variable", $"{basePath}/variables", Capability.ViewProject),
             ]));
 
             sections.Add(new NavSection("nav.section_verify", [

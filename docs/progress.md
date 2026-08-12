@@ -918,6 +918,8 @@ Nothing new. That is the honest result rather than a shortage of looking.
 |---|---|
 | Run inputs | A scenario names what it needs answering — `page`, `productName` — with a label, a default and whether it is required. The run bar asks for them, and `{{inputs.name}}` reads them in any step |
 | The same inputs from outside | `POST /api/v1/projects/{id}/runs` takes `"inputs": { … }` in the body, exactly as a curl command would send it. Verified against a running instance: the value posted was the name the product came back with |
+| And everywhere else a run starts | The matrix asks, and so does a schedule — one partial, because they are the same question in the same shape. What is asked is the union of what the project's scenarios declare, merged by name and asked once |
+| A schedule keeps its answers | So «the defaults, every morning» is a decision somebody can change without editing the test. Values rather than definitions, and a blank is not stored: it means «whatever the scenario says», and freezing today's default into the row would outlive it |
 | Empty means default | A box left blank falls back to the default rather than sending an empty string. A required input with neither is refused before the run is queued, naming the ones that are missing |
 | Carried both ways | Input definitions are part of the portable bundle, and the round-trip test's fixture now has one, so an export that dropped them would fail the comparison rather than pass quietly |
 | Writing one with a model | A workspace holds a base URL, a model and a key; the key is sealed with the same cipher as every secret and shown as four characters. OpenRouter by default. The button only exists once a key is in place |
@@ -957,6 +959,11 @@ that would be sent differs from the shape that was agreed.
 **The canvas was fitting to nothing.** It fitted one tick after the graph arrived, before the cards
 had a size, and left every scenario parked at its top left. It fits when the nodes are measured now.
 
+**Two entries in the sidebar went nowhere.** «Suites» exists in the schema and has no page;
+«variables» belongs to the environment it is defined in and is edited there. Both 404'd, in both
+languages, and the command palette reads the same map — so it offered them too. They are gone, and
+the suite grouping is in the backlog below rather than pretending to exist in a menu.
+
 ---
 
 ## Backlog
@@ -972,3 +979,4 @@ it was left, so the next person can disagree with the reasoning rather than redi
 | One process only | The run queue is in memory, so the deployment is one app container. A second replica needs a queue both processes can see and a lease on the scheduler. `ProofFlow.Worker` is the placeholder and refuses to start until then |
 | Payloads live in table columns | `IPayloadStore` was designed for and never needed. Retention keeps the size honest; object storage is the answer when somebody's database says otherwise |
 | Two runners can share a name | The list shows both and the id disambiguates. Unique names are a constraint with a migration and an error message, for a confusion nobody has had yet |
+| Suites are in the schema and not in the interface | A scenario can belong to one and nothing offers to put it there. Scenarios list flat, which is legible up to the dozens; the folder is worth building when somebody has enough of them to need it, and a menu entry pointing at a page that does not exist was worse than not having one |
