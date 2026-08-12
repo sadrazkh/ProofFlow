@@ -164,6 +164,12 @@ public sealed class GuardedHttpExecutor(
         catch (HttpRequestException ex)
         {
             stopwatch.Stop();
+
+            // Logged, not just returned. The sentence a person reads is deliberately short, and the
+            // exception underneath it is the only thing that says which of a dozen transport
+            // failures this was — an operator looking at a run that will not connect needs it.
+            logger.LogInformation(ex, "The request to {Url} did not complete.", current);
+
             return Failed(request, current, stopwatch.Elapsed, chain, attempt, Diagnose(ex));
         }
         catch (Exception ex)
@@ -368,7 +374,7 @@ public sealed class GuardedHttpExecutor(
         };
 }
 
-internal static class PolicyClientNames
+public static class PolicyClientNames
 {
     /// <summary>
     /// Two named clients, because certificate validation is a handler concern and a handler is

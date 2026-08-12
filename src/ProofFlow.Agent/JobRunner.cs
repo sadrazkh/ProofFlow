@@ -36,7 +36,12 @@ internal static class JobRunner
     public static async Task<JobReport> ExecuteAsync(SignedJob job, CancellationToken cancellation)
     {
         var started = Stopwatch.GetTimestamp();
-        var sink = new CollectingSink();
+
+        // Made before the sink, because the sink masks with it. The package's secrets go in as soon
+        // as it is read, below; until then there is nothing to hide.
+        var redaction = new RedactionScope();
+
+        var sink = new CollectingSink(redaction);
 
         try
         {
@@ -67,8 +72,6 @@ internal static class JobRunner
 
             // The redactor learns the secrets before anything runs, so a value cannot reach a log
             // line or a stored output on its way to being hidden.
-            var redaction = new RedactionScope();
-
             foreach (var secret in package.Secrets.Values) redaction.Remember(secret);
 
             var scopes = ScopesFor(package);
@@ -156,6 +159,7 @@ internal static class JobRunner
         }
 
         foreach (var (key, value) in package.Variables) scopes.Variables[key] = JsonValue.Create(value);
+        foreach (var (key, value) in package.Inputs) scopes.Inputs[key] = JsonValue.Create(value);
         foreach (var (key, value) in package.Secrets) scopes.Secrets[key] = JsonValue.Create(value);
 
         scopes.Run["startedAt"] = JsonValue.Create(DateTimeOffset.UtcNow.ToString("O"));

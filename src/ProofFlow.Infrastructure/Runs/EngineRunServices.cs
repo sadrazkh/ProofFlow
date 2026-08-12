@@ -56,33 +56,32 @@ public sealed class EngineRunServices(
 
         var result = await executor.SendAsync(definition, policy, cancellation);
 
-        // The address as well as the body. A secret used in a path — «/records/{{secrets.token}}»
-        // is an ordinary shape — ends up in the resolved URL, and that URL is written into the
-        // step's output, shown in the console and carried into a report. Redacting the body and
-        // leaving the address is the same as not redacting.
-        var url = redaction.Apply(result.ResolvedUrl);
-
+        // The summary line is written down, so it gets the masked address. A secret used in a path —
+        // «/records/{{secrets.token}}» is an ordinary shape — ends up in the resolved URL, and that
+        // URL is carried into a report people forward to each other.
         Exchanges.Add(new RequestRecord(
-            request.Method, url, result.StatusCode,
+            request.Method, redaction.Apply(result.ResolvedUrl), result.StatusCode,
             result.Duration.TotalMilliseconds, clock.UtcNow));
 
         if (!result.Succeeded)
         {
             return new HttpNodeResult(false, result.StatusCode, result.ReasonPhrase, [],
                 string.Empty, null, result.Duration.TotalMilliseconds,
-                redaction.Apply(result.Failure!.Message), url);
+                redaction.Apply(result.Failure!.Message), redaction.Apply(result.ResolvedUrl));
         }
 
-        // Redacted here rather than at the edge. Anything a node reads out of a body ends up in a
-        // log line, a variable and a stored output, and hiding a secret in only one of those is the
-        // same as not hiding it.
-        var body = redaction.Apply(result.Body);
-        var headers = redaction.Apply(result.ResponseHeaders);
-
+        // What comes back goes to the engine unmasked, and is masked where it is written down
+        // instead — in the sink, the capture and the report.
+        //
+        // Masking here looked safer and was not: «accessToken» matches the secret-field pattern, so
+        // a scenario that signed in and then read {{steps.Sign in.response.body.accessToken}} put
+        // «redacted» into its own Authorization header. Sign in, then use the token is the most
+        // ordinary shape an API test has, and it could not run at all.
         return new HttpNodeResult(
             true, result.StatusCode, result.ReasonPhrase,
-            [.. headers.Select(entry => (entry.Name, entry.Value))],
-            body, result.ContentType, result.Duration.TotalMilliseconds, null, url);
+            [.. result.ResponseHeaders.Select(entry => (entry.Name, entry.Value))],
+            result.Body, result.ContentType, result.Duration.TotalMilliseconds, null,
+            result.ResolvedUrl);
     }
 
     private static BodyKind ParseBody(string? kind) => kind switch

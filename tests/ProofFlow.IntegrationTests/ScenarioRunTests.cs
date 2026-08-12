@@ -1,4 +1,5 @@
 using ProofFlow.TestEngine.Http;
+using ProofFlow.TestEngine.Redaction;
 using System.Text.Json;
 using FluentAssertions;
 using Microsoft.AspNetCore.Builder;
@@ -268,6 +269,64 @@ public sealed class ScenarioRunTests : IAsyncLifetime
 
         lines.Should().NotContain(message => message.Contains(TokenValue));
         lines.Should().Contain(message => message.Contains("sent"), "the line itself is still there");
+    }
+
+    [Fact]
+    public async Task A_token_a_step_was_given_can_be_used_by_the_next_step_and_is_still_not_written_down()
+    {
+        // Sign in, then use what came back. It is the most ordinary shape an API test has, and for a
+        // while it could not run here at all: the response was masked before the engine saw it, so
+        // «accessToken» — which matches the secret-field pattern — resolved to «redacted» and went
+        // out as the Authorization header. Both halves are asserted, because fixing one by giving up
+        // the other is exactly the wrong repair.
+        await using var context = Db();
+
+        var graph = new GraphDto
+        {
+            Nodes =
+            [
+                Node("start", "core.start"),
+                // A space in the name on purpose: it is what somebody actually types, and it has to
+                // survive being referenced.
+                Node("sign in", "http.request",
+                    ("method", "POST"), ("url", "{{environment.baseUrl}}/fake/auth/login"),
+                    ("bodyKind", "json"),
+                    ("body", """{"username":"demo","password":"demo-password"}""")),
+                Node("read", "http.request",
+                    ("method", "GET"), ("url", "{{environment.baseUrl}}/fake/products?page=1"),
+                    ("headers",
+                     """[{"name":"Authorization","value":"Bearer {{steps.sign in.response.body.accessToken}}"}]""")),
+                Node("check", "assert.status", ("expected", "200")),
+            ],
+            Edges =
+            [
+                Edge("start", "sign in"), Edge("sign in", "read"), Edge("read", "check"),
+                Data("read", "response", "check", "response"),
+            ],
+        };
+
+        var scenario = await ScenarioAsync(context, "sign in and read", graph);
+        var run = await RunAsync(context, scenario);
+
+        // The endpoint answers 401 without a working token, so a pass is proof the real one arrived.
+        run.Status.Should().Be(RunStatus.Passed, "the outcome was: {0}", run.Outcome);
+
+        var output = await context.NodeRuns
+            .Where(node => node.TestRunId == run.Id && node.NodeName == "sign in")
+            .Select(node => node.OutputJson)
+            .SingleAsync();
+
+        // Parsed rather than searched: ToJsonString escapes the mask's guillemets to «, so a
+        // string comparison against Mask fails on a document that is correctly masked.
+        var stored = System.Text.Json.Nodes.JsonNode.Parse(output!)!;
+
+        stored["response"]!["body"]!["accessToken"]!.GetValue<string>()
+            .Should().Be(Redactor.Mask, "what is stored is still masked");
+
+        // The same body is mirrored as raw text alongside the parsed one, and it is the copy that
+        // slipped through when masking was done on the serialised document.
+        stored["response"]!["text"]!.GetValue<string>()
+            .Should().NotContain("tok_", "which is how the FakeApi's tokens begin");
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Text.Json.Nodes;
 using ProofFlow.Contracts.Runners;
 using ProofFlow.Domain.Runs;
 using ProofFlow.TestEngine.Nodes;
+using ProofFlow.TestEngine.Redaction;
 using ProofFlow.TestEngine.Running;
 
 namespace ProofFlow.Agent;
@@ -15,8 +16,12 @@ namespace ProofFlow.Agent;
 /// That is the whole of the difference between a local run and a remote one. It is a transport
 /// difference, not a behavioural one: the engine called the same methods in the same order, and a
 /// scenario cannot tell which side it ran on.
+///
+/// Masking happens here, which on this side means before anything crosses the wire. The engine ran
+/// with the real values — it has to, or a scenario cannot use a token it was just handed — and what
+/// goes back to the server has been through the run's redaction scope.
 /// </summary>
-public sealed class CollectingSink : IRunSink
+public sealed class CollectingSink(RedactionScope redaction) : IRunSink
 {
     private readonly List<JobNodeResult> _nodes = [];
     private readonly List<JobLogLine> _log = [];
@@ -65,8 +70,8 @@ public sealed class CollectingSink : IRunSink
             Status = status.ToString(),
             DurationMs = durationMs,
             TakenPort = takenPort,
-            OutputJson = output?.ToJsonString(),
-            FailureMessage = failure,
+            OutputJson = redaction.Apply(output)?.ToJsonString(),
+            FailureMessage = Hide(failure),
             SortOrder = open.Order,
             Assertions = open.Assertions,
         });
@@ -78,12 +83,12 @@ public sealed class CollectingSink : IRunSink
 
         open.Assertions.Add(new JobAssertion
         {
-            Description = assertion.Description,
+            Description = Hide(assertion.Description) ?? assertion.Description,
             Passed = assertion.Passed,
             Soft = assertion.Soft,
             Target = assertion.Target,
-            Expected = assertion.Expected,
-            Actual = assertion.Actual,
+            Expected = Hide(assertion.Expected),
+            Actual = Hide(assertion.Actual),
         });
     }
 
@@ -100,7 +105,7 @@ public sealed class CollectingSink : IRunSink
         {
             Sequence = ++_sequence,
             Level = level.ToString(),
-            Message = message,
+            Message = Hide(message) ?? message,
             NodeId = nodeId,
             NodeName = nodeName,
         });
@@ -116,6 +121,9 @@ public sealed class CollectingSink : IRunSink
     public void Artifact(string name, string content, string? nodeId) =>
         Log(RunEventLevel.Info,
             $"Kept «{name}» ({content.Length:N0} characters) on the agent.", nodeId, null);
+
+    /// <summary>Masks the secrets this run has seen, keeping null as null.</summary>
+    private string? Hide(string? text) => text is null ? null : redaction.Apply(text);
 
     /// <summary>One node's turn, while it is still running.</summary>
     private sealed record Record(GraphNode Node, int Iteration, int Attempt, int Order)

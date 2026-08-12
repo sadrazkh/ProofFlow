@@ -51,26 +51,22 @@ public sealed class PackagedRunServices(
 
         var result = await executor.SendAsync(definition, policy, cancellation);
 
-        // The address as well as the body. A secret used in a path — «/records/{{secrets.token}}»
-        // is an ordinary shape — ends up in the resolved URL, and that URL is written into the
-        // step's output, shown in the console and carried into a report. Redacting the body and
-        // leaving the address is the same as not redacting.
-        var url = redaction.Apply(result.ResolvedUrl);
-
         if (!result.Succeeded)
         {
             return new HttpNodeResult(false, result.StatusCode, result.ReasonPhrase, [],
                 string.Empty, null, result.Duration.TotalMilliseconds,
-                redaction.Apply(result.Failure!.Message), url);
+                redaction.Apply(result.Failure!.Message), redaction.Apply(result.ResolvedUrl));
         }
 
-        // Redacted on the agent, before anything is written down or sent back. A secret that only
-        // gets hidden once it reaches the server has already been through this machine's logs.
+        // Unmasked to the engine, masked in the sink — which on this side is what gets packed up and
+        // sent back, so nothing leaves the machine in the clear. The engine has to see the real
+        // value or a scenario cannot use a token it was just handed; see the note in
+        // <c>EngineRunServices</c>, which this deliberately mirrors.
         return new HttpNodeResult(
             true, result.StatusCode, result.ReasonPhrase,
-            [.. redaction.Apply(result.ResponseHeaders).Select(entry => (entry.Name, entry.Value))],
-            redaction.Apply(result.Body), result.ContentType,
-            result.Duration.TotalMilliseconds, null, url);
+            [.. result.ResponseHeaders.Select(entry => (entry.Name, entry.Value))],
+            result.Body, result.ContentType,
+            result.Duration.TotalMilliseconds, null, result.ResolvedUrl);
     }
 
     public Task<IReadOnlyList<JsonNode>> DataSetRowsAsync(

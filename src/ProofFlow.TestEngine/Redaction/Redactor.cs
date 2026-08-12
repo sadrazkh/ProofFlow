@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using ProofFlow.TestEngine.Http;
 
@@ -31,6 +32,22 @@ public static class Redactor
         "x-csrf-token", "x-xsrf-token", "x-amz-security-token", "x-goog-api-key",
         "private-token", "x-secret", "x-signature", "x-hub-signature", "x-hub-signature-256",
     };
+
+    /// <summary>
+    /// A field name that makes its value a credential whatever the value looks like.
+    ///
+    /// The same words as the <c>json-secret</c> pattern below, matched against a name rather than
+    /// against text. Both are needed: this one catches <c>{"accessToken": "abc123"}</c> once it has
+    /// been parsed, and that one catches the same object still inside a string — a response body
+    /// mirrored as raw text, an error message quoting what it sent.
+    /// </summary>
+    private static readonly Regex SensitiveField = new(
+        """
+        ^[a-zA-Z_]*(?:password|passwd|secret|token|apiKey|api_key|accessKey|access_key
+        |privateKey|private_key|clientSecret|client_secret|refreshToken|refresh_token
+        |authorization)[a-zA-Z_]*$
+        """,
+        RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
 
     /// <summary>
     /// Shapes that are a credential wherever they appear.
@@ -92,6 +109,45 @@ public static class Redactor
         return result;
     }
 
+    /// <summary>
+    /// The same rules applied to a parsed document rather than to its text.
+    ///
+    /// A step's output is a tree, and serialising it first does not work: a field holding the raw
+    /// body is a string of escaped JSON by then, so <c>"accessToken"</c> reads as
+    /// <c>"accessToken"</c> and no pattern written for JSON matches it. Walking the tree
+    /// puts every string back in its own right before the patterns run on it.
+    /// </summary>
+    public static JsonNode? RedactJson(JsonNode? node, IReadOnlyCollection<string>? knownValues = null)
+    {
+        switch (node)
+        {
+            case JsonObject document:
+            {
+                var result = new JsonObject();
+
+                foreach (var (name, value) in document)
+                {
+                    result[name] = SensitiveField.IsMatch(name)
+                        ? JsonValue.Create(Mask)
+                        : RedactJson(value, knownValues);
+                }
+
+                return result;
+            }
+
+            case JsonArray items:
+                return new JsonArray([.. items.Select(item => RedactJson(item, knownValues))]);
+
+            case JsonValue value when value.TryGetValue<string>(out var text):
+                return JsonValue.Create(Redact(text, knownValues));
+
+            // Numbers, booleans and null carry nothing to hide, and rewriting them would change
+            // 3600 into "3600" — a difference that shows up as a diff finding later.
+            default:
+                return node?.DeepClone();
+        }
+    }
+
     public static IReadOnlyList<KeyValueEntry> RedactHeaders(
         IReadOnlyList<KeyValueEntry> headers, IReadOnlyCollection<string>? knownValues = null) =>
         [
@@ -123,9 +179,18 @@ public sealed class RedactionScope
         if (!string.IsNullOrEmpty(value) && value.Length >= 4) _values.Add(value);
     }
 
+    /// <summary>Takes on another scope's values, for a run assembled in more than one place.</summary>
+    public void RememberAll(IEnumerable<string> values)
+    {
+        foreach (var value in values) Remember(value);
+    }
+
     public IReadOnlyCollection<string> Values => _values;
 
     public string Apply(string? text) => Redactor.Redact(text, _values);
+
+    /// <summary>The same, for a document that has not been serialised yet.</summary>
+    public JsonNode? Apply(JsonNode? node) => Redactor.RedactJson(node, _values);
 
     public IReadOnlyList<KeyValueEntry> Apply(IReadOnlyList<KeyValueEntry> headers) =>
         Redactor.RedactHeaders(headers, _values);

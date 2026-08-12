@@ -285,7 +285,7 @@ public sealed class AgentExecutionTests : IAsyncLifetime
         }
 
         var services = new PackagedRunServices(package, Executor(), policy, redaction);
-        var sink = new CollectingSink();
+        var sink = new CollectingSink(redaction);
 
         var graph = Read(package.Definition);
 

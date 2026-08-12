@@ -572,4 +572,32 @@ public class ScenarioRunnerTests
         sink.Finished.Should().Contain(entry =>
             entry.Node == "call" && entry.Failure != null && entry.Failure.Contains("missing"));
     }
+
+    [Fact]
+    public async Task A_step_whose_name_has_a_space_can_still_be_read_by_a_later_step()
+    {
+        // «Sign in» is what somebody types, not «signIn». The reference parser splits on dots and
+        // brackets and nothing else, and this pins that down: a name that reads like English has to
+        // work, or every scenario ends up written in identifiers.
+        var (runner, _, services) = Harness.Build();
+
+        services.Then(StubServices.Response(200, """{"accessToken":"tok_42"}"""));
+
+        var graph = new GraphBuilder()
+            .Node("start", "core.start")
+            .Node("Sign in", "http.request",
+                properties: [("method", "POST"), ("url", "https://example.test/login")])
+            .Node("Read it", "http.request", properties:
+            [
+                ("method", "GET"), ("url", "https://example.test/things"),
+                ("headers",
+                 """[{"name":"Authorization","value":"Bearer {{steps.Sign in.response.body.accessToken}}"}]"""),
+            ])
+            .Chain("start", "Sign in", "Read it")
+            .Build();
+
+        await runner.RunAsync(graph, Harness.Scopes());
+
+        services.Requests[1].Headers.Single().Value.Should().Be("Bearer tok_42");
+    }
 }

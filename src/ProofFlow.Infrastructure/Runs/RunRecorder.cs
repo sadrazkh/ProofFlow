@@ -4,6 +4,7 @@ using ProofFlow.Application.Abstractions;
 using ProofFlow.Domain.Runs;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.TestEngine.Nodes;
+using ProofFlow.TestEngine.Redaction;
 using ProofFlow.TestEngine.Running;
 
 namespace ProofFlow.Infrastructure.Runs;
@@ -23,12 +24,17 @@ namespace ProofFlow.Infrastructure.Runs;
 /// Nothing here decides anything either. It is the engine's <see cref="IRunSink"/> and nothing
 /// else, which is what lets the same engine run under a sink that keeps everything in a list inside
 /// a unit test.
+///
+/// It is also where secrets get masked, and that placement is the point. The engine works with real
+/// values — it has to, or a scenario cannot use a token it was just given — and everything that
+/// leaves the run for a row, a console or a report passes through here first.
 /// </summary>
 public sealed class RunRecorder(
     TestRun run,
     ProofFlowDbContext db,
     IClock clock,
-    IRunWatchers watchers) : IRunSink
+    IRunWatchers watchers,
+    RedactionScope redaction) : IRunSink
 {
     /// <summary>
     /// How many events wait before a write.
@@ -83,8 +89,8 @@ public sealed class RunRecorder(
         node.TakenPort = takenPort;
         node.DurationMs = durationMs;
         node.FinishedAt = clock.UtcNow;
-        node.OutputJson = Trim(output?.ToJsonString());
-        node.FailureMessage = failure;
+        node.OutputJson = Trim(redaction.Apply(output)?.ToJsonString());
+        node.FailureMessage = Hide(failure);
 
         // Queued at the end rather than the start: a row written while the step was still running
         // would have to be updated, and the live picture already comes from the message below.
@@ -92,27 +98,30 @@ public sealed class RunRecorder(
 
         watchers.NodeChanged(run.Id, new NodeUpdate(
             node.NodeId, node.NodeName, status, node.Iteration, node.Attempt,
-            durationMs, takenPort, failure));
+            durationMs, takenPort, node.FailureMessage));
     }
 
     public void Assertion(object record, AssertionRecord assertion)
     {
         var node = (NodeRun)record;
 
+        // Expected and actual are both response text as often as not: an assertion that reads a
+        // token field prints the token in its «expected 200, got …» line.
         _assertions.Enqueue(new AssertionResult
         {
             WorkspaceId = run.WorkspaceId,
             NodeRunId = node.Id,
-            Description = assertion.Description,
+            Description = Hide(assertion.Description) ?? assertion.Description,
             Passed = assertion.Passed,
             Soft = assertion.Soft,
-            Expected = Trim(assertion.Expected),
-            Actual = Trim(assertion.Actual),
+            Expected = Trim(Hide(assertion.Expected)),
+            Actual = Trim(Hide(assertion.Actual)),
             Target = assertion.Target,
         });
 
         watchers.AssertionRecorded(run.Id, new AssertionUpdate(
-            node.NodeId, assertion.Description, assertion.Passed, assertion.Soft, assertion.Target));
+            node.NodeId, Hide(assertion.Description) ?? assertion.Description,
+            assertion.Passed, assertion.Soft, assertion.Target));
     }
 
     public void Log(RunEventLevel level, string message, string? nodeId, string? nodeName,
@@ -135,21 +144,23 @@ public sealed class RunRecorder(
             TestRunId = run.Id,
             Sequence = sequence,
             Level = level,
-            Message = message,
+            Message = Hide(message) ?? message,
             NodeId = nodeId,
             NodeName = nodeName,
             At = clock.UtcNow,
-            DataJson = Trim(data?.ToJsonString()),
+            DataJson = Trim(redaction.Apply(data)?.ToJsonString()),
         };
 
         _events.Enqueue(entry);
 
         watchers.Logged(run.Id, new LogLine(
-            sequence, level, message, nodeId, nodeName, entry.At, entry.DataJson));
+            sequence, level, entry.Message, nodeId, nodeName, entry.At, entry.DataJson));
     }
 
     public void Artifact(string name, string content, string? nodeId)
     {
+        var hidden = Hide(content) ?? content;
+
         _artifacts.Enqueue(new RunArtifact
         {
             WorkspaceId = run.WorkspaceId,
@@ -157,8 +168,10 @@ public sealed class RunRecorder(
             Name = name,
             Kind = "attachment",
             ContentType = "text/plain",
-            SizeBytes = System.Text.Encoding.UTF8.GetByteCount(content),
-            Content = Trim(content),
+            // The size of what was kept, not of what came back: the two differ once a mask is
+            // shorter than the token it replaced, and the number has to describe the stored file.
+            SizeBytes = System.Text.Encoding.UTF8.GetByteCount(hidden),
+            Content = Trim(hidden),
         });
     }
 
@@ -197,6 +210,15 @@ public sealed class RunRecorder(
     /// </summary>
     private static string? Trim(string? text) =>
         text is null || text.Length <= 64 * 1024 ? text : text[..(64 * 1024)] + "…";
+
+    /// <summary>
+    /// Masks the secrets this run has seen, keeping null as null.
+    ///
+    /// <see cref="RedactionScope.Apply"/> turns null into an empty string, and an empty failure
+    /// message is not the same thing as no failure message — one prints as a blank line under a
+    /// step that passed.
+    /// </summary>
+    private string? Hide(string? text) => text is null ? null : redaction.Apply(text);
 }
 
 /// <summary>
