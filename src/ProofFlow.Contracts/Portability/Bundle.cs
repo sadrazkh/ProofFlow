@@ -127,6 +127,15 @@ public sealed record BundleScenario
     /// line, and re-exporting an unchanged scenario changes none.
     /// </summary>
     public required GraphDto Graph { get; init; }
+
+    /// <summary>
+    /// What this test has to be told before it runs.
+    ///
+    /// Definitions travel; answers do not. A default is part of the test — "usually order 1" — and
+    /// belongs in the file. What somebody typed on Tuesday is a fact about that run, and stays where
+    /// the runs are.
+    /// </summary>
+    public IReadOnlyList<ScenarioInputDto> Inputs { get; init; } = [];
 }
 
 public sealed record BundleBaseline

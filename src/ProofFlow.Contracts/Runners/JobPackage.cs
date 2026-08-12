@@ -46,6 +46,14 @@ public sealed record JobPackage
     /// <summary>The step to begin at, or null for the whole scenario. Travels so a partial run is
     /// partial on the agent too, rather than quietly becoming a whole one out there.</summary>
     public string? StartNodeId { get; init; }
+
+    /// <summary>
+    /// What this run was told, already settled — supplied values with defaults filled in.
+    ///
+    /// Settled on this side rather than sent as definitions plus answers, so the agent cannot reach
+    /// a different conclusion about what a missing value means.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> Inputs { get; init; } = new Dictionary<string, string>();
 }
 
 public sealed record JobEnvironment

@@ -143,7 +143,7 @@ public sealed class ScheduleWorker(
             var matrix = scope.ServiceProvider.GetRequiredService<MatrixService>();
 
             var batch = await matrix.QueueAsync(
-                schedule.ProjectId, scenarios, environments, name, cancellation);
+                schedule.ProjectId, scenarios, environments, name, cancellation: cancellation);
 
             batch.Trigger = Domain.Runs.RunTrigger.Schedule;
 

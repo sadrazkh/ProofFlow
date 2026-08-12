@@ -30,6 +30,15 @@ public sealed class VariableResolver(VariableScopes scopes, RedactionScope? reda
     public const string DatasetScope = "dataset";
     public const string RunScope = "run";
 
+    /// <summary>
+    /// What this particular run was told — the order to look up, the customer to sign in as.
+    ///
+    /// Separate from «vars» because the two are answered by different people at different times. A
+    /// variable belongs to an environment and is the same every run; an input is filled in when the
+    /// run starts, by a person or by whatever posted the request that started it.
+    /// </summary>
+    public const string InputsScope = "inputs";
+
     /// <summary>Substitutes every reference in a string. Throws on the first one that cannot be resolved.</summary>
     public string Resolve(string? text)
     {
@@ -119,6 +128,7 @@ public sealed class VariableResolver(VariableScopes scopes, RedactionScope? reda
             StepsScope => scopes.Steps,
             DatasetScope => scopes.Dataset,
             RunScope => scopes.Run,
+            InputsScope => scopes.Inputs,
             _ => null,
         };
 
@@ -126,7 +136,8 @@ public sealed class VariableResolver(VariableScopes scopes, RedactionScope? reda
         {
             return ScopeLookup.Missing(
                 $"«{reference.Scope}» is not something ProofFlow knows about. Use one of: " +
-                $"{EnvironmentScope}, {SecretsScope}, {VariablesScope}, {StepsScope}, {DatasetScope}, {RunScope}.");
+                $"{EnvironmentScope}, {SecretsScope}, {VariablesScope}, {InputsScope}, {StepsScope}, " +
+                $"{DatasetScope}, {RunScope}.");
         }
 
         // Typed as JsonNode? rather than inferred: walking a path moves through objects, arrays and
@@ -224,6 +235,9 @@ public sealed class VariableScopes
     public JsonObject Steps { get; init; } = [];
     public JsonObject Dataset { get; init; } = [];
     public JsonObject Run { get; init; } = [];
+
+    /// <summary>What this run was told when it started. Empty when nobody was asked anything.</summary>
+    public JsonObject Inputs { get; init; } = [];
 
     /// <summary>Records a completed step's output so later steps can read it.</summary>
     public void PublishStep(string stepName, JsonNode? result) => Steps[stepName] = result?.DeepClone();

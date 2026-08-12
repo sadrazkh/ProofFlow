@@ -53,7 +53,8 @@ public sealed class RunService(
     /// </summary>
     public async Task<TestRun> QueueAsync(
         Guid scenarioId, Guid? environmentId, RunTrigger trigger,
-        string? fromNodeId = null, CancellationToken cancellation = default)
+        string? fromNodeId = null, IReadOnlyDictionary<string, string?>? inputs = null,
+        CancellationToken cancellation = default)
     {
         var scenario = await db.Scenarios
             .FirstOrDefaultAsync(candidate => candidate.Id == scenarioId, cancellation)
@@ -83,6 +84,18 @@ public sealed class RunService(
                 .Select(candidate => (Guid?)candidate.Id)
                 .FirstOrDefaultAsync(cancellation);
 
+        // Settled here, once, and refused here rather than three steps into the run. A scenario
+        // that starts and dies because nobody filled a box is a red run somebody has to explain.
+        var defined = ScenarioInputs.Read(scenario.InputsJson);
+        var settled = ScenarioInputs.Settle(defined, inputs);
+        var missing = ScenarioInputs.Missing(defined, settled);
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                $"This test needs a value for: {string.Join(", ", missing)}.");
+        }
+
         var run = new TestRun
         {
             WorkspaceId = scenario.WorkspaceId,
@@ -101,6 +114,8 @@ public sealed class RunService(
                           && graph.Nodes.Any(node => node.Id == fromNodeId && node.ParentId is null)
                 ? fromNodeId
                 : null,
+
+            InputsJson = ScenarioInputs.WriteValues(settled),
 
             // Copied now rather than read through the environment later. An environment can be
             // pointed at a different agent tomorrow, and a run already waiting must not change hands
@@ -153,7 +168,12 @@ public sealed class RunService(
 
         watchers.StatusChanged(run.Id, RunStatus.Running, new RunTotals(0, 0, 0, 0, 0, null));
 
-        var recorder = new RunRecorder(run, db, clock, watchers);
+        // One scope for the whole run, made before anything can be recorded. The recorder masks with
+        // it and the engine collects into it, so a secret first resolved on the twentieth step is
+        // hidden in every line written from then on.
+        var redaction = new RedactionScope();
+
+        var recorder = new RunRecorder(run, db, clock, watchers, redaction);
 
         try
         {
@@ -171,10 +191,18 @@ public sealed class RunService(
                 : null;
 
             var scopes = context?.Scopes ?? new VariableScopes();
-            var redaction = context?.Redaction ?? new RedactionScope();
+
+            if (context is not null) redaction.RememberAll(context.Redaction.Values);
 
             scopes.Run["startedAt"] = System.Text.Json.Nodes.JsonValue.Create(
                 run.StartedAt?.ToString("O"));
+
+            // What this run was told, from its own snapshot rather than the scenario as it is now.
+            // Somebody changing a default tomorrow must not change what a run in the history did.
+            foreach (var (name, value) in ScenarioInputs.ReadValues(run.InputsJson))
+            {
+                scopes.Inputs[name] = System.Text.Json.Nodes.JsonValue.Create(value);
+            }
 
             var services = new EngineRunServices(
                 db, executor, baselines, clock,

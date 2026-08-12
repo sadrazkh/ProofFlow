@@ -106,6 +106,16 @@ public class TestRun : Entity, IWorkspaceOwned
     public DateTimeOffset? ClaimedAt { get; set; }
 
     /// <summary>
+    /// What this run was told, as JSON — the inputs somebody filled in or a build agent posted.
+    ///
+    /// Snapshotted like the graph, and for the same reason: the answer to "why did this run look up
+    /// order 8812" has to survive somebody changing the default tomorrow. Values a person typed, so
+    /// nothing here is redacted — an input that needs hiding is a secret, and secrets have their own
+    /// place.
+    /// </summary>
+    public string? InputsJson { get; set; }
+
+    /// <summary>
     /// The step this run began at, or null for the whole scenario from its Start.
     ///
     /// Recorded rather than inferred, and it has to be: a run that began in the middle did not skip

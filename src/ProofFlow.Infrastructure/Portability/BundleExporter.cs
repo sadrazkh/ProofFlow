@@ -138,6 +138,7 @@ public sealed class BundleExporter(ProofFlowDbContext db, ScenarioGraphService g
                     ? environments.GetValueOrDefault(environmentId)
                     : null,
                 Graph = Renumber(graph),
+                Inputs = ScenarioInputs.Read(scenario.InputsJson),
             });
         }
 

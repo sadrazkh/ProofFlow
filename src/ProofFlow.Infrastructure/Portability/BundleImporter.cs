@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Application.Common;
 using ProofFlow.Contracts.Portability;
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Environments;
@@ -260,6 +261,11 @@ public sealed class BundleImporter(
                     ? environments.BySlug.GetValueOrDefault(slug)
                     : null,
                 CreatedByUserId = me.UserId ?? Guid.Empty,
+
+                // The definitions, not anybody's answers. A default is part of the test.
+                InputsJson = incoming.Inputs.Count == 0
+                    ? null
+                    : ScenarioInputs.Write(incoming.Inputs),
             };
 
             db.Scenarios.Add(scenario);

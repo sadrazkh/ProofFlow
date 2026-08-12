@@ -97,7 +97,7 @@ public sealed class MatrixController(
         try
         {
             var batch = await matrix.QueueAsync(
-                projectId, scenarioIds, environmentIds, name, cancellationToken);
+                projectId, scenarioIds, environmentIds, name, cancellation: cancellationToken);
 
             await audit.RecordAsync(
                 new AuditEntry("matrix.started", projectId, "RunBatch", batch.Id,

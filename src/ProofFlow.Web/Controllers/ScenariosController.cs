@@ -6,6 +6,7 @@ using ProofFlow.Application.Abstractions;
 using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Scenarios;
+using ProofFlow.Infrastructure.Ai;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Scenarios;
 using ProofFlow.Web.Infrastructure;
@@ -19,11 +20,12 @@ namespace ProofFlow.Web.Controllers;
 [Authorize]
 [Route("projects/{projectId:guid}/scenarios")]
 [ServiceFilter<WorkspaceContextFilter>]
-public sealed class ScenariosController(
+public sealed partial class ScenariosController(
     ProofFlowDbContext db,
     ScenarioGraphService graphs,
     ICurrentUser me,
     IAuditLog audit,
+    ScenarioAuthor author,
     IStringLocalizer localizer) : Controller
 {
     [HttpGet("")]
@@ -133,6 +135,13 @@ public sealed class ScenariosController(
             Scenario = scenario,
             CanEdit = me.Can(Capability.EditTest),
             CanRun = me.Can(Capability.RunTest),
+            Inputs = ScenarioInputs.Read(scenario.InputsJson),
+
+            // The button only exists where somebody has put a key in. A feature that asks for a
+            // key when pressed is a feature that gets pressed once.
+            CanDraw = me.Can(Capability.EditTest)
+                      && await db.Workspaces.AnyAsync(
+                          w => w.Id == me.WorkspaceId && w.AiKeyCipher != null, cancellationToken),
             Environments = await db.Environments
                 .Where(e => e.ProjectId == projectId)
                 .OrderBy(e => e.SortOrder)
@@ -221,6 +230,100 @@ public sealed class ScenariosController(
         return Redirect($"/projects/{projectId}/scenarios/{scenarioId}");
     }
 
+
+    /// <summary>
+    /// Saves what this scenario has to be told.
+    ///
+    /// A row whose name is blank is a row somebody cleared, which is how an input is removed — there
+    /// is no second button for it and no confirmation, because nothing that has run is lost: a run
+    /// keeps its own copy of what it was given.
+    /// </summary>
+
+    /// <summary>
+    /// Asks the workspace's model to draw a scenario, and hands back a graph the canvas can show.
+    ///
+    /// Nothing is saved. What comes back arrives as unsaved changes on the canvas, so the person who
+    /// asked reads it, moves it and decides — exactly as if they had dragged it out of the palette.
+    /// A draft nobody looked at is not a test.
+    /// </summary>
+    [HttpPost("{scenarioId:guid}/draw")]
+    [Authorize(Policy = Policies.EditTest)]
+    public async Task<IActionResult> Draw(
+        Guid projectId, Guid scenarioId, [FromBody] DrawRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (me.WorkspaceId is not { } workspaceId) return Forbid();
+
+        var scenario = await db.Scenarios
+            .FirstOrDefaultAsync(s => s.Id == scenarioId && s.ProjectId == projectId, cancellationToken);
+
+        if (scenario is null) return NotFound();
+
+        var workspace = await db.Workspaces
+            .FirstOrDefaultAsync(candidate => candidate.Id == workspaceId, cancellationToken);
+
+        if (workspace is null) return NotFound();
+
+        var drawn = await author.DrawAsync(workspace, request.Request ?? string.Empty, cancellationToken);
+
+        if (!drawn.Ok) return ValidationProblem(localizer[drawn.Problem!].Value);
+
+        await audit.RecordAsync(
+            new AuditEntry("scenario.drawn", projectId, nameof(TestScenario), scenarioId, scenario.Name),
+            cancellationToken);
+
+        return Json(drawn.Graph);
+    }
+
+    [HttpPost("{scenarioId:guid}/inputs")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.EditTest)]
+    public async Task<IActionResult> Inputs(
+        Guid projectId, Guid scenarioId, [FromForm] List<ScenarioInputDto> inputs,
+        CancellationToken cancellationToken)
+    {
+        var scenario = await db.Scenarios
+            .FirstOrDefaultAsync(s => s.Id == scenarioId && s.ProjectId == projectId, cancellationToken);
+
+        if (scenario is null) return NotFound();
+
+        // Trimmed, named, and de-duplicated by name. Two inputs called the same thing would make
+        // {{inputs.orderId}} mean whichever the dictionary happened to keep.
+        var kept = inputs
+            .Where(input => !string.IsNullOrWhiteSpace(input.Name))
+            .Select(input => input with
+            {
+                Name = input.Name.Trim(),
+                Label = string.IsNullOrWhiteSpace(input.Label) ? null : input.Label.Trim(),
+                Default = string.IsNullOrWhiteSpace(input.Default) ? null : input.Default,
+            })
+            .GroupBy(input => input.Name, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .ToList();
+
+        var bad = kept.FirstOrDefault(input => !ValidInputName().IsMatch(input.Name));
+
+        if (bad is not null)
+        {
+            TempData.Error(localizer["input.name.shape", bad.Name]);
+            return RedirectToAction(nameof(Canvas), new { projectId, scenarioId });
+        }
+
+        scenario.InputsJson = kept.Count == 0 ? null : ScenarioInputs.Write(kept);
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(
+            new AuditEntry("scenario.inputsChanged", projectId, nameof(TestScenario), scenarioId,
+                scenario.Name),
+            cancellationToken);
+
+        return RedirectToAction(nameof(Canvas), new { projectId, scenarioId });
+    }
+
+    /// <summary>The shape a reference can actually use: {{inputs.orderId}} and nothing exotic.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"^[A-Za-z_][A-Za-z0-9_]*$")]
+    private static partial System.Text.RegularExpressions.Regex ValidInputName();
+
     [HttpPost("{scenarioId:guid}/rename")]
     [Authorize(Policy = Policies.EditTest)]
     public async Task<IActionResult> Rename(
@@ -261,6 +364,12 @@ public sealed class ScenariosController(
         if (scenarioName is not null) crumbs.Add((scenarioName, null));
         ViewData["Breadcrumbs"] = crumbs;
     }
+}
+
+/// <summary>What somebody typed into the box before pressing the button.</summary>
+public sealed record DrawRequest
+{
+    public string? Request { get; init; }
 }
 
 public sealed record RenameScenarioCommand(string? Name, string? Description);

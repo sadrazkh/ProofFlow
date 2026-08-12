@@ -69,6 +69,20 @@ public class TestScenario : Entity, IWorkspaceOwned
     /// </summary>
     public Guid? DraftVersionId { get; set; }
 
+    /// <summary>
+    /// What this test has to be told before it can run, as JSON.
+    ///
+    /// The difference between an input and a variable is who supplies it and when. A variable
+    /// belongs to an environment and is the same for every run against it; an input is answered per
+    /// run — the order to look up, the customer to sign in as — by a person filling a form or by a
+    /// build agent sending a body. Inside the graph both read the same way, `{{inputs.orderId}}`
+    /// beside `{{vars.pageSize}}`.
+    ///
+    /// JSON rather than a table because it is a small ordered list that is always read whole, always
+    /// with the scenario, and never queried across scenarios.
+    /// </summary>
+    public string? InputsJson { get; set; }
+
     public Guid CreatedByUserId { get; set; }
 
     public DateTimeOffset? ArchivedAt { get; set; }

@@ -41,7 +41,8 @@ public sealed class MatrixService(
     /// </summary>
     public async Task<RunBatch> QueueAsync(
         Guid projectId, IReadOnlyList<Guid> scenarioIds, IReadOnlyList<Guid> environmentIds,
-        string? name = null, CancellationToken cancellation = default)
+        string? name = null, IReadOnlyDictionary<string, string?>? inputs = null,
+        CancellationToken cancellation = default)
     {
         if (scenarioIds.Count == 0) throw new InvalidOperationException("No scenario was chosen.");
         if (environmentIds.Count == 0) throw new InvalidOperationException("No environment was chosen.");
@@ -96,8 +97,12 @@ public sealed class MatrixService(
         {
             foreach (var environmentId in environments)
             {
+                // The same inputs to every cell. Four scenarios across two environments reading
+                // {{inputs.orderId}} is one order checked eight ways, which is what a release
+                // check is — not eight different orders.
                 var run = await runs.QueueAsync(
-                    scenarioId, environmentId, RunTrigger.Person, cancellation: cancellation);
+                    scenarioId, environmentId, RunTrigger.Person,
+                    inputs: inputs, cancellation: cancellation);
 
                 run.BatchId = batch.Id;
                 queued.Add(run);

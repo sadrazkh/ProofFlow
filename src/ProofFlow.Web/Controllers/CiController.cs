@@ -67,7 +67,8 @@ public sealed class CiController(
             if (scenarios.Count == 1 && environments.Count == 1)
             {
                 var run = await runs.QueueAsync(
-                    scenarios[0], environments[0], RunTrigger.Api, cancellation: cancellationToken);
+                    scenarios[0], environments[0], RunTrigger.Api,
+                    inputs: request.Inputs, cancellation: cancellationToken);
 
                 await queue.EnqueueAsync(new QueuedRun(run.Id, run.WorkspaceId), cancellationToken);
                 await RecordAsync(projectId, "run", run.Id, cancellationToken);
@@ -82,7 +83,7 @@ public sealed class CiController(
             }
 
             var batch = await matrix.QueueAsync(
-                projectId, scenarios, environments, request.Name, cancellationToken);
+                projectId, scenarios, environments, request.Name, request.Inputs, cancellationToken);
 
             foreach (var run in await db.Runs
                          .Where(run => run.BatchId == batch.Id)
@@ -295,4 +296,21 @@ public sealed record StartRunRequest
 
     /// <summary>What to call the batch — a commit sha or a branch name earns its place here.</summary>
     public string? Name { get; init; }
+
+    /// <summary>
+    /// What the scenario has to be told, by input name.
+    ///
+    /// This is the whole point of an input: a pipeline sends the order it just created rather than
+    /// a number somebody typed into the test last year.
+    ///
+    /// <code>
+    /// curl -X POST .../api/v1/projects/{id}/runs \
+    ///   -H "X-ProofFlow-Key: pf_…" -H "Content-Type: application/json" \
+    ///   -d '{"scenarios":["Read one order"],"inputs":{"orderId":"8812"}}'
+    /// </code>
+    ///
+    /// Applied to every scenario in the request. A batch across four scenarios that all read
+    /// {{inputs.orderId}} is one order looked up four ways, which is what a release check is.
+    /// </summary>
+    public Dictionary<string, string?>? Inputs { get; init; }
 }

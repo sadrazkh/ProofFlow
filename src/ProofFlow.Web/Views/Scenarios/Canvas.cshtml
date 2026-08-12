@@ -11,6 +11,7 @@
         }),
         canEdit = Model.CanEdit,
         canRun = Model.CanRun,
+        canDraw = Model.CanDraw,
     }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 
@@ -79,6 +80,25 @@
                 </select>
             }
 
+            @*
+                What this test has to be told, asked for here rather than guessed at. A box per
+                input, beside the environment, because both are answers to "run it how" and putting
+                them a dialog apart means two decisions that look unrelated.
+            *@
+            @foreach (var input in Model.Inputs)
+            {
+                var id = $"run-input-{input.Name}";
+
+                <div class="run-input">
+                    <label class="sr-only" for="@id">@(input.Label ?? input.Name)</label>
+                    <input class="input input-sm input-mono" id="@id" name="input.@input.Name"
+                           value="@input.Default" dir="auto"
+                           placeholder="@(input.Label ?? input.Name)"
+                           required="@input.Required"
+                           title="@(input.Description ?? input.Label ?? input.Name)" />
+                </div>
+            }
+
             <button type="submit" class="btn btn-primary btn-sm">
                 <i data-lucide="play" aria-hidden="true"></i>@T["run.start"]
             </button>
@@ -100,6 +120,85 @@
     The island carries its own skeleton in the three-column shape it becomes, so the page does not
     jump when Vue takes over — which on a full-height canvas would move everything.
 *@
+
+@*
+    What this test has to be told, and who fills it in.
+
+    A panel that stays shut: most scenarios have no inputs and should not pay for the ones that do.
+    One blank row is always at the bottom, so adding an input is typing rather than pressing Add and
+    then typing — and clearing a name is how one is removed, which needs no second button.
+*@
+@if (Model.CanEdit)
+{
+    <details class="inputs-panel">
+        <summary>
+            <i data-lucide="variable" aria-hidden="true"></i>
+            @T["input.title"]
+            @if (Model.Inputs.Count > 0)
+            {
+                <span class="badge badge-idle">@Model.Inputs.Count</span>
+            }
+        </summary>
+
+        <form method="post" action="/projects/@Model.ProjectId/scenarios/@Model.Scenario.Id/inputs"
+              class="inputs-body">
+            @Html.AntiForgeryToken()
+
+            <p class="inputs-hint">@T["input.hint"]</p>
+
+            @{ var rows = Model.Inputs.Append(new ScenarioInputDto { Name = string.Empty }).ToList(); }
+
+            @for (var at = 0; at < rows.Count; at++)
+            {
+                var row = rows[at];
+                var last = at == rows.Count - 1;
+
+                <div class="inputs-row">
+                    <div class="field">
+                        @if (at == 0)
+                        {
+                            <label class="field-label" for="input-name-@at">@T["input.name"]</label>
+                        }
+                        <input class="input input-mono" id="input-name-@at" name="inputs[@at].Name"
+                               value="@row.Name" dir="ltr" maxlength="60"
+                               placeholder="@(last ? T["input.name.placeholder"].Value : "")" />
+                    </div>
+
+                    <div class="field">
+                        @if (at == 0)
+                        {
+                            <label class="field-label" for="input-label-@at">@T["input.label"]</label>
+                        }
+                        <input class="input" id="input-label-@at" name="inputs[@at].Label"
+                               value="@row.Label" dir="auto" maxlength="120" />
+                    </div>
+
+                    <div class="field">
+                        @if (at == 0)
+                        {
+                            <label class="field-label" for="input-default-@at">@T["input.default"]</label>
+                        }
+                        <input class="input input-mono" id="input-default-@at" name="inputs[@at].Default"
+                               value="@row.Default" dir="auto" maxlength="500" />
+                    </div>
+
+                    <label class="check-row" style="align-items: center;">
+                        @* A hidden false first: an unticked box posts nothing at all. *@
+                        <input type="hidden" name="inputs[@at].Required" value="false" />
+                        <input class="checkbox" type="checkbox" name="inputs[@at].Required" value="true"
+                               checked="@row.Required" />
+                        <span class="check-row-text"><span class="check-row-title">@T["input.required"]</span></span>
+                    </label>
+                </div>
+            }
+
+            <div>
+                <button type="submit" class="btn btn-secondary btn-sm">@T["action.save"]</button>
+            </div>
+        </form>
+    </details>
+}
+
 <div data-island="scenario-canvas" data-props="@props">
     <div class="canvas-shell">
         <div class="node-palette">

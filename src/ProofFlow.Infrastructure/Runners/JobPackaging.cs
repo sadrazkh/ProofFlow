@@ -100,6 +100,7 @@ public sealed class JobPackaging(
             DataSets = await DataSetsAsync(run.ProjectId, Referenced(graph, DataSetProperties), cancellation),
             Baselines = await BaselinesAsync(run.ProjectId, Referenced(graph, BaselineProperties), cancellation),
             StartNodeId = run.StartNodeId,
+            Inputs = ScenarioInputs.ReadValues(run.InputsJson),
         };
     }
 

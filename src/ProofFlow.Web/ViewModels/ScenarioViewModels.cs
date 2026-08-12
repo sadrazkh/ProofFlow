@@ -1,3 +1,4 @@
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Scenarios;
 
 namespace ProofFlow.Web.ViewModels;
@@ -30,6 +31,12 @@ public sealed record ScenarioCanvasViewModel
     public required IReadOnlyList<ScenarioEnvironment> Environments { get; init; }
     public bool CanEdit { get; init; }
     public bool CanRun { get; init; }
+
+    /// <summary>What this test has to be told before it runs. Empty for most scenarios.</summary>
+    public IReadOnlyList<ScenarioInputDto> Inputs { get; init; } = [];
+
+    /// <summary>True when this workspace has a model key, which is the only time the button shows.</summary>
+    public bool CanDraw { get; init; }
 }
 
 public sealed record ScenarioEnvironment(Guid Id, string Name, bool IsProduction);

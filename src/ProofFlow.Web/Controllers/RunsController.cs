@@ -86,6 +86,17 @@ public sealed class RunsController(
         Guid projectId, Guid scenarioId, Guid? environmentId, string? fromNodeId,
         CancellationToken cancellationToken)
     {
+        // Inputs arrive as input.orderId=8812, so a scenario can name one anything without a model
+        // binder needing to know the names in advance.
+        var inputs = Request.HasFormContentType
+            ? Request.Form
+                .Where(field => field.Key.StartsWith("input.", StringComparison.Ordinal))
+                .ToDictionary(
+                    field => field.Key["input.".Length..],
+                    field => (string?)field.Value.ToString(),
+                    StringComparer.Ordinal)
+            : [];
+
         var scenario = await db.Scenarios
             .FirstOrDefaultAsync(candidate =>
                 candidate.Id == scenarioId && candidate.ProjectId == projectId, cancellationToken);
@@ -96,7 +107,7 @@ public sealed class RunsController(
         try
         {
             run = await runs.QueueAsync(
-                scenarioId, environmentId, RunTrigger.Person, fromNodeId, cancellationToken);
+                scenarioId, environmentId, RunTrigger.Person, fromNodeId, inputs, cancellationToken);
         }
         catch (InvalidOperationException ex)
         {

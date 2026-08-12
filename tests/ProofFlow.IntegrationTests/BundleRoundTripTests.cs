@@ -347,6 +347,20 @@ public sealed class BundleRoundTripTests : IAsyncLifetime
             Description = "Signs in, reads a product, checks the status.",
             EnvironmentId = staging.Id,
             CreatedByUserId = _userId,
+
+            // Inputs are part of what a scenario is, so they belong in the fixture the whole
+            // round-trip is measured against rather than in a test of their own.
+            InputsJson = ScenarioInputs.Write(
+            [
+                new ScenarioInputDto
+                {
+                    Name = "productId",
+                    Label = "Product id",
+                    Description = "Which one to read.",
+                    Default = "5001",
+                    Required = true,
+                },
+            ]),
         };
 
         context.Scenarios.Add(scenario);

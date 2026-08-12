@@ -111,3 +111,33 @@ public sealed record SaveGraphResult
     /// </summary>
     public required IReadOnlyDictionary<string, Guid> NodeIds { get; init; }
 }
+
+/// <summary>
+/// One thing a scenario has to be told before it runs.
+///
+/// The same shape everywhere it appears: in the canvas that defines it, in the form that asks for
+/// it, in the body a build agent posts, and in the file this project exports to. One shape means a
+/// scenario that ran from a pipeline and a scenario that ran from a form were given the same thing.
+/// </summary>
+public sealed record ScenarioInputDto
+{
+    /// <summary>How the graph refers to it: `{{inputs.orderId}}`.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>What to say above the box. Falls back to the name when nobody wrote one.</summary>
+    public string? Label { get; init; }
+
+    /// <summary>A sentence under the box, for the person who did not write this test.</summary>
+    public string? Description { get; init; }
+
+    /// <summary>Used when nothing was supplied. A default is what makes an input optional.</summary>
+    public string? Default { get; init; }
+
+    /// <summary>
+    /// True when a run cannot start without it.
+    ///
+    /// Refused before the run rather than failing inside it: a scenario that starts and dies on the
+    /// first step because nobody filled a box is a red run in the history that means nothing.
+    /// </summary>
+    public bool Required { get; init; }
+}
