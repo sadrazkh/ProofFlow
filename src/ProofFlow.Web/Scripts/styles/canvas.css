@@ -378,3 +378,74 @@
 .inspector-problems .is-warning { color: var(--warn-ink); }
 
 .inspector-foot { border-block-start: 1px solid var(--line); padding-block-start: var(--space-3); }
+
+/* ---- inputs ------------------------------------------------------------------------------------ */
+
+/*
+  A box per input, in the run bar beside the environment.
+  
+  Both are answers to the same question — run it how — and a dialog between them would make two
+  halves of one decision look unrelated. Narrow, because an input is usually an id.
+*/
+.input-sm {
+  block-size: 28px;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  border-radius: var(--radius-sm);
+}
+
+.run-input { display: flex; }
+.run-input .input { inline-size: 14ch; }
+
+/*
+  Defining them. A panel that stays shut until somebody opens it: most scenarios have no inputs and
+  should not pay for the ones that do.
+*/
+.inputs-panel { border-block-start: 1px solid var(--line); background: var(--surface); }
+
+.inputs-panel > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  user-select: none;
+}
+
+.inputs-panel > summary:hover { background: var(--surface-hover); }
+.inputs-panel > summary::marker { color: var(--ink-faint); }
+.inputs-panel > summary svg { inline-size: 13px; block-size: 13px; }
+
+.inputs-body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+
+.inputs-row {
+  display: grid;
+  grid-template-columns: 14ch 1fr 14ch auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .inputs-row { grid-template-columns: 1fr; }
+}
+
+.inputs-hint { font-size: var(--text-xs); color: var(--ink-subtle); }
+
+/*
+  The box that asks for a scenario.
+
+  In the canvas bar rather than behind a dialog: what somebody types is one sentence, and a dialog
+  would make a cheap, undoable action feel like a commitment.
+*/
+.canvas-draw { display: flex; align-items: center; gap: var(--space-2); flex: 1 1 260px; min-inline-size: 0; }
+.canvas-draw .input { flex: 1 1 auto; min-inline-size: 0; }
+
+.is-spinning { animation: spin 1s linear infinite; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .is-spinning { animation: none; }
+}
