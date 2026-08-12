@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Scheduling;
 using ProofFlow.Infrastructure.Persistence;
 
@@ -15,6 +16,7 @@ public sealed class ScheduleService(ProofFlowDbContext db, IClock clock, ICurren
     public async Task<RunSchedule> SaveAsync(
         Guid projectId, Guid? scheduleId, string name, string cron, string timeZoneId,
         IReadOnlyList<Guid> scenarioIds, IReadOnlyList<Guid> environmentIds, bool enabled,
+        IReadOnlyDictionary<string, string?>? inputs = null,
         CancellationToken cancellation = default)
     {
         var project = await db.Projects
@@ -57,6 +59,18 @@ public sealed class ScheduleService(ProofFlowDbContext db, IClock clock, ICurren
         schedule.Cron = cron.Trim();
         schedule.TimeZoneId = string.IsNullOrWhiteSpace(timeZoneId) ? "UTC" : timeZoneId.Trim();
         schedule.Enabled = enabled;
+
+        // Blanks are not stored. An answer left empty means «whatever the scenario says», and
+        // writing it down as an empty string would freeze today's default into a row that outlives
+        // it — the schedule would keep sending "" long after somebody changed what the box says.
+        if (inputs is not null)
+        {
+            var answered = inputs
+                .Where(pair => !string.IsNullOrWhiteSpace(pair.Value))
+                .ToDictionary(pair => pair.Key, pair => pair.Value!.Trim(), StringComparer.Ordinal);
+
+            schedule.InputsJson = answered.Count == 0 ? null : ScenarioInputs.WriteValues(answered);
+        }
 
         if (scheduleId is null) db.RunSchedules.Add(schedule);
         else

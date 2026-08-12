@@ -40,6 +40,30 @@ public static class ScenarioInputs
     public static string Write(IEnumerable<ScenarioInputDto> inputs) =>
         JsonSerializer.Serialize(inputs, Json);
 
+    /// <summary>
+    /// Every input declared across a set of scenarios, once each.
+    ///
+    /// What a form asks for when it starts more than one scenario at a time — a matrix, a schedule.
+    /// Two scenarios that both want «page» are asked about once, and the first definition wins: they
+    /// are the same question, and asking it twice on one form is how somebody answers it twice and
+    /// wonders which one counted.
+    ///
+    /// Required is dropped deliberately. Across a set, «required» belongs to the scenario that
+    /// declared it and not to the form, and a box marked required for a run that will not use it is
+    /// a box nobody can get past.
+    /// </summary>
+    public static IReadOnlyList<ScenarioInputDto> Merge(IEnumerable<string?> definitions)
+    {
+        var merged = new Dictionary<string, ScenarioInputDto>(StringComparer.Ordinal);
+
+        foreach (var input in definitions.SelectMany(Read))
+        {
+            if (!merged.ContainsKey(input.Name)) merged[input.Name] = input with { Required = false };
+        }
+
+        return [.. merged.Values];
+    }
+
     /// <summary>The values a run should use: what was supplied, with defaults where it was not.</summary>
     public static Dictionary<string, string> Settle(
         IReadOnlyList<ScenarioInputDto> defined, IReadOnlyDictionary<string, string?>? supplied)

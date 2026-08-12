@@ -71,6 +71,9 @@
                            placeholder="@T["matrix.name.placeholder"]" />
                 </div>
 
+                @await Html.PartialAsync("_RunInputs", new ProofFlow.Web.ViewModels.RunInputsViewModel(
+                    Model.Inputs, new Dictionary<string, string>(), T["input.title"].Value, "matrix"))
+
                 <div class="row">
                     <button type="submit" class="btn btn-primary">
                         <i data-lucide="layout-grid" aria-hidden="true"></i>@T["matrix.start"]

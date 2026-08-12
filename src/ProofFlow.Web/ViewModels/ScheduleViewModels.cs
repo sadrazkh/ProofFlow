@@ -20,7 +20,8 @@ public sealed record ScheduleRow(
     Guid? LastBatchId,
     string? Problem,
     int ScenarioCount,
-    int EnvironmentCount);
+    int EnvironmentCount,
+    int InputCount);
 
 public sealed class ScheduleListViewModel
 {
@@ -35,6 +36,9 @@ public sealed class ScheduleListViewModel
     public required IReadOnlyList<MatrixChoice> Scenarios { get; init; }
 
     public required IReadOnlyList<MatrixChoice> Environments { get; init; }
+
+    /// <summary>What this project's scenarios ask before they run, merged and asked once.</summary>
+    public IReadOnlyList<ProofFlow.Contracts.Scenarios.ScenarioInputDto> Inputs { get; init; } = [];
 
     /// <summary>The expressions offered as buttons, so nobody has to remember cron's field order.</summary>
     public required IReadOnlyList<string> Presets { get; init; }

@@ -25,6 +25,9 @@ public sealed class MatrixListViewModel
 
     public required IReadOnlyList<MatrixChoice> Environments { get; init; }
 
+    /// <summary>What this project's scenarios ask before they run, merged and asked once.</summary>
+    public IReadOnlyList<ProofFlow.Contracts.Scenarios.ScenarioInputDto> Inputs { get; init; } = [];
+
     public bool CanRun { get; init; }
 }
 

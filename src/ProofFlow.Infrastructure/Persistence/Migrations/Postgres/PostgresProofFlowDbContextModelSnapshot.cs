@@ -1730,6 +1730,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<bool>("Enabled")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("InputsJson")
+                        .HasColumnType("jsonb");
+
                     b.Property<Guid?>("LastBatchId")
                         .HasColumnType("uuid");
 

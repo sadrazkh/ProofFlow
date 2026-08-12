@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Runs;
@@ -53,7 +54,8 @@ public sealed class SchedulesController(
                 schedule.LastBatchId,
                 schedule.Problem,
                 schedule.Scenarios.Count,
-                schedule.Environments.Count))
+                schedule.Environments.Count,
+                ScenarioInputs.ReadValues(schedule.InputsJson).Count))
             .ToListAsync(cancellationToken);
 
         Breadcrumbs(project.Name, projectId);
@@ -72,6 +74,14 @@ public sealed class SchedulesController(
             // default to Tehran rather than to UTC, which nobody's morning is measured in.
             ViewerZone = dates.Viewer.Id,
             Presets = CronSchedule.Presets,
+
+            // The union of what this project's scenarios ask for. A schedule starts several at
+            // once, so the form cannot wait to know which were ticked before it knows what to ask.
+            Inputs = ScenarioInputs.Merge(await db.Scenarios
+                .Where(scenario => scenario.ProjectId == projectId && scenario.ArchivedAt == null)
+                .Select(scenario => scenario.InputsJson)
+                .ToListAsync(cancellationToken)),
+
             Scenarios = await db.Scenarios
                 .Where(scenario => scenario.ProjectId == projectId && scenario.ArchivedAt == null)
                 .OrderBy(scenario => scenario.Name)
@@ -94,11 +104,19 @@ public sealed class SchedulesController(
         [FromForm] string timeZoneId, [FromForm] Guid[] scenarioIds, [FromForm] Guid[] environmentIds,
         CancellationToken cancellationToken)
     {
+        // input.orderId=8812, the same shape the canvas and the matrix use.
+        var inputs = Request.Form
+            .Where(field => field.Key.StartsWith("input.", StringComparison.Ordinal))
+            .ToDictionary(
+                field => field.Key["input.".Length..],
+                field => (string?)field.Value.ToString(),
+                StringComparer.Ordinal);
+
         try
         {
             var schedule = await schedules.SaveAsync(
                 projectId, id, name, cron, timeZoneId, scenarioIds, environmentIds,
-                enabled: true, cancellationToken);
+                enabled: true, inputs, cancellationToken);
 
             await audit.RecordAsync(
                 new AuditEntry("schedule.saved", projectId, "RunSchedule", schedule.Id, schedule.Name),

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Runs;
@@ -67,6 +68,14 @@ public sealed class MatrixController(
             ProjectName = project.Name,
             Batches = batches,
             CanRun = me.Can(Capability.RunTest),
+
+            // The union of what this project's scenarios ask for. A matrix starts several at once,
+            // so the form cannot wait to know which were ticked before it knows what to ask.
+            Inputs = ScenarioInputs.Merge(await db.Scenarios
+                .Where(scenario => scenario.ProjectId == projectId && scenario.ArchivedAt == null)
+                .Select(scenario => scenario.InputsJson)
+                .ToListAsync(cancellationToken)),
+
             Scenarios = await db.Scenarios
                 .Where(scenario => scenario.ProjectId == projectId && scenario.ArchivedAt == null)
                 .OrderBy(scenario => scenario.Name)
@@ -94,10 +103,19 @@ public sealed class MatrixController(
         Guid projectId, [FromForm] Guid[] scenarioIds, [FromForm] Guid[] environmentIds,
         [FromForm] string? name, CancellationToken cancellationToken)
     {
+        // Read the way the canvas reads them — input.orderId=8812 — so a scenario can name one
+        // anything without a model binder needing to know the names in advance.
+        var inputs = Request.Form
+            .Where(field => field.Key.StartsWith("input.", StringComparison.Ordinal))
+            .ToDictionary(
+                field => field.Key["input.".Length..],
+                field => (string?)field.Value.ToString(),
+                StringComparer.Ordinal);
+
         try
         {
             var batch = await matrix.QueueAsync(
-                projectId, scenarioIds, environmentIds, name, cancellation: cancellationToken);
+                projectId, scenarioIds, environmentIds, name, inputs, cancellationToken);
 
             await audit.RecordAsync(
                 new AuditEntry("matrix.started", projectId, "RunBatch", batch.Id,

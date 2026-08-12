@@ -67,6 +67,16 @@ public class RunSchedule : Entity, IWorkspaceOwned
     /// <summary>Why the expression could not be read, when it could not. Shown, not swallowed.</summary>
     public string? Problem { get; set; }
 
+    /// <summary>
+    /// The answers this schedule runs with, as names and values.
+    ///
+    /// A scenario that asks for a page or an order id still asks when nobody is at the keyboard, and
+    /// «the defaults, every morning» is a decision somebody should be able to change without editing
+    /// the scenario. Values rather than definitions: what to ask is the scenario's business, and a
+    /// schedule that kept its own copy of the questions would answer ones that no longer exist.
+    /// </summary>
+    public string? InputsJson { get; set; }
+
     public Guid? CreatedByUserId { get; set; }
 
     public ICollection<ScheduleScenario> Scenarios { get; set; } = [];

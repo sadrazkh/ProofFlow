@@ -1,0 +1,47 @@
+@model ProofFlow.Web.ViewModels.RunInputsViewModel
+
+@*
+    What to answer before a set of scenarios runs.
+
+    The same boxes the canvas puts in its run bar, for the two places that start more than one
+    scenario at once. Folded away by default and open when somebody has already answered something,
+    because a project whose scenarios ask for nothing should not grow a section about it — and one
+    where an answer is already stored should show it without a click.
+
+    Every box carries its scenario's default, so pressing the button without opening this is the
+    same as running with the defaults. Nothing here is marked required: across a set, «required»
+    belongs to the scenario that declared it, and a run that will not use the input should not be
+    stopped by an empty box.
+*@
+
+@if (Model.Inputs.Count > 0)
+{
+    <details class="run-inputs" open="@(Model.Answered.Count > 0)">
+        <summary>
+            <i data-lucide="variable" aria-hidden="true"></i>
+            @Model.Title
+            <span class="badge badge-idle">@Model.Inputs.Count</span>
+        </summary>
+
+        <div class="run-inputs-body">
+            @foreach (var input in Model.Inputs)
+            {
+                var id = $"{Model.IdPrefix}-input-{input.Name}";
+                var value = Model.Answered.TryGetValue(input.Name, out var answered)
+                    ? answered
+                    : input.Default;
+
+                <div class="field">
+                    <label for="@id">@(input.Label ?? input.Name)</label>
+                    <input class="input input-mono" id="@id" name="input.@input.Name"
+                           value="@value" dir="auto" placeholder="@input.Default" />
+
+                    @if (!string.IsNullOrWhiteSpace(input.Description))
+                    {
+                        <p class="hint" dir="auto">@input.Description</p>
+                    }
+                </div>
+            }
+        </div>
+    </details>
+}

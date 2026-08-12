@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Runs;
 using ProofFlow.Infrastructure.Tenancy;
@@ -142,8 +143,14 @@ public sealed class ScheduleWorker(
         {
             var matrix = scope.ServiceProvider.GetRequiredService<MatrixService>();
 
+            // What the schedule was told to answer with. Empty is not the same as nothing: an
+            // empty set means every scenario falls back to its own defaults, which is what a
+            // schedule saved before anybody filled this in should keep doing.
+            var inputs = ScenarioInputs.ReadValues(schedule.InputsJson)
+                .ToDictionary(pair => pair.Key, pair => (string?)pair.Value, StringComparer.Ordinal);
+
             var batch = await matrix.QueueAsync(
-                schedule.ProjectId, scenarios, environments, name, cancellation: cancellation);
+                schedule.ProjectId, scenarios, environments, name, inputs, cancellation);
 
             batch.Trigger = Domain.Runs.RunTrigger.Schedule;
 

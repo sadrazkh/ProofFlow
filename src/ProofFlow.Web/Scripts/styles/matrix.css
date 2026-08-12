@@ -620,3 +620,38 @@
   cursor: pointer;
 }
 .input[type='file']::file-selector-button:hover { background: var(--surface-sunken); }
+
+/*
+  What to answer before a set of scenarios runs.
+
+  Shared by the matrix and by a schedule, and folded away when nothing has been answered. It sits
+  inside a form that already has fieldsets in it, so it borrows the card's own spacing rather than
+  drawing a second border around itself — two nested boxes for one question reads as two questions.
+*/
+.run-inputs {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+
+.run-inputs > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+  user-select: none;
+}
+
+.run-inputs > summary:hover { color: var(--ink); }
+.run-inputs > summary::marker { color: var(--ink-faint); }
+.run-inputs > summary svg { inline-size: 15px; block-size: 15px; }
+
+.run-inputs-body {
+  padding: 0 var(--space-4) var(--space-4);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--space-4);
+}

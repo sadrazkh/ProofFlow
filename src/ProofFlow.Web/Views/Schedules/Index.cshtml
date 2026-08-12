@@ -64,6 +64,14 @@ else
                         </td>
                         <td class="tabular" dir="ltr">
                             @schedule.ScenarioCount × @schedule.EnvironmentCount
+
+                            @* Only when there are some. A "0 answers" on every row is noise. *@
+                            @if (schedule.InputCount > 0)
+                            {
+                                <span class="badge badge-idle" title="@T["input.title"]">
+                                    <i data-lucide="variable" aria-hidden="true"></i>@schedule.InputCount
+                                </span>
+                            }
                         </td>
                         <td>
                             @if (schedule.Problem is not null)
@@ -213,6 +221,9 @@ else
                     </div>
                 </fieldset>
             </div>
+
+            @await Html.PartialAsync("_RunInputs", new ProofFlow.Web.ViewModels.RunInputsViewModel(
+                Model.Inputs, new Dictionary<string, string>(), T["input.title"].Value, "schedule"))
 
             <div>
                 <button type="submit" class="btn btn-primary">

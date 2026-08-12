@@ -40,3 +40,15 @@ public sealed record ScenarioCanvasViewModel
 }
 
 public sealed record ScenarioEnvironment(Guid Id, string Name, bool IsProduction);
+
+/// <summary>
+/// What a form asks before starting a set of scenarios, and what it has already been told.
+///
+/// Shared by the matrix and by a schedule, because they ask the same question in the same shape and
+/// two copies of it would drift — one growing a description under the box and the other not.
+/// </summary>
+public sealed record RunInputsViewModel(
+    IReadOnlyList<ProofFlow.Contracts.Scenarios.ScenarioInputDto> Inputs,
+    IReadOnlyDictionary<string, string> Answered,
+    string Title,
+    string IdPrefix);
