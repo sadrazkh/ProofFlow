@@ -40,11 +40,12 @@ const props = defineProps<{
   environments: { id: string; name: string; isProduction: boolean }[];
   canEdit: boolean;
   canRun: boolean;
+  canDraw: boolean;
 }>();
 
 const {
   onConnect, addEdges, project, getSelectedNodes, onNodeDragStop, toObject, addSelectedNodes,
-  findNode, zoomIn, zoomOut, fitView,
+  findNode, zoomIn, zoomOut, fitView, onNodesInitialized,
 } = useVueFlow();
 
 /**
@@ -119,6 +120,46 @@ function warnIfDirty(event: BeforeUnloadEvent): void {
   if (dirty.value) event.preventDefault();
 }
 
+const drawing = ref(false);
+const asked = ref('');
+
+/**
+ * Asks the workspace's model for a graph and puts it on the canvas, unsaved.
+ *
+ * Through the history, so the first thing somebody does after seeing a draft they dislike is press
+ * Ctrl+Z and get their own canvas back. A feature that overwrites work with no way back is one
+ * people stop pressing.
+ */
+async function draw(): Promise<void> {
+  const request = asked.value.trim();
+  if (!request || drawing.value) return;
+
+  drawing.value = true;
+
+  try {
+    const graph = await api.post<GraphDto>(
+      `/projects/${props.projectId}/scenarios/${props.scenarioId}/draw`, { request });
+
+    remember();
+
+    nodes.value = graph.nodes.map(toFlowNode);
+    edges.value = graph.edges.map(toFlowEdge);
+    selectedId.value = null;
+    dirty.value = true;
+
+    await nextTick();
+    fitView({ maxZoom: 1, padding: 0.2 });
+    await validate();
+
+    asked.value = '';
+    toast(t('ai.drawn'), 'success');
+  } catch (error) {
+    toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+  } finally {
+    drawing.value = false;
+  }
+}
+
 async function loadCatalogue(): Promise<void> {
   try {
     specs.value = await api.get<NodeSpecDto[]>(`/projects/${props.projectId}/scenarios/catalogue`);
@@ -134,12 +175,14 @@ async function loadGraph(): Promise<void> {
 
     nodes.value = graph.nodes.map(toFlowNode);
     edges.value = graph.edges.map(toFlowEdge);
-    loaded.value = true;
 
-    // Fitted with a ceiling on the zoom. A scenario of one node fitted without one opens at 2×,
-    // where a 216px card fills half the surface and the next node somebody adds lands off it.
-    await nextTick();
-    fitView({ maxZoom: 1, padding: 0.2 });
+    // An empty scenario has no card to measure, so onNodesInitialized never fires for it.
+    if (graph.nodes.length === 0)
+    {
+      await nextTick();
+      savedShape.value = JSON.stringify(currentGraph());
+      loaded.value = true;
+    }
 
     await validate();
   } catch (error) {
@@ -622,6 +665,9 @@ async function save(): Promise<void> {
 
     problems.value = result.problems;
     attachProblems();
+
+    await nextTick();
+    savedShape.value = JSON.stringify(currentGraph());
     dirty.value = false;
 
     toast(result.isValid ? t('canvas.saved') : t('canvas.savedWithProblems', errors.value.length),
@@ -651,7 +697,44 @@ function onKey(event: KeyboardEvent): void {
   else if (event.key === 'Delete' || event.key === 'Backspace') { event.preventDefault(); removeSelected(); }
 }
 
-watch(nodes, () => { if (loaded.value) dirty.value = true; }, { deep: true });
+/**
+ * What was last agreed with the server, as text.
+ *
+ * «Unsaved changes» used to mean «the nodes array has been touched since it loaded», which is not
+ * the same thing and was wrong in both directions. Vue Flow measures every card after rendering and
+ * writes the size back onto the node, so every scenario opened claiming changes nobody had made —
+ * and asked to confirm before leaving a page nobody had edited. Meanwhile dragging a connection
+ * changed only the edges, which nothing was watching, so a real edit went unmarked.
+ *
+ * Comparing the shape that would be sent answers the question that was being asked all along.
+ */
+const savedShape = ref('');
+
+watch([nodes, edges], () => {
+  if (loaded.value) dirty.value = JSON.stringify(currentGraph()) !== savedShape.value;
+}, { deep: true });
+
+/**
+ * The moment the canvas is settled: measured, laid out, and untouched.
+ *
+ * Fitting belongs here rather than a tick after the fetch — before the cards have a size there is
+ * no extent to fit to, so it was fitting to nothing and leaving the graph parked at its top left.
+ */
+let settled = false;
+
+onNodesInitialized(() => {
+  if (settled) return;
+  settled = true;
+
+  // With a ceiling on the zoom. A scenario of one node fitted without one opens at 2×, where a
+  // 216px card fills half the surface and the next node somebody adds lands off it.
+  fitView({ maxZoom: 1, padding: 0.2 });
+
+  void nextTick().then(() => {
+    savedShape.value = JSON.stringify(currentGraph());
+    loaded.value = true;
+  });
+});
 </script>
 
 <template>
@@ -660,6 +743,28 @@ watch(nodes, () => { if (loaded.value) dirty.value = true; }, { deep: true });
 
     <div class="canvas-main">
       <div class="canvas-bar">
+        <!--
+          Say what you want and it draws one. A box rather than a dialog, because the thing somebody
+          types here is one sentence and a dialog would make it feel like a commitment. What comes
+          back is unsaved and undoable, so pressing it is cheap.
+        -->
+        <form v-if="canDraw" class="canvas-draw" @submit.prevent="draw">
+          <label class="sr-only" for="draw-request">{{ t('ai.ask') }}</label>
+          <input
+            id="draw-request"
+            v-model="asked"
+            class="input input-sm"
+            dir="auto"
+            :placeholder="t('ai.ask.placeholder')"
+            :disabled="drawing"
+            maxlength="600"
+          />
+          <button type="submit" class="btn btn-secondary btn-sm" :disabled="drawing || !asked.trim()">
+            <Icon :name="drawing ? 'loader' : 'sparkles'" :class="{ 'is-spinning': drawing }" />
+            {{ drawing ? t('ai.drawing') : t('ai.draw') }}
+          </button>
+        </form>
+
         <button type="button" class="btn btn-ghost btn-icon btn-sm has-tip"
                 :data-tip="t('canvas.undo')" :aria-label="t('canvas.undo')"
                 :disabled="!past.length" @click="undo">
