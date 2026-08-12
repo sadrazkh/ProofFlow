@@ -912,6 +912,51 @@ resolved URL, a job package with no tenant — were found earlier, by making the
 
 Nothing new. That is the honest result rather than a shortage of looking.
 
+## Phase N — Told what to do, and a flow to read · **done**
+
+| | |
+|---|---|
+| Run inputs | A scenario names what it needs answering — `page`, `productName` — with a label, a default and whether it is required. The run bar asks for them, and `{{inputs.name}}` reads them in any step |
+| The same inputs from outside | `POST /api/v1/projects/{id}/runs` takes `"inputs": { … }` in the body, exactly as a curl command would send it. Verified against a running instance: the value posted was the name the product came back with |
+| Empty means default | A box left blank falls back to the default rather than sending an empty string. A required input with neither is refused before the run is queued, naming the ones that are missing |
+| Carried both ways | Input definitions are part of the portable bundle, and the round-trip test's fixture now has one, so an export that dropped them would fail the comparison rather than pass quietly |
+| Writing one with a model | A workspace holds a base URL, a model and a key; the key is sealed with the same cipher as every secret and shown as four characters. OpenRouter by default. The button only exists once a key is in place |
+| What the model is told | The node catalogue, generated from the catalogue rather than written out, and the rules a graph is rejected for breaking. What comes back is put through the canvas's own validator and refused if it would not run |
+| Nothing is saved | A drawn graph lands as unsaved changes, through the undo history, so the first thing somebody can do is press Ctrl+Z and get their canvas back |
+| A flow to read | Seeded with the demo workspace: sign in, keep the token, add a product, read a page, take an id out of it, read that one, and delete what it added. Twelve steps, five checks, and it passes twice in a row because the last two steps put the API back |
+| Account | `demo@proofflow.local`, password from `Demo:Password`. Off unless `Demo:Seed` is on |
+| Tests | 696 passing — 509 unit, 144 integration, 43 component; 113 accessibility checks. Acceptance: 20 of 20 |
+
+### What this phase found
+
+**Redaction was in the data path, so a scenario could not use a token it had just been given.**
+The response body was masked before the engine saw it, and `accessToken` matches the secret-field
+pattern — so `{{steps.Sign in.response.body.accessToken}}` resolved to `«redacted»`, went out as an
+Authorization header, and failed at the transport with *the request did not reach the server*.
+Sign in, then use the token is the most ordinary shape an API test has, and it could not run at all.
+
+Masking now happens where a run is written down — the sink, the capture, the report — and the engine
+works with real values. Both halves are asserted in one test: the run passes against an endpoint
+that answers 401 without a working token, and the stored output still reads `«redacted»`.
+
+**Masking the serialised document missed half of it.** A step's output carries the response body
+twice, parsed and as raw text, and by the time the tree is a string the raw copy is escaped JSON —
+so a pattern written for JSON no longer matches it. The mask now walks the tree, which puts every
+string back in its own right before the patterns run.
+
+**A transport failure said nothing anybody could act on.** The sentence a person reads is
+deliberately short, and the exception underneath it was thrown away. It is logged now, which is how
+the above was found in the end.
+
+**Every scenario opened claiming unsaved changes.** Vue Flow measures each card after rendering and
+writes the size back onto the node, and the canvas counted that as an edit — so leaving the page
+asked to confirm work nobody had done. Meanwhile dragging a connection changed only the edges, which
+nothing was watching, so a real edit went unmarked. Both are one bug: «unsaved» now means the shape
+that would be sent differs from the shape that was agreed.
+
+**The canvas was fitting to nothing.** It fitted one tick after the graph arrived, before the cards
+had a size, and left every scenario parked at its top left. It fits when the nodes are measured now.
+
 ---
 
 ## Backlog

@@ -1,3 +1,6 @@
+using ProofFlow.Domain.Scenarios;
+using ProofFlow.Infrastructure.Scenarios;
+using ProofFlow.Contracts.Scenarios;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -27,6 +30,8 @@ namespace ProofFlow.Web.Infrastructure.Seeding;
 public sealed class DemoDataSeeder(
     ProofFlowDbContext db,
     UserManager<ProofFlowUser> users,
+    ISecretCipher cipher,
+    ScenarioGraphService graphs,
     IConfiguration configuration,
     IClock clock,
     ILogger<DemoDataSeeder> logger)
@@ -96,6 +101,8 @@ public sealed class DemoDataSeeder(
         var persian = (configuration["Demo:Culture"] ?? "fa")
             .StartsWith("fa", StringComparison.OrdinalIgnoreCase);
 
+        (Project Project, ProjectEnvironment Local)? first = null;
+
         foreach (var demo in DemoProjects)
         {
             var project = new Project
@@ -109,12 +116,19 @@ public sealed class DemoDataSeeder(
             };
 
             db.Projects.Add(project);
-            Environments(workspace.Id, project);
+
+            var local = Environments(workspace.Id, project);
+            first ??= (project, local);
         }
 
         await ColleaguesAsync(workspace.Id, password, persian);
 
         await db.SaveChangesAsync(cancellationToken);
+
+        if (first is { } start)
+        {
+            await FlowAsync(workspace.Id, user.Id, start.Project, start.Local, cancellationToken);
+        }
 
         user.LastWorkspaceId = workspace.Id;
         await users.UpdateAsync(user);
@@ -218,11 +232,11 @@ public sealed class DemoDataSeeder(
     /// Both reachable ones are on loopback, which the URL guard refuses by default — so they say so
     /// explicitly, which is the clearest place anybody will see that setting demonstrated.
     /// </summary>
-    private void Environments(Guid workspaceId, Project project)
+    private ProjectEnvironment Environments(Guid workspaceId, Project project)
     {
         var fake = configuration["Demo:BaseUrl"] ?? "http://localhost:5290/fake";
 
-        db.Environments.Add(new ProjectEnvironment
+        var local = new ProjectEnvironment
         {
             WorkspaceId = workspaceId,
             ProjectId = project.Id,
@@ -232,7 +246,9 @@ public sealed class DemoDataSeeder(
             Kind = EnvironmentKind.Local,
             AllowPrivateNetwork = true,
             SortOrder = 0,
-        });
+        };
+
+        db.Environments.Add(local);
 
         db.Environments.Add(new ProjectEnvironment
         {
@@ -257,7 +273,227 @@ public sealed class DemoDataSeeder(
             IsProduction = true,
             SortOrder = 2,
         });
+
+        return local;
     }
+
+
+    /// <summary>
+    /// One complete test, drawn and ready to run.
+    ///
+    /// The demo used to hand somebody three empty projects and a canvas, which shows what the
+    /// product is made of and not what it is for. This is the shape of a real test: sign in, keep
+    /// the token, read a list, take an id out of it, read that one thing, and check the answer.
+    ///
+    /// It uses every part deliberately — a secret for the password, an input for the page to read,
+    /// a variable for the size of it, a step reading an earlier step's response — so that opening it
+    /// answers "how do I refer to that" for each of them by example rather than by documentation.
+    /// </summary>
+    private async Task FlowAsync(
+        Guid workspaceId, Guid userId, Project project, ProjectEnvironment local,
+        CancellationToken cancellation)
+    {
+        // The fake API's own login takes these, so the flow signs in for real rather than
+        // pretending to. The password is a secret because that is what a password is, and the
+        // scenario refers to it by name — which is the thing worth showing.
+        var sealedPassword = cipher.Seal("demo-password");
+
+        db.Secrets.Add(new Secret
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            EnvironmentId = local.Id,
+            Name = "apiPassword",
+            Description = "The demo API password. Written in a step as {{secrets.apiPassword}}.",
+            Ciphertext = sealedPassword.Ciphertext,
+            Nonce = sealedPassword.Nonce,
+            Tag = sealedPassword.Tag,
+            KeyVersion = sealedPassword.KeyVersion,
+            Preview = "word",
+            CreatedByUserId = userId,
+        });
+
+        db.Variables.Add(new EnvironmentVariable
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            EnvironmentId = null,
+            Name = "pageSize",
+            Value = "5",
+            Description = "How many rows a page holds. The same for every run, so a variable.",
+        });
+
+        var scenario = new TestScenario
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            Name = "Add a product, read it back, and clear up",
+            Description =
+                "The whole shape of a test: sign in, keep the token, add something, read the list, "
+                + "take an id out of it, read that one, and put the API back the way it was. "
+                + "Change anything and press Run.",
+            EnvironmentId = local.Id,
+            CreatedByUserId = userId,
+
+            // Answered per run, and by a build agent posting to the API. The default is what makes
+            // pressing Run without thinking about it work.
+            InputsJson = ScenarioInputs.Write(
+            [
+                new ScenarioInputDto
+                {
+                    Name = "productName",
+                    Label = "Product name",
+                    Description = "What the product this run adds is called.",
+                    Default = "Demo widget",
+                    Required = true,
+                },
+                new ScenarioInputDto
+                {
+                    Name = "page",
+                    Label = "Page",
+                    Description = "Which page of products to read.",
+                    Default = "1",
+                    Required = true,
+                },
+            ]),
+        };
+
+        db.Scenarios.Add(scenario);
+        await db.SaveChangesAsync(cancellation);
+
+        await graphs.SaveAsync(scenario, DemoGraph(), cancellation);
+        await db.SaveChangesAsync(cancellation);
+
+        logger.LogInformation("Seeded a complete scenario: {Name}.", scenario.Name);
+    }
+
+    /// <summary>
+    /// The graph, laid out left to right and wrapped, so it opens readable rather than as a hairline.
+    ///
+    /// Four steps to a row rather than twelve in one: fitted to a canvas with the palette and the
+    /// inspector open, a single row of twelve opens at a fifth of full size, which is a diagram
+    /// nobody can read without panning first.
+    ///
+    /// Written out rather than generated: this is the one scenario somebody reads before they trust
+    /// the product, and every property in it is there to answer a question they are about to have.
+    /// </summary>
+    private static GraphDto DemoGraph() => new()
+    {
+        Nodes =
+        [
+            Node("n1", "core.start", "Start", 60, 140),
+
+            Node("n2", "http.request", "Sign in", 360, 140, new()
+            {
+                ["method"] = "POST",
+                ["url"] = "{{environment.baseUrl}}/auth/login",
+                ["bodyKind"] = "json",
+                ["body"] = """{"username":"demo","password":"{{secrets.apiPassword}}"}""",
+            }),
+
+            Node("n3", "assert.status", "It let us in", 660, 140, new() { ["expected"] = "200" }),
+
+            // Adds its own row rather than assuming one is there. A demo that depends on data
+            // somebody else left behind is a demo that fails the second time it is run.
+            Node("n4", "http.request", "Add a product", 960, 140, new()
+            {
+                ["method"] = "POST",
+                ["url"] = "{{environment.baseUrl}}/products",
+                ["bodyKind"] = "json",
+                ["body"] = """{"name":"{{inputs.productName}}","categoryId":11,"price":49.9}""",
+                ["headers"] = Bearer,
+            }),
+
+            Node("n5", "assert.status", "It was created", 60, 380, new() { ["expected"] = "201" }),
+
+            Node("n6", "http.request", "Read a page of products", 360, 380, new()
+            {
+                ["method"] = "GET",
+                ["url"] = "{{environment.baseUrl}}/products?page={{inputs.page}}&pageSize={{vars.pageSize}}",
+                ["bodyKind"] = "none",
+                ["headers"] = Bearer,
+            }),
+
+            Node("n7", "assert.status", "The page came back", 660, 380, new() { ["expected"] = "200" }),
+
+            Node("n8", "http.request", "Read the first one", 960, 380, new()
+            {
+                ["method"] = "GET",
+                ["url"] = "{{environment.baseUrl}}/products/{{steps.Read a page of products.response.body.items[0].id}}",
+                ["bodyKind"] = "none",
+                ["headers"] = Bearer,
+            }),
+
+            Node("n9", "assert.status", "And so did it", 60, 620, new() { ["expected"] = "200" }),
+
+            // The step that makes this runnable twice. It deletes what this run added, by the id the
+            // API gave back — not by the one the list happened to start with.
+            Node("n10", "http.request", "Take it away again", 360, 620, new()
+            {
+                ["method"] = "DELETE",
+                ["url"] = "{{environment.baseUrl}}/products/{{steps.Add a product.response.body.id}}",
+                ["bodyKind"] = "none",
+                ["headers"] = Bearer,
+            }),
+
+            Node("n11", "assert.status", "It is gone", 660, 620, new() { ["expected"] = "204" }),
+
+            Node("n12", "core.end", "Done", 960, 620),
+        ],
+
+        Edges =
+        [
+            Edge("n1", "out", "n2", "in"),
+            Edge("n2", "out", "n3", "in"),
+            Edge("n2", "response", "n3", "response"),
+            Edge("n3", "out", "n4", "in"),
+            Edge("n4", "out", "n5", "in"),
+            Edge("n4", "response", "n5", "response"),
+            Edge("n5", "out", "n6", "in"),
+            Edge("n6", "out", "n7", "in"),
+            Edge("n6", "response", "n7", "response"),
+            Edge("n7", "out", "n8", "in"),
+            Edge("n8", "out", "n9", "in"),
+            Edge("n8", "response", "n9", "response"),
+            Edge("n9", "out", "n10", "in"),
+            Edge("n10", "out", "n11", "in"),
+            Edge("n10", "response", "n11", "response"),
+            Edge("n11", "out", "n12", "in"),
+        ],
+    };
+
+    /// <summary>
+    /// The header every step after the sign-in carries.
+    ///
+    /// Written once because it is the same sentence four times, and four copies of a reference is
+    /// four places to fix when somebody renames the step it points at.
+    /// </summary>
+    private const string Bearer =
+        """[{"name":"Authorization","value":"Bearer {{steps.Sign in.response.body.accessToken}}"}]""";
+
+    private static GraphNodeDto Node(
+        string id, string key, string name, int x, int y,
+        Dictionary<string, string?>? properties = null) => new()
+    {
+        Id = id,
+        Key = key,
+        Name = name,
+        X = x,
+        Y = y,
+        Properties = properties ?? [],
+    };
+
+    // The id is the edge, spelled out. The save gives it a real one; this only has to be unique
+    // within the graph so the validator can tell two connections apart.
+    private static GraphEdgeDto Edge(string from, string fromPort, string to, string toPort) =>
+        new()
+        {
+            Id = $"{from}:{fromPort}->{to}:{toPort}",
+            FromId = from,
+            FromPort = fromPort,
+            ToId = to,
+            ToPort = toPort,
+        };
 
     /// <summary>
     /// The names stay in English — they are the names of systems, and a team testing an API called

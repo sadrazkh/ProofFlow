@@ -10,6 +10,11 @@ you which field moved, from what, to what, and whether that was allowed.
 For anything larger than one endpoint there is a canvas: drag steps together, feed each one's
 output into the next, and run the whole chain against as many environments as you have.
 
+A scenario can name what it needs answering — an order id, a page, a customer — and ask for it when
+it runs. The same values go in the body of the API call that starts a run, so a pipeline supplies
+them the way curl would. And if a workspace supplies a model key, describing a test in a sentence
+gets a first draft drawn on the canvas, unsaved, for somebody to read and change.
+
 > **Status: in development.** [docs/progress.md](docs/progress.md) states plainly what works today
 > and what does not. Nothing in this README describes a feature that is not implemented.
 
@@ -77,7 +82,11 @@ dotnet user-secrets set "Demo:Seed" "true" --project src/ProofFlow.Web
 dotnet user-secrets set "Demo:Password" "<choose one>" --project src/ProofFlow.Web
 ```
 
-The demo account is `demo@proofflow.local`.
+The demo account is `demo@proofflow.local`. It arrives with four colleagues, three projects, and one
+scenario that runs: **Add a product, read it back, and clear up** — sign in, keep the token, add a
+product, read a page of them, take an id out of the list, read that one, and delete what it added.
+Twelve steps and five checks, against the fake API this repository serves, so it passes as often as
+you press Run.
 
 ### Against PostgreSQL
 
