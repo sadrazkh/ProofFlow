@@ -77,7 +77,7 @@ public sealed class ProjectsController(
     [Authorize(Policy = Policies.ManageProject)]
     public async Task<IActionResult> Create(ProjectFormViewModel model, CancellationToken cancellationToken)
     {
-        if (!ProjectFormViewModel.Accents.Contains(model.Accent)) model.Accent = "indigo";
+        if (!ProjectFormViewModel.Accents.Contains(model.Accent)) model.Accent = Project.DefaultAccent;
         if (!ModelState.IsValid) return View(model);
 
         var taken = await db.Projects.Select(p => p.Slug).ToListAsync(cancellationToken);

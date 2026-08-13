@@ -1554,6 +1554,7 @@
     "preview.notes": "چه چیزی منتقل نشد",
     "preview.confirm": "واردکردن {0} مورد",
     "import.sending": "در حال ارسال…",
+    "import.progress": "چه مقدار از فایل فرستاده شده است",
     "import.sent": "{0} از {1} فرستاده شد.",
     "import.reading": "در حال خواندن. یک Collection بزرگ کمی طول می‌کشد.",
     "preview.writing": "در حال نوشتن {0} مورد در پروژه. یک Collection بزرگ کمی طول می‌کشد.",

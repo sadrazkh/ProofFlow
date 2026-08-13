@@ -97,7 +97,7 @@ public sealed class ProjectFormViewModel
     [MaxLength(2000, ErrorMessage = "error.tooLong")]
     public string? Description { get; set; }
 
-    public string Accent { get; set; } = "indigo";
+    public string Accent { get; set; } = ProofFlow.Domain.Projects.Project.DefaultAccent;
 
     /// <summary>
     /// How many days of response bodies and log lines to keep. Zero keeps them for ever.
@@ -109,9 +109,10 @@ public sealed class ProjectFormViewModel
 
     public static readonly int[] RetentionChoices = [7, 30, 90, 365, 0];
 
-    /// <summary>The colours a project may be given. Fixed, so none of them can fail contrast.</summary>
+    /// <summary>The colours a project may be given. Fixed, so none of them can fail contrast.
+    /// Slate leads because it is the default, and the swatch row should open on it.</summary>
     public static readonly string[] Accents =
-        ["indigo", "violet", "teal", "amber", "rose", "sky", "emerald", "slate"];
+        ["slate", "indigo", "violet", "teal", "amber", "rose", "sky", "emerald"];
 
     /// <summary>The keys a build agent can hold. Empty on the create form, which has no project yet.</summary>
     public IReadOnlyList<ApiKeyRow> Keys { get; set; } = [];

@@ -1554,6 +1554,7 @@
     "preview.notes": "What did not come across",
     "preview.confirm": "Import {0} things",
     "import.sending": "Sending…",
+    "import.progress": "How much of the file has been sent",
     "import.sent": "{0} of {1} sent.",
     "import.reading": "Reading it. A large collection takes a moment.",
     "preview.writing": "Writing {0} things into the project. A large collection takes a moment.",

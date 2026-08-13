@@ -10,45 +10,57 @@
   text on charcoal with the contrast of neither: dark surfaces need a compressed, cooler ramp and
   *less* saturated accents, because a colour that reads as confident on white vibrates on black.
 
-  On the accent: violet, deliberately far from every status hue. This application's colours carry
+  On the neutrals: they are neutral. They used to carry a hair of violet so that surfaces would sit
+  with the accent, and the result was a page where nothing was quite white, nothing was quite grey,
+  and every border was a suggestion. A tool somebody reads all day wants the opposite — a page that
+  is plainly darker than a card, a border that is plainly a border, and text that is nearly black.
+
+  On the accent: indigo, deliberately far from every status hue. This application's colours carry
   meaning — green passed, red failed, amber is unstable, blue is running — and a brand colour that
-  lands anywhere near those turns a glance at a run list into a second-guess.
+  lands anywhere near those turns a glance at a run list into a second-guess. It is also used
+  sparingly on purpose: the primary action, the current page, a selection, and nothing else. Colour
+  that appears where no decision is being made is colour that stops meaning anything.
 */
 
 :root {
   color-scheme: light;
 
   /* ---- primitives · neutral -------------------------------------------------------------- */
-  /* A hair of violet in the greys, so neutral surfaces sit with the accent instead of beside it. */
+  /* A true neutral with a cool cast, wide at both ends so surfaces separate without shadow. */
   --gray-0:   #ffffff;
-  --gray-25:  #fdfcff;
-  --gray-50:  #f9f8fc;
-  --gray-100: #f3f1f8;
-  --gray-150: #ebe9f3;
-  --gray-200: #e1dfed;
-  --gray-300: #cbc8dc;
-  --gray-400: #9c98b4;
-  --gray-450: #85819d;   /* readable on the dark code well, still dimmer than --gray-400 */
-  --gray-500: #726e8c;
-  --gray-550: #6b6784;   /* the readable floor: 4.8:1 even on --surface-sunken */
-  --gray-600: #56526e;
-  --gray-700: #3f3b55;
-  --gray-800: #2a2740;
-  --gray-850: #201d32;
-  --gray-900: #171528;
-  --gray-950: #100e1d;
+  --gray-25:  #fcfcfd;
+  --gray-50:  #f6f7f9;   /* the page: visibly not white, so a card reads as a card */
+  --gray-100: #eef0f3;
+  --gray-150: #e4e7ec;
+  --gray-200: #d7dbe2;   /* an ordinary border, and it can be seen */
+  --gray-300: #bcc2cc;
+  --gray-400: #8b929f;
+  --gray-450: #7a8290;   /* readable on the dark code well, still dimmer than --gray-400 */
+  --gray-500: #646c7b;
+  --gray-550: #59616f;   /* the readable floor: 6.1:1 on --canvas, 5.0:1 on --surface-sunken */
+  --gray-600: #464d5a;
+  --gray-700: #333944;
+  --gray-800: #21262f;
+  --gray-850: #171b22;
+  --gray-900: #0f1319;
+  --gray-950: #080a0e;
 
   /* ---- primitives · accent --------------------------------------------------------------- */
-  --violet-50:  #f4f1ff;
-  --violet-100: #ebe5ff;
-  --violet-200: #d9cfff;
-  --violet-300: #bfacff;
-  --violet-400: #a181fb;
-  --violet-500: #8659f2;
-  --violet-600: #7139e0;
-  --violet-700: #5f2cbd;
-  --violet-800: #4e2799;
-  --violet-900: #40227a;
+  /*
+    Kept under the old names so that four thousand lines of component CSS do not have to be
+    rewritten to change a hue. The values are a deeper, more saturated indigo: the old ramp was a
+    lavender that went pale the moment it met a light grey, which is most of this application.
+  */
+  --violet-50:  #eef0fe;
+  --violet-100: #dfe2fd;
+  --violet-200: #c3c8fa;
+  --violet-300: #a0a6f4;
+  --violet-400: #7e83ea;
+  --violet-500: #5f61db;
+  --violet-600: #4b45c6;
+  --violet-700: #3c37a2;
+  --violet-800: #322e82;
+  --violet-900: #2a2768;
 
   /* ---- primitives · status --------------------------------------------------------------- */
   /* Pass */
@@ -79,11 +91,13 @@
   --teal-700: #0a6659;
 
   /* ---- primitives · geometry ------------------------------------------------------------- */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 9px;
-  --radius-lg: 13px;
-  --radius-xl: 18px;
+  /* Tighter than they were. A 13px card corner beside a 6px input corner reads as two design
+     systems; the whole scale came in a step and now agrees with itself. */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
   --radius-full: 999px;
 
   /* A 4px base. Every gap, pad and inset in the application is one of these. */
@@ -125,14 +139,15 @@
 
   /* ---- primitives · elevation ------------------------------------------------------------ */
   /*
-    Shadows are tinted with the neutral's violet rather than pure black. A black shadow over a
-    tinted surface reads as dirt.
+    Tinted with the neutral rather than pure black — a black shadow over a tinted surface reads as
+    dirt — and tighter than they were. Separation is a border's job here; a shadow says «this is
+    floating above the page», which is true of a menu and a dialog and of nothing else.
   */
-  --shadow-xs: 0 1px 2px rgba(23, 21, 40, 0.05);
-  --shadow-sm: 0 1px 3px rgba(23, 21, 40, 0.07), 0 1px 2px rgba(23, 21, 40, 0.04);
-  --shadow-md: 0 4px 10px -2px rgba(23, 21, 40, 0.09), 0 2px 4px -2px rgba(23, 21, 40, 0.05);
-  --shadow-lg: 0 12px 24px -6px rgba(23, 21, 40, 0.12), 0 4px 8px -4px rgba(23, 21, 40, 0.06);
-  --shadow-xl: 0 24px 48px -12px rgba(23, 21, 40, 0.18);
+  --shadow-xs: 0 1px 1px rgba(15, 19, 25, 0.04);
+  --shadow-sm: 0 1px 2px rgba(15, 19, 25, 0.06), 0 1px 1px rgba(15, 19, 25, 0.04);
+  --shadow-md: 0 4px 8px -2px rgba(15, 19, 25, 0.08), 0 2px 3px -2px rgba(15, 19, 25, 0.05);
+  --shadow-lg: 0 10px 20px -5px rgba(15, 19, 25, 0.12), 0 3px 6px -3px rgba(15, 19, 25, 0.07);
+  --shadow-xl: 0 20px 40px -10px rgba(15, 19, 25, 0.18);
 
   --motion-fast: 110ms;
   --motion-base: 180ms;
@@ -194,10 +209,10 @@
 
     Placeholder text moved with that rule. A placeholder is read.
   */
-  --ink:         var(--gray-900);   /* 12.9:1 — body text and headings */
-  --ink-muted:   var(--gray-600);   /* 7.0:1  — secondary text */
-  --ink-subtle:  var(--gray-550);   /* 4.8:1  — labels, timestamps, help text, placeholders */
-  --ink-faint:   #8b87a3;           /* 3.3:1  — disabled controls and decorative marks only */
+  --ink:         var(--gray-900);   /* 17.0:1 — body text and headings */
+  --ink-muted:   var(--gray-600);   /* 8.6:1  — secondary text */
+  --ink-subtle:  var(--gray-550);   /* 6.1:1  — labels, timestamps, help text, placeholders */
+  --ink-faint:   #838b98;           /* 3.2:1  — disabled controls and decorative marks only */
   --ink-inverse: var(--gray-0);
 
   --accent:         var(--violet-600);
@@ -209,7 +224,7 @@
   --accent-ink:     var(--violet-700);  /* accent-coloured text on a light surface */
   --accent-on:      #ffffff;            /* text on top of the accent */
 
-  --focus-ring: var(--violet-400);
+  --focus-ring: var(--violet-500);
 
   /*
     Tooltips invert against the page in both themes, so they need their own pair rather than
@@ -292,7 +307,7 @@
   --canvas-node:   var(--gray-0);
   --canvas-edge:   var(--gray-400);
   --canvas-edge-active: var(--violet-500);
-  --canvas-selection: rgba(113, 57, 224, 0.10);
+  --canvas-selection: rgba(75, 69, 198, 0.10);
 }
 
 /*
@@ -312,23 +327,23 @@
   --surface-hover:  var(--gray-850);
   --surface-active: var(--gray-800);
 
-  --line:        #2e2b45;
-  --line-strong: #3d3959;
-  --line-subtle: #252239;
+  --line:        #262c36;
+  --line-strong: #353c48;
+  --line-subtle: #1b2028;
 
-  --ink:         #ebe9f5;
-  --ink-muted:   #a9a4c2;
-  --ink-subtle:  #8b86a5;
-  --ink-faint:   #7d789a;           /* 4.6:1 on canvas — the dark ramp has room the light one did not */
+  --ink:         #e8eaee;
+  --ink-muted:   #a3aab6;
+  --ink-subtle:  #8992a0;
+  --ink-faint:   #79828f;           /* 4.6:1 on canvas — the dark ramp has room the light one did not */
   --ink-inverse: var(--gray-950);
 
   /* One step lighter than the light-mode accent: --violet-600 on near-black vibrates. */
   --accent:         var(--violet-400);
   --accent-hover:   var(--violet-300);
   --accent-active:  var(--violet-200);
-  --accent-soft:    rgba(134, 89, 242, 0.14);
-  --accent-soft-hover: rgba(134, 89, 242, 0.22);
-  --accent-border:  rgba(161, 129, 251, 0.34);
+  --accent-soft:    rgba(95, 97, 219, 0.20);
+  --accent-soft-hover: rgba(95, 97, 219, 0.30);
+  --accent-border:  rgba(126, 131, 234, 0.36);
   --accent-ink:     var(--violet-300);
   --accent-on:      var(--gray-950);
 
@@ -364,9 +379,16 @@
   --running-ink:    var(--sky-300);
 
   --idle:        var(--gray-500);
-  --idle-soft:   rgba(156, 152, 180, 0.12);
-  --idle-border: #35314e;
-  --idle-ink:    var(--gray-400);
+  --idle-soft:   rgba(140, 148, 162, 0.14);
+  --idle-border: #2f3641;
+  /*
+    Measured against the worst place an idle badge lands rather than against the page: inside the
+    selected row of a master list, where its own --idle-soft sits on top of --accent-soft on top of
+    --surface, and the three together lift the ground to about #2e3350. --gray-400 read 3.9:1
+    there; this reads 5.9:1, and still stays below --ink-muted so «nothing has happened yet» does
+    not shout louder than the sentence next to it.
+  */
+  --idle-ink:    #adb4bf;
 
   --diff-added-soft:    rgba(18, 163, 92, 0.16);
   --diff-added-ink:     var(--green-300);
@@ -391,7 +413,7 @@
   /* Light enough that --ink-subtle still clears 4.5:1 on top of it. At 0.18 it did not, and the
      row under the cursor — the one being read — was the one with the least readable text on it.
      The inset accent bar is the primary marker anyway; this is the secondary one. */
-  --diff-cursor:        rgba(129, 90, 245, 0.10);
+  --diff-cursor:        rgba(126, 131, 234, 0.12);
 
   --json-key:     var(--violet-300);
   --json-string:  var(--green-300);
@@ -401,11 +423,11 @@
   --json-punct:   var(--gray-450);
 
   --canvas-bg:     var(--gray-950);
-  --canvas-dot:    #302c48;
+  --canvas-dot:    #2b313b;
   --canvas-node:   var(--gray-850);
-  --canvas-edge:   #4a4568;
+  --canvas-edge:   #434b58;
   --canvas-edge-active: var(--violet-400);
-  --canvas-selection: rgba(161, 129, 251, 0.16);
+  --canvas-selection: rgba(126, 131, 234, 0.18);
 
   /* Shadow on dark is a ring of darkness, not a blur — the blur simply disappears. */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);

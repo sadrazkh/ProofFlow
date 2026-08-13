@@ -30,16 +30,28 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
   border-radius: var(--radius-md);
   font-size: var(--text-base);
   font-weight: var(--weight-bold);
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+
+  /* The fallback, for a project whose accent was never chosen — neutral, so a page of twelve
+     projects does not show twelve indigo chips and teach the eye to ignore the one colour that
+     means «this is the action». A chosen accent overrides it below. */
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
 }
 
 /*
   Project accents. Eight fixed choices — not a colour picker, because a picker is how a card ends
   up with text nobody can read on a background nobody chose deliberately. Each pair is checked for
   contrast in both themes.
+
+  Violet is written out here rather than taken from --violet-*, which is the brand ramp and is now
+  indigo. Reading the ramp gave two of the eight choices the same colour, so a workspace with a
+  violet project and an indigo one showed two identical marks and one of the eight was a lie.
 */
-.project-card[data-accent='violet']  .project-mark { background: var(--violet-100); color: var(--violet-700); }
+/* A chosen colour is its own edge; the neutral fallback's border would only muddy it. */
+.project-card[data-accent] .project-mark { border-color: transparent; }
+
+.project-card[data-accent='violet']  .project-mark { background: #f0e6fd; color: #6b21a8; }
 .project-card[data-accent='indigo']  .project-mark { background: #e3e6ff; color: #3b3fa8; }
 .project-card[data-accent='teal']    .project-mark { background: var(--teal-100); color: var(--teal-600); }
 .project-card[data-accent='amber']   .project-mark { background: var(--amber-100); color: var(--amber-700); }
@@ -48,14 +60,14 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
 .project-card[data-accent='emerald'] .project-mark { background: var(--green-100); color: var(--green-700); }
 .project-card[data-accent='slate']   .project-mark { background: var(--gray-150); color: var(--gray-700); }
 
-:root.dark .project-card[data-accent='violet']  .project-mark { background: rgba(134,89,242,.2);  color: var(--violet-300); }
+:root.dark .project-card[data-accent='violet']  .project-mark { background: rgba(147,51,234,.22); color: #d8b4fe; }
 :root.dark .project-card[data-accent='indigo']  .project-mark { background: rgba(99,102,241,.2);  color: #aeb4ff; }
 :root.dark .project-card[data-accent='teal']    .project-mark { background: rgba(20,160,138,.2);  color: var(--teal-300); }
 :root.dark .project-card[data-accent='amber']   .project-mark { background: rgba(239,143,1,.2);   color: var(--amber-200); }
 :root.dark .project-card[data-accent='rose']    .project-mark { background: rgba(224,62,85,.2);   color: var(--red-300); }
 :root.dark .project-card[data-accent='sky']     .project-mark { background: rgba(13,141,230,.2);  color: var(--sky-300); }
 :root.dark .project-card[data-accent='emerald'] .project-mark { background: rgba(18,163,92,.2);   color: var(--green-300); }
-:root.dark .project-card[data-accent='slate']   .project-mark { background: rgba(156,152,180,.16);color: var(--gray-300); }
+:root.dark .project-card[data-accent='slate']   .project-mark { background: rgba(140,148,162,.18);color: var(--gray-300); }
 
 /*
   Exactly two lines, then an ellipsis.
@@ -100,7 +112,7 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
 .accent-choice:has(input:checked) { border-color: var(--ink); }
 .accent-choice:has(input:focus-visible) { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
-.accent-choice[data-accent='violet']  { background: var(--violet-500); }
+.accent-choice[data-accent='violet']  { background: #9333ea; }
 .accent-choice[data-accent='indigo']  { background: #6366f1; }
 .accent-choice[data-accent='teal']    { background: var(--teal-500); }
 .accent-choice[data-accent='amber']   { background: var(--amber-400); }

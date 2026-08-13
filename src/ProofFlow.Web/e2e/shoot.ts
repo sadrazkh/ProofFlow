@@ -176,7 +176,18 @@ async function main(): Promise<void> {
   const browser = await chromium.launch();
   const session = await establishSession(browser);
   let shots = 0;
-  let skipped = 0;
+
+  /*
+    What was missed, and why — counted per reason rather than as one number.
+
+    One number said «sign-in failed» whichever thing was absent, so a database that simply had no
+    approved baseline in it reported an authentication problem twelve times, and the twelve minutes
+    spent looking for the authentication problem were the point at which this stopped being a
+    warning and became a lie.
+  */
+  const missing = new Map<string, number>();
+  const skip = (reason: string, count = 1) =>
+    missing.set(reason, (missing.get(reason) ?? 0) + count);
 
   for (const language of ['fa', 'en'] as const) {
     for (const theme of ['light', 'dark'] as const) {
@@ -212,7 +223,7 @@ async function main(): Promise<void> {
               shots++;
             }
           } else {
-            skipped += PROJECT_PAGES.length;
+            skip('no project in the workspace', PROJECT_PAGES.length);
           }
 
           if (session.baselinePath) {
@@ -222,12 +233,14 @@ async function main(): Promise<void> {
               combination);
             shots++;
           } else {
-            skipped++;
+            skip('no baseline to open — run e2e/demo-regression.ts first');
           }
 
           await authed.close();
         } else {
-          skipped += PAGES.filter((p) => p.auth).length + PROJECT_PAGES.length;
+          skip(
+            PASSWORD ? 'sign-in failed' : 'PROOFFLOW_PASSWORD was not set',
+            PAGES.filter((p) => p.auth).length + PROJECT_PAGES.length);
         }
       }
     }
@@ -237,11 +250,8 @@ async function main(): Promise<void> {
   console.log(`${shots} screenshots written to ${OUT}`);
 
   // Said out loud rather than left to be inferred from a smaller-than-expected count.
-  if (skipped > 0) {
-    console.warn(
-      `${skipped} signed-in screenshots were skipped: ` +
-      (PASSWORD ? 'sign-in failed.' : 'PROOFFLOW_PASSWORD was not set.'),
-    );
+  for (const [reason, count] of missing) {
+    console.warn(`${count} screenshots were skipped: ${reason}.`);
   }
 }
 

@@ -534,7 +534,7 @@
 }
 .import-step-mark svg { inline-size: 13px; block-size: 13px; }
 
-.import-step.is-here .import-step-mark { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.import-step.is-here .import-step-mark { background: var(--accent); border-color: var(--accent); color: var(--accent-on); }
 .import-step.is-done .import-step-mark { background: var(--pass-soft); border-color: var(--pass-border); color: var(--pass-ink); }
 
 .import-step-name { color: var(--ink-subtle); }

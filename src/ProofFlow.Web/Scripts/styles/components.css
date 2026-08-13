@@ -199,21 +199,29 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
   box-shadow: var(--shadow-xs);
 }
 
-.card-pad { padding: var(--space-5); }
+/*
+  Padding came in a step — 20px to 16px, and 16px to 12px on the header and footer.
+
+  This is a tool somebody has open all day, not a page they land on. The generous version put six
+  rows of a run list on a laptop screen and made the seventh a scroll; the space it spent was not
+  buying legibility, because the type size and line height did not change, only the margin around
+  them.
+*/
+.card-pad { padding: var(--space-4); }
 
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   border-block-end: 1px solid var(--line);
 }
 .card-title { font-size: var(--text-base); font-weight: var(--weight-semibold); }
 .card-subtitle { font-size: var(--text-xs); color: var(--ink-subtle); margin-block-start: 2px; }
-.card-body { padding: var(--space-5); }
+.card-body { padding: var(--space-4); }
 .card-footer {
-  padding: var(--space-4) var(--space-5);
+  padding: var(--space-3) var(--space-4);
   border-block-start: 1px solid var(--line);
   display: flex;
   gap: var(--space-3);
@@ -224,7 +232,7 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
 }
 
 .card-link { display: block; color: inherit; transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out); }
-.card-link:hover { border-color: var(--accent-border); box-shadow: var(--shadow-md); color: inherit; }
+.card-link:hover { border-color: var(--line-strong); box-shadow: var(--shadow-md); color: inherit; }
 
 /* ============================================================================================ */
 /* Badges and status                                                                             */
@@ -276,9 +284,16 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
 
 .table { font-size: var(--text-sm); }
 
+/*
+  Rows are shorter than they were: 8px above and below rather than 12px.
+
+  A table here is something to scan — forty endpoints, a hundred runs — and the number of rows on
+  screen at once is the whole point of it. The vertical rhythm is set by the line height, which has
+  not changed; what went was padding that made a one-line row 44px tall for no reading benefit.
+*/
 .table thead th {
   text-align: start;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   font-size: var(--text-xs);
   font-weight: var(--weight-medium);
   color: var(--ink-subtle);
@@ -287,7 +302,7 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
   white-space: nowrap;
 }
 .table tbody td {
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   border-block-end: 1px solid var(--line-subtle);
   vertical-align: middle;
 }
@@ -310,16 +325,19 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
   align-items: center;
   text-align: center;
   gap: var(--space-3);
-  padding: var(--space-16) var(--space-6);
+  padding: var(--space-12) var(--space-6);
 }
+/* Neutral, not accent. This is a decoration above a sentence; the accent means «press this», and
+   spending it on a picture is what taught people to stop looking for it. */
 .empty-art {
-  inline-size: 52px;
-  block-size: 52px;
+  inline-size: 48px;
+  block-size: 48px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-xl);
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunken);
+  border: 1px solid var(--line);
+  color: var(--ink-subtle);
   margin-block-end: var(--space-1);
 }
 .empty-art svg { inline-size: 24px; block-size: 24px; }
@@ -327,7 +345,7 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
 .empty-body { font-size: var(--text-sm); color: var(--ink-subtle); max-inline-size: 44ch; line-height: var(--leading-relaxed); }
 .empty-actions { display: flex; gap: var(--space-3); margin-block-start: var(--space-2); flex-wrap: wrap; justify-content: center; }
 
-.empty-inline { padding: var(--space-8) var(--space-4); }
+.empty-inline { padding: var(--space-6) var(--space-4); }
 
 /* ============================================================================================ */
 /* Skeletons                                                                                     */
@@ -434,7 +452,7 @@ html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
-  background: rgba(23, 21, 40, 0.45);
+  background: rgba(15, 19, 25, 0.45);
   backdrop-filter: blur(2px);
   display: grid;
   place-items: center;
@@ -528,8 +546,8 @@ html[dir='rtl'] .menu-label { letter-spacing: 0; text-transform: none; }
   border-radius: var(--radius-full);
   display: grid;
   place-items: center;
-  background: var(--accent-soft);
-  color: var(--accent-ink);
+  background: var(--surface-active);
+  color: var(--ink-muted);
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   flex: none;

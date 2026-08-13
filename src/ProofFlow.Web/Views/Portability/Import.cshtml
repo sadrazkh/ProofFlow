@@ -89,8 +89,11 @@
         @* Hidden until there is something to say, so the page does not carry an empty bar. *@
         <div class="upload-progress" hidden>
             <div class="upload-progress-track">
+                @* Named, because a progressbar without one is announced as «progress bar» and
+                   nothing else — the percentage is read from the value, but not what it counts. *@
                 <div class="upload-progress-fill"
-                     role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+                     role="progressbar" aria-label="@T["portability.import.progress"]"
+                     aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
             </div>
             <p class="upload-progress-text" role="status" aria-live="polite"></p>
         </div>

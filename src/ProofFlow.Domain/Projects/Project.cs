@@ -25,8 +25,16 @@ public class Project : Entity, IWorkspaceOwned
     /// <summary>
     /// One of a small fixed set of accent names (not a hex value), so the palette stays under the
     /// design system's control and cannot be given a colour that fails contrast in dark mode.
+    ///
+    /// Slate by default, which is no colour at all. It used to be indigo — the same hue the
+    /// application uses for «this is the action» — so a workspace of twelve projects nobody had
+    /// coloured showed twelve indigo marks, and the one place indigo meant something was drowned
+    /// out by eleven places where it meant nothing.
     /// </summary>
-    public string Accent { get; set; } = "indigo";
+    public string Accent { get; set; } = DefaultAccent;
+
+    /// <summary>The colour a project is given when nobody chose one.</summary>
+    public const string DefaultAccent = "slate";
 
     /// <summary>
     /// How many days of response bodies and log lines to keep. Zero means keep them for ever.

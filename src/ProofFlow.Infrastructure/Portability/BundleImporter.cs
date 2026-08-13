@@ -225,7 +225,7 @@ public sealed class BundleImporter(
             Name = suffix == 1 ? bundle.Project.Name : $"{bundle.Project.Name} ({suffix})",
             Slug = slug,
             Description = bundle.Project.Description,
-            Accent = bundle.Project.Accent ?? "indigo",
+            Accent = bundle.Project.Accent ?? Project.DefaultAccent,
             CreatedByUserId = me.UserId ?? Guid.Empty,
         };
 
