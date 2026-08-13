@@ -365,3 +365,35 @@
 .kv-value > .input { flex: 1 1 auto; min-inline-size: 0; }
 
 .request-body-line { display: flex; align-items: center; }
+
+/* The authorisation panel: two columns where there is room, one when there is not. */
+.auth-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.auth-wide { grid-column: 1 / -1; }
+
+.auth-applied {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* What was typed, echoed above the list, so the filter is visible without a search box. */
+.reference-typed {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+}

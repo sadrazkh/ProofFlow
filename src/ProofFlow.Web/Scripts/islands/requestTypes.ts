@@ -50,3 +50,14 @@ export const METHODS = [
 
 /** Verbs that carry a body. The body tab is hidden for the rest rather than shown and ignored. */
 export const METHODS_WITH_BODY = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** What an authorisation server said, as the panel needs it. */
+export type TokenResult = {
+  succeeded: boolean;
+  accessToken?: string | null;
+  tokenType?: string | null;
+  expiresIn?: number | null;
+  statusCode: number;
+  problem?: string | null;
+  detail?: string | null;
+};

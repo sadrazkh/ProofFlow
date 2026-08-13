@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
-import { ref } from 'vue';
+import { nextTick, ref } from 'vue';
 import ReferencePicker from './ReferencePicker.vue';
 import { insertAtCaret } from '../lib/caret';
 import { EMPTY_CATALOGUE, type ReferenceCatalogue } from './referenceTypes';
@@ -39,6 +39,22 @@ function insert(index: number, text: string): void {
   if (!field || !row) return;
 
   row.value = insertAtCaret(field, text);
+  onInput(index);
+}
+
+function complete(index: number, text: string, from: number, to: number): void {
+  const field = values.value[index];
+  const row = rows.value[index];
+  if (!field || !row) return;
+
+  const value = field.value ?? '';
+  row.value = value.slice(0, from) + text + value.slice(to);
+
+  void nextTick(() => {
+    field.focus();
+    field.setSelectionRange(from + text.length, from + text.length);
+  });
+
   onInput(index);
 }
 
@@ -109,7 +125,9 @@ function remove(index: number): void {
               v-if="props.catalogue"
               :catalogue="catalogue()"
               :field="t('variable.value')"
+              :watching="() => values[index] ?? null"
               @pick="insert(index, $event)"
+              @complete="(text, from, to) => complete(index, text, from, to)"
             />
           </span>
         </td>

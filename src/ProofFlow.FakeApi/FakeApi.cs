@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -65,6 +66,53 @@ public static class FakeApi
                 expiresIn = 3600,
                 issuedAt = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
                 user = new { id = 1, name = "Demo user", roles = new[] { "admin" } },
+            });
+        });
+
+        // The OAuth 2 shape, so the authorisation panel has something real to ask. Two grants, the
+        // two that a test can actually complete without a browser in the middle of it.
+        group.MapPost("/auth/token", async (HttpContext context) =>
+        {
+            var form = await context.Request.ReadFormAsync();
+
+            var grant = form["grant_type"].ToString();
+            var id = form["client_id"].ToString();
+            var secret = form["client_secret"].ToString();
+
+            // Either place, because the specification allows both and this is the thing the panel
+            // has a switch for.
+            if (string.IsNullOrEmpty(id)
+                && context.Request.Headers.Authorization.ToString() is { Length: > 6 } header
+                && header.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+            {
+                var pair = Encoding.UTF8.GetString(Convert.FromBase64String(header[6..]));
+                var at = pair.IndexOf(':');
+
+                if (at > 0)
+                {
+                    id = pair[..at];
+                    secret = pair[(at + 1)..];
+                }
+            }
+
+            var ok = grant switch
+            {
+                "client_credentials" => id == "demo" && secret == "demo-secret",
+                "password" => form["username"] == "demo" && form["password"] == "demo-password",
+                _ => false,
+            };
+
+            if (!ok) return Results.Json(new { error = "invalid_client" }, statusCode: 401);
+
+            var token = $"tok_{Guid.CreateVersion7():N}";
+            state.Tokens[token] = DateTimeOffset.UtcNow.AddHours(1);
+
+            return Results.Ok(new
+            {
+                access_token = token,
+                token_type = "Bearer",
+                expires_in = 3600,
+                scope = form["scope"].ToString(),
             });
         });
 

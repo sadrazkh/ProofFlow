@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import KeyValueTable, { type KeyValueRow } from './KeyValueTable.vue';
 import ReferencePicker from './ReferencePicker.vue';
 import ResponseViewer from './ResponseViewer.vue';
@@ -10,7 +10,7 @@ import { t } from '../lib/i18n';
 import { toast } from '../lib/toast';
 import {
   METHODS, METHODS_WITH_BODY,
-  type LabEnvironment, type SendRequestResult, type VariableNames,
+  type LabEnvironment, type SendRequestResult, type TokenResult, type VariableNames,
 } from './requestTypes';
 
 /**
@@ -36,6 +36,106 @@ const query = ref<KeyValueRow[]>([{ name: '', value: '', enabled: true }]);
 const headers = ref<KeyValueRow[]>([{ name: '', value: '', enabled: true }]);
 const bodyKind = ref('Json');
 const body = ref('');
+
+/**
+ * How this API lets somebody in, and what it takes to get there.
+ *
+ * Beside the request rather than behind a settings page, because it is part of the request:
+ * choosing a kind adds one header and nothing else, and that header appears under «what was sent»
+ * like any other. Nothing here is hidden machinery, which is the point — somebody debugging a 401
+ * has to be able to see exactly what went.
+ */
+const authKind = ref<'none' | 'bearer' | 'basic' | 'apiKey' | 'oauthClient' | 'oauthPassword'>('none');
+const authToken = ref('');
+const authUser = ref('');
+const authPassword = ref('');
+const authHeaderName = ref('X-API-Key');
+const tokenUrl = ref('');
+const clientId = ref('');
+const clientSecret = ref('');
+const scope = ref('');
+const credentialsInHeader = ref(false);
+const gettingToken = ref(false);
+const tokenNote = ref('');
+const tokenProblem = ref('');
+
+const needsToken = computed(
+  () => authKind.value === 'oauthClient' || authKind.value === 'oauthPassword');
+
+/**
+ * The one header this authorisation produces.
+ *
+ * Computed in one place and used both to send and to show. A panel that described what it would do
+ * and a sender that did something slightly different is the shape of a bug nobody finds for a week.
+ */
+const authHeader = computed<{ name: string; value: string } | null>(() => {
+  if (authKind.value === 'none') return null;
+
+  if (authKind.value === 'basic') {
+    if (!authUser.value && !authPassword.value) return null;
+    return { name: 'Authorization', value: `Basic ${btoa(`${authUser.value}:${authPassword.value}`)}` };
+  }
+
+  if (authKind.value === 'apiKey') {
+    if (!authToken.value || !authHeaderName.value) return null;
+    return { name: authHeaderName.value, value: authToken.value };
+  }
+
+  if (!authToken.value) return null;
+  return { name: 'Authorization', value: `Bearer ${authToken.value}` };
+});
+
+/**
+ * Asks the authorisation server, through the same guard as every other address here.
+ *
+ * The credentials can be references — «{{secrets.clientSecret}}» — because the server resolves them
+ * before it sends. Which means the panel can be filled in on a screen somebody is sharing.
+ */
+async function getToken(): Promise<void> {
+  if (gettingToken.value) return;
+
+  gettingToken.value = true;
+  tokenNote.value = '';
+  tokenProblem.value = '';
+
+  try {
+    const result = await api.post<TokenResult>(`/projects/${props.projectId}/request/token`, {
+      environmentId: environmentId.value || null,
+      grant: authKind.value === 'oauthPassword' ? 'password' : 'client_credentials',
+      tokenUrl: tokenUrl.value,
+      clientId: clientId.value,
+      clientSecret: clientSecret.value,
+      scope: scope.value,
+      username: authUser.value,
+      password: authPassword.value,
+      credentialsInHeader: credentialsInHeader.value,
+    });
+
+    if (!result.succeeded) {
+      tokenProblem.value = [result.problem, result.detail].filter(Boolean).join(' — ');
+      return;
+    }
+
+    authToken.value = result.accessToken ?? '';
+
+    tokenNote.value = result.expiresIn
+      ? t('auth.expiresIn', howLong(result.expiresIn))
+      : t('auth.expiresUnknown');
+
+    toast(t('auth.got'), 'success');
+  } catch (error) {
+    tokenProblem.value = error instanceof ApiError ? error.message : t('error.body');
+  } finally {
+    gettingToken.value = false;
+  }
+}
+
+/** Seconds, in the unit somebody would say out loud. */
+function howLong(seconds: number): string {
+  if (seconds < 90) return `${seconds}s`;
+  if (seconds < 5400) return `${Math.round(seconds / 60)}m`;
+  return `${Math.round(seconds / 3600)}h`;
+}
 
 const known = ref<VariableNames>({ environment: [], variables: [], secrets: [] });
 const result = ref<SendRequestResult | null>(null);
@@ -72,6 +172,25 @@ function insertIntoUrl(text: string): void {
 
 function insertIntoBody(text: string): void {
   if (bodyBox.value) body.value = insertAtCaret(bodyBox.value, text);
+}
+
+/** Replaces the half-typed reference, wherever it was typed. */
+function completeIn(
+  field: HTMLInputElement | HTMLTextAreaElement | null,
+  set: (next: string) => void,
+  text: string, from: number, to: number,
+): void {
+  if (!field) return;
+
+  const value = field.value ?? '';
+  const next = value.slice(0, from) + text + value.slice(to);
+
+  set(next);
+
+  void nextTick(() => {
+    field.focus();
+    field.setSelectionRange(from + text.length, from + text.length);
+  });
 }
 
 const references = computed(() => {
@@ -114,6 +233,7 @@ onMounted(() => {
 
 watch(environmentId, () => void loadNames());
 watch([method, url, environmentId, query, headers, body, bodyKind], remember, { deep: true });
+watch([authKind, authHeaderName, tokenUrl, clientId, scope, credentialsInHeader], remember);
 
 async function loadNames(): Promise<void> {
   try {
@@ -137,6 +257,18 @@ function remember(): void {
     localStorage.setItem(STORAGE_KEY.value, JSON.stringify({
       method: method.value, url: url.value, environmentId: environmentId.value,
       query: query.value, headers: headers.value, bodyKind: bodyKind.value, body: body.value,
+
+      // The shape of the authorisation, not its credentials. A client secret, a password and a
+      // live bearer token are the three things that must not end up in local storage — where they
+      // would outlive the tab, survive in a backup, and be readable by anything else on the page.
+      auth: {
+        kind: authKind.value,
+        headerName: authHeaderName.value,
+        tokenUrl: tokenUrl.value,
+        clientId: clientId.value,
+        scope: scope.value,
+        credentialsInHeader: credentialsInHeader.value,
+      },
     }));
   } catch {
     // A full or disabled storage is not worth interrupting anyone over.
@@ -156,6 +288,15 @@ function restore(): void {
     headers.value = state.headers?.length ? state.headers : headers.value;
     bodyKind.value = state.bodyKind ?? 'Json';
     body.value = state.body ?? '';
+
+    if (state.auth) {
+      authKind.value = state.auth.kind ?? 'none';
+      authHeaderName.value = state.auth.headerName ?? 'X-API-Key';
+      tokenUrl.value = state.auth.tokenUrl ?? '';
+      clientId.value = state.auth.clientId ?? '';
+      scope.value = state.auth.scope ?? '';
+      credentialsInHeader.value = state.auth.credentialsInHeader ?? false;
+    }
   } catch {
     // A malformed blob from an older shape is discarded rather than allowed to break the page.
   }
@@ -179,7 +320,13 @@ async function send(): Promise<void> {
       method: method.value,
       url: url.value,
       query: query.value.filter((r) => r.name),
-      headers: headers.value.filter((r) => r.name),
+
+      // Appended rather than merged: a header typed by hand wins, because somebody who wrote an
+      // Authorization line themselves meant that one.
+      headers: [
+        ...(authHeader.value ? [{ ...authHeader.value, enabled: true }] : []),
+        ...headers.value.filter((r) => r.name),
+      ],
       bodyKind: supportsBody.value ? bodyKind.value : null,
       body: supportsBody.value ? body.value : null,
     });
@@ -272,7 +419,13 @@ function useValue(path: string, value: unknown): void {
             @keydown.enter="send"
           />
 
-          <ReferencePicker :catalogue="catalogue" :field="t('request.url')" @pick="insertIntoUrl" />
+          <ReferencePicker
+            :catalogue="catalogue"
+            :field="t('request.url')"
+            :watching="() => urlBox"
+            @pick="insertIntoUrl"
+            @complete="(text, from, to) => completeIn(urlBox, (next) => { url = next; }, text, from, to)"
+          />
         </div>
 
         <select v-model="environmentId" class="select" :aria-label="t('nav.environments')" style="max-inline-size: 200px;">
@@ -326,6 +479,12 @@ function useValue(path: string, value: unknown): void {
                 :aria-selected="tab === 'body'" @click="tab = 'body'">
           {{ t('request.body') }}
         </button>
+
+        <button type="button" class="tab" role="tab" :class="{ 'is-active': tab === 'auth' }"
+                :aria-selected="tab === 'auth'" @click="tab = 'auth'">
+          {{ t('auth.title') }}
+          <span v-if="authHeader" class="tab-count"><Icon name="lock" /></span>
+        </button>
       </div>
 
       <div class="card-body">
@@ -347,6 +506,105 @@ function useValue(path: string, value: unknown): void {
           value-placeholder="Bearer {{secrets.apiToken}}"
         />
 
+        <div v-else-if="tab === 'auth'" class="stack-2 auth-panel">
+          <p class="section-help">{{ t('auth.help') }}</p>
+
+          <label class="field">
+            <span class="field-label">{{ t('auth.kind') }}</span>
+            <select v-model="authKind" class="select">
+              <option value="none">{{ t('auth.kind.none') }}</option>
+              <option value="bearer">{{ t('auth.kind.bearer') }}</option>
+              <option value="basic">{{ t('auth.kind.basic') }}</option>
+              <option value="apiKey">{{ t('auth.kind.apiKey') }}</option>
+              <option value="oauthClient">{{ t('auth.kind.oauthClient') }}</option>
+              <option value="oauthPassword">{{ t('auth.kind.oauthPassword') }}</option>
+            </select>
+          </label>
+
+          <div v-if="needsToken" class="auth-grid">
+            <label class="field auth-wide">
+              <span class="field-label">{{ t('auth.tokenUrl') }}</span>
+              <input v-model="tokenUrl" class="input input-mono" dir="ltr"
+                     placeholder="/connect/token" />
+              <span class="field-hint">{{ t('auth.tokenUrl.help') }}</span>
+            </label>
+
+            <label class="field">
+              <span class="field-label">{{ t('auth.clientId') }}</span>
+              <input v-model="clientId" class="input input-mono" dir="ltr" />
+            </label>
+
+            <label class="field">
+              <span class="field-label">{{ t('auth.clientSecret') }}</span>
+              <input v-model="clientSecret" class="input input-mono" type="password" dir="ltr"
+                     placeholder="{{secrets.clientSecret}}" />
+            </label>
+
+            <label v-if="authKind === 'oauthPassword'" class="field">
+              <span class="field-label">{{ t('auth.username') }}</span>
+              <input v-model="authUser" class="input" dir="auto" />
+            </label>
+
+            <label v-if="authKind === 'oauthPassword'" class="field">
+              <span class="field-label">{{ t('auth.password') }}</span>
+              <input v-model="authPassword" class="input" type="password" dir="ltr" />
+            </label>
+
+            <label class="field">
+              <span class="field-label">{{ t('auth.scope') }}</span>
+              <input v-model="scope" class="input input-mono" dir="ltr" placeholder="api.read" />
+            </label>
+
+            <label class="check-row auth-wide">
+              <input v-model="credentialsInHeader" class="checkbox" type="checkbox" />
+              <span>
+                {{ t('auth.credentialsInHeader') }}
+                <span class="field-hint">{{ t('auth.credentialsInHeader.help') }}</span>
+              </span>
+            </label>
+
+            <div class="auth-wide row">
+              <button type="button" class="btn btn-secondary" :disabled="gettingToken || !tokenUrl"
+                      @click="getToken">
+                <Icon :name="gettingToken ? 'loader' : 'key-round'" />
+                {{ gettingToken ? t('auth.getting') : t('auth.get') }}
+              </button>
+              <span v-if="tokenNote" class="text-xs subtle">{{ tokenNote }}</span>
+            </div>
+
+            <p v-if="tokenProblem" class="auth-wide field-error" dir="auto">
+              <Icon name="circle-alert" :size="13" />{{ tokenProblem }}
+            </p>
+          </div>
+
+          <div v-if="authKind === 'basic' || authKind === 'oauthPassword'" class="auth-grid">
+            <label v-if="authKind === 'basic'" class="field">
+              <span class="field-label">{{ t('auth.username') }}</span>
+              <input v-model="authUser" class="input" dir="auto" />
+            </label>
+
+            <label v-if="authKind === 'basic'" class="field">
+              <span class="field-label">{{ t('auth.password') }}</span>
+              <input v-model="authPassword" class="input" type="password" dir="ltr" />
+            </label>
+          </div>
+
+          <label v-if="authKind === 'apiKey'" class="field">
+            <span class="field-label">{{ t('auth.headerName') }}</span>
+            <input v-model="authHeaderName" class="input input-mono" dir="ltr" />
+          </label>
+
+          <label v-if="authKind !== 'none' && authKind !== 'basic'" class="field">
+            <span class="field-label">{{ t('auth.token') }}</span>
+            <textarea v-model="authToken" class="textarea input-mono" rows="3" dir="ltr"
+                      :placeholder="'{{secrets.apiToken}}'"></textarea>
+          </label>
+
+          <p v-if="authHeader" class="auth-applied mono" dir="ltr">
+            <Icon name="check" :size="13" />{{ authHeader.name }}: {{ authHeader.value.slice(0, 24) }}…
+          </p>
+        </div>
+
         <div v-else-if="tab === 'body'" class="stack-2">
           <div class="segmented" role="group" :aria-label="t('request.bodyKind')">
             <button v-for="kind in ['Json', 'Text', 'Xml']" :key="kind" type="button"
@@ -356,7 +614,13 @@ function useValue(path: string, value: unknown): void {
           </div>
           <div class="request-body-line">
             <span class="grow"></span>
-            <ReferencePicker :catalogue="catalogue" :field="t('request.body')" @pick="insertIntoBody" />
+            <ReferencePicker
+              :catalogue="catalogue"
+              :field="t('request.body')"
+              :watching="() => bodyBox"
+              @pick="insertIntoBody"
+              @complete="(text, from, to) => completeIn(bodyBox, (next) => { body = next; }, text, from, to)"
+            />
           </div>
 
           <textarea ref="bodyBox" v-model="body" class="textarea input-mono" rows="10"

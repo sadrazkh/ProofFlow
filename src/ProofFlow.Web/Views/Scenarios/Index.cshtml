@@ -8,6 +8,10 @@
     @if (Model.CanEdit)
     {
         <div class="page-actions">
+            @* Beside «new», because bringing a collection over is the other way to get a first one. *@
+            <a class="btn btn-secondary" href="/projects/@Model.ProjectId/import?source=postman">
+                <i data-lucide="upload" aria-hidden="true"></i>@T["portability.source.postman"]
+            </a>
             <a class="btn btn-primary" href="/projects/@Model.ProjectId/scenarios/new">
                 <i data-lucide="plus" aria-hidden="true"></i>@T["scenario.new"]
             </a>

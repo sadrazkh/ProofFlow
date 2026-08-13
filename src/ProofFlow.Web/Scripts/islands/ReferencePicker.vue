@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { t } from '../lib/i18n';
 import { referenceOptions, type ReferenceCatalogue, type ReferenceOption } from './referenceTypes';
 
@@ -23,9 +23,22 @@ const props = defineProps<{
   field: string;
 
   disabled?: boolean;
+
+  /**
+   * The text box to watch for somebody typing two braces.
+   *
+   * Given as a getter rather than an element because the inspector renders its fields from a list
+   * and the element does not exist when this is created.
+   */
+  watching?: () => HTMLInputElement | HTMLTextAreaElement | null;
 }>();
 
-const emit = defineEmits<{ pick: [insert: string] }>();
+const emit = defineEmits<{
+  pick: [insert: string];
+
+  /** A typed «{{orde» replaced whole, rather than something added at the cursor. */
+  complete: [insert: string, from: number, to: number];
+}>();
 
 const open = ref(false);
 const search = ref('');
@@ -46,11 +59,21 @@ const place = ref({ top: 0, left: 0 });
 const WIDTH = 320;
 const MARGIN = 8;
 
-function position(): void {
-  const button = root.value?.querySelector('button');
-  if (!button) return;
+/**
+ * Whether the list was opened by typing rather than by pressing the button.
+ *
+ * The difference is where the keys come from and what happens on pick. Typed, the person is still
+ * in their own field — so focus stays there, the arrows are read from it, and choosing replaces the
+ * half-written reference instead of adding a second one after it.
+ */
+const typing = ref(false);
+const opened = ref({ from: 0, to: 0 });
 
-  const rect = button.getBoundingClientRect();
+function position(): void {
+  const anchor = typing.value ? props.watching?.() ?? null : root.value?.querySelector('button');
+  if (!anchor) return;
+
+  const rect = anchor.getBoundingClientRect();
   const room = window.innerWidth - WIDTH - MARGIN;
 
   place.value = {
@@ -109,6 +132,7 @@ async function toggle(): Promise<void> {
 
 function close(): void {
   open.value = false;
+  typing.value = false;
   document.removeEventListener('pointerdown', onOutside, true);
   document.removeEventListener('keydown', onEscape, true);
   window.removeEventListener('resize', position);
@@ -130,7 +154,9 @@ function onEscape(event: KeyboardEvent): void {
 }
 
 function choose(option: ReferenceOption): void {
-  emit('pick', option.insert);
+  if (typing.value) emit('complete', option.insert, opened.value.from, opened.value.to);
+  else emit('pick', option.insert);
+
   close();
 }
 
@@ -143,14 +169,105 @@ function onKey(event: KeyboardEvent): void {
     event.preventDefault();
     active.value = (active.value - 1 + walk.value.length) % Math.max(walk.value.length, 1);
   }
-  else if (event.key === 'Enter') {
+  else if (event.key === 'Enter' || event.key === 'Tab') {
     event.preventDefault();
     const option = walk.value[active.value];
     if (option) choose(option);
   }
 }
 
-onBeforeUnmount(close);
+/**
+ * Two braces, and the list appears — the thing an editor does.
+ *
+ * The alternative was a button, which is discoverable and still an interruption: somebody who knows
+ * exactly what they want has to stop writing, reach for the mouse, and come back. This is the same
+ * list, offered where the words already are.
+ */
+function onFieldInput(): void {
+  const field = props.watching?.();
+  if (!field || props.disabled) return;
+
+  const caret = field.selectionStart ?? 0;
+  const before = (field.value ?? '').slice(0, caret);
+
+  // The last unclosed «{{» before the cursor, and whatever has been typed since. A closing brace
+  // or a second «{{» ends it, because at that point the reference is somebody else's business.
+  const match = /\{\{([^{}]*)$/.exec(before);
+
+  if (!match) {
+    if (typing.value) close();
+    return;
+  }
+
+  search.value = match[1] ?? '';
+  active.value = 0;
+  opened.value = { from: caret - match[0].length, to: caret };
+
+  if (!typing.value) {
+    typing.value = true;
+    open.value = true;
+
+    document.addEventListener('pointerdown', onOutside, true);
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
+  }
+
+  position();
+}
+
+/**
+ * The keys, while the list is open and the cursor is still in the field.
+ *
+ * Read from the field rather than from a search box, because there is no search box in this mode —
+ * taking focus away to offer a list would be worse than not offering one.
+ */
+function onFieldKey(raw: Event): void {
+  const event = raw as KeyboardEvent;
+
+  if (!typing.value || !open.value) return;
+
+  if (event.key === 'Escape') {
+    event.stopPropagation();
+    event.preventDefault();
+    close();
+    return;
+  }
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp'
+      || (event.key === 'Enter' && walk.value.length > 0)
+      || (event.key === 'Tab' && walk.value.length > 0)) {
+    onKey(event);
+  }
+}
+
+onMounted(() => {
+  const field = props.watching?.();
+  if (!field) return;
+
+  field.addEventListener('input', onFieldInput);
+  field.addEventListener('keydown', onFieldKey);
+  field.addEventListener('blur', onFieldBlur);
+});
+
+/**
+ * Closes on the way out, but not before a click on the list has been read.
+ *
+ * A pointer press on an option blurs the field first; closing immediately would remove the option
+ * before the click landed on it.
+ */
+function onFieldBlur(): void {
+  window.setTimeout(() => { if (typing.value && !menu.value?.matches(':hover')) close(); }, 150);
+}
+
+onBeforeUnmount(() => {
+  const field = props.watching?.();
+
+  field?.removeEventListener('input', onFieldInput);
+  field?.removeEventListener('keydown', onFieldKey);
+  field?.removeEventListener('blur', onFieldBlur);
+
+  close();
+});
 </script>
 
 <template>
@@ -178,6 +295,7 @@ onBeforeUnmount(close);
         :style="{ top: `${place.top}px`, left: `${place.left}px` }"
       >
       <input
+        v-if="!typing"
         ref="box"
         v-model="search"
         class="input input-sm"
@@ -187,6 +305,8 @@ onBeforeUnmount(close);
         :aria-label="t('reference.search')"
         @keydown="onKey"
       />
+
+      <p v-else class="reference-typed mono" dir="ltr">{{ `{{${search}` }}</p>
 
       <p v-if="walk.length === 0" class="reference-empty">{{ t('reference.none') }}</p>
 
@@ -210,7 +330,7 @@ onBeforeUnmount(close);
         </template>
       </ul>
 
-        <p class="reference-hint">{{ t('reference.hint') }}</p>
+          <p class="reference-hint">{{ typing ? t('reference.typedHint') : t('reference.hint') }}</p>
       </div>
     </Teleport>
   </span>

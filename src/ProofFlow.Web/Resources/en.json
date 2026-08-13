@@ -131,7 +131,39 @@
     "point2Title": "Chain steps without writing code",
     "point2Body": "Sign in, read a list, pick one from it, create something, check it, delete it again. Drag the steps together and pass each one's output to the next.",
     "point3Title": "See exactly what moved",
-    "point3Body": "Not a wall of red text. Which field, what it was, what it is now, and whether that was allowed."
+    "point3Body": "Not a wall of red text. Which field, what it was, what it is now, and whether that was allowed.",
+    "title": "Authorisation",
+    "help": "Get a token once, and every request below carries it. What is sent is a header like any other, so you can see it in «what was sent».",
+    "kind": "How this API authenticates",
+    "kind.none": "None",
+    "kind.bearer": "Bearer token",
+    "kind.basic": "Username and password",
+    "kind.apiKey": "API key in a header",
+    "kind.oauthClient": "OAuth 2 · client credentials",
+    "kind.oauthPassword": "OAuth 2 · username and password",
+    "token": "Token",
+    "tokenUrl": "Token address",
+    "tokenUrl.help": "Where to ask. Relative to the environment address, or a whole URL.",
+    "clientId": "Client id",
+    "clientSecret": "Client secret",
+    "scope": "Scope",
+    "username": "Username",
+    "headerName": "Header name",
+    "credentialsInHeader": "Send the client id and secret as a Basic header",
+    "credentialsInHeader.help": "Both are in the specification and servers disagree. Try the other one if this is refused.",
+    "get": "Get a token",
+    "getting": "Asking…",
+    "got": "A token came back. It is in the box below and every request now carries it.",
+    "expiresIn": "Good for {0}.",
+    "expiresUnknown": "The server did not say how long it lasts.",
+    "keep": "Keep it as a secret",
+    "kept": "Kept as «{0}». Refer to it as {{secrets.{0}}}.",
+    "keepName": "Name to keep it under",
+    "noTokenUrl": "Fill in the token address first.",
+    "noToken": "The server answered, but nothing in the answer looks like a token.",
+    "notJson": "The server answered with something that is not JSON.",
+    "refused": "The authorisation server refused: {0}.",
+    "applied": "Carried on every request as an Authorization header."
   },
   "workspace": {
     "label": "Workspace",
@@ -288,7 +320,8 @@
       "capture.reviewed": "marked samples reviewed",
       "scenario.created": "created a scenario",
       "scenario.saved": "changed a scenario",
-      "scenario.published": "published a scenario"
+      "scenario.published": "published a scenario",
+      "request.token": "asked for an access token"
     },
     "filter.actor": "Person",
     "filter.action": "Kind",
@@ -1699,6 +1732,7 @@
     "group.secrets": "Secrets",
     "group.inputs": "Inputs",
     "group.steps": "Earlier steps",
-    "group.run": "This run"
+    "group.run": "This run",
+    "typedHint": "Arrows to move, Enter to take it, Escape to keep typing."
   }
 }

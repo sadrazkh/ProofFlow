@@ -67,3 +67,62 @@ public sealed record VariableNamesDto(
     IReadOnlyList<string> Environment,
     IReadOnlyList<string> Variables,
     IReadOnlyList<string> Secrets);
+
+/// <summary>
+/// Asking an authorisation server for a token, so a test can be written against a protected API.
+///
+/// Its own command rather than a request with the fields filled in, because the difference matters:
+/// this one goes to a token endpoint, gets a short-lived credential back, and that credential is
+/// the thing everything afterwards carries. A person doing it by hand ends up with a token pasted
+/// into a header, expired by the afternoon, and no record of where it came from.
+///
+/// The grant names are OAuth 2's own — <c>client_credentials</c> and <c>password</c> — because they
+/// are what the API's documentation will call them, and inventing friendlier ones would mean
+/// translating back and forth at the exact moment somebody is comparing two screens.
+/// </summary>
+public sealed record TokenRequestCommand
+{
+    public Guid? EnvironmentId { get; init; }
+
+    /// <summary>«client_credentials» or «password».</summary>
+    public string Grant { get; init; } = "client_credentials";
+
+    /// <summary>Where to ask. Relative to the environment's address, or absolute.</summary>
+    public string TokenUrl { get; init; } = string.Empty;
+
+    public string? ClientId { get; init; }
+    public string? ClientSecret { get; init; }
+    public string? Scope { get; init; }
+    public string? Username { get; init; }
+    public string? Password { get; init; }
+
+    /// <summary>
+    /// Whether the client credentials go in a Basic header rather than in the form.
+    ///
+    /// Both are in the specification and servers disagree about which they accept, which is exactly
+    /// the kind of thing somebody loses an hour to. It is a switch rather than a guess.
+    /// </summary>
+    public bool CredentialsInHeader { get; init; }
+}
+
+/// <summary>What came back, or why it did not.</summary>
+public sealed record TokenResult
+{
+    public required bool Succeeded { get; init; }
+
+    /// <summary>The token itself. It has to reach the browser: that is what was asked for.</summary>
+    public string? AccessToken { get; init; }
+
+    public string? TokenType { get; init; }
+
+    /// <summary>Seconds, as the server said. Null when it did not say.</summary>
+    public int? ExpiresIn { get; init; }
+
+    public int StatusCode { get; init; }
+
+    /// <summary>A sentence for the reader, already in their language.</summary>
+    public string? Problem { get; init; }
+
+    /// <summary>What the server actually answered, for a problem no sentence covers.</summary>
+    public string? Detail { get; init; }
+}

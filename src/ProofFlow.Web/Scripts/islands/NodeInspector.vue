@@ -122,6 +122,31 @@ function insert(name: string, text: string): void {
 
   set(name, insertAtCaret(field, text) || null);
 }
+
+/** The field a picker watches, looked up when it is asked for rather than held. */
+function fieldFor(name: string): TextField | null {
+  return fieldWithin(wrappers.value[name] ?? null);
+}
+
+/**
+ * Replaces a half-typed «{{ord» with the whole thing.
+ *
+ * The caret lands after the closing braces, which is where somebody carrying on writing a URL
+ * expects to be.
+ */
+function complete(name: string, text: string, from: number, to: number): void {
+  const field = fieldFor(name);
+  if (!field) return;
+
+  const value = field.value ?? '';
+  const next = value.slice(0, from) + text + value.slice(to);
+
+  field.value = next;
+  field.focus();
+  field.setSelectionRange(from + text.length, from + text.length);
+
+  set(name, next || null);
+}
 </script>
 
 <template>
@@ -181,9 +206,12 @@ function insert(name: string, text: string): void {
               -->
               <ReferencePicker
                 v-if="canEdit && takesReferences(property)"
+                :key="`${node.id}-${property.name}`"
                 :catalogue="catalogue"
                 :field="t(property.labelKey)"
+                :watching="() => fieldFor(property.name)"
                 @pick="insert(property.name, $event)"
+                @complete="(text, from, to) => complete(property.name, text, from, to)"
               />
             </span>
 

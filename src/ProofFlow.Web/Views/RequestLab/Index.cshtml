@@ -19,6 +19,11 @@
         <p class="page-subtitle">@T["request.subtitle"]</p>
     </div>
     <div class="page-actions">
+        @* Where somebody with a collection already open is standing when they wonder. The import
+           page has done this since the start and nobody found it there. *@
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/import?source=postman">
+            <i data-lucide="upload" aria-hidden="true"></i>@T["portability.source.postman"]
+        </a>
         <a class="btn btn-secondary" href="/projects/@Model.ProjectId/environments">
             <i data-lucide="globe" aria-hidden="true"></i>@T["nav.environments"]
         </a>

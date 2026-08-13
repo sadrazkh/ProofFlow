@@ -178,6 +178,198 @@ public sealed class RequestLabController(
     }
 
     /// <summary>
+    /// Asks an authorisation server for a token.
+    ///
+    /// Through the same executor and the same URL policy as everything else here, which is the
+    /// point: a token endpoint is an address somebody types, and an address somebody types is the
+    /// thing the guard exists for. An auth flow that quietly bypassed it would be the one hole in
+    /// the wall, at the one place a credential is involved.
+    ///
+    /// What comes back reaches the browser in the clear, and that is deliberate rather than an
+    /// oversight — a token nobody can see is a token nobody can put in a header. Keeping it is the
+    /// next thing offered, and keeping it means sealing it as a secret like any other.
+    /// </summary>
+    [HttpPost("token")]
+    [Authorize(Policy = Policies.RunTest)]
+    public async Task<IActionResult> Token(
+        Guid projectId, [FromBody] TokenRequestCommand command, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null) return NotFound();
+
+        ProjectEnvironment? environment = null;
+        if (command.EnvironmentId is { } environmentId)
+        {
+            environment = await db.Environments
+                .FirstOrDefaultAsync(e => e.Id == environmentId && e.ProjectId == projectId, cancellationToken);
+
+            if (environment is null) return NotFound();
+        }
+
+        var context = environment is null ? null : await environments.BuildAsync(environment, cancellationToken);
+        var resolver = context?.Resolver() ?? new VariableResolver(new VariableScopes());
+        var policy = context?.Policy ?? new UrlPolicy();
+
+        // The whole form resolves, so a client secret can be «{{secrets.clientSecret}}» rather than
+        // a value typed into a box on a screen somebody is sharing.
+        var unresolved = new List<UnresolvedDto>();
+
+        var url = Resolve(resolver, Combine(environment?.BaseUrl, command.TokenUrl), unresolved);
+        var clientId = Resolve(resolver, command.ClientId ?? string.Empty, unresolved);
+        var clientSecret = Resolve(resolver, command.ClientSecret ?? string.Empty, unresolved);
+        var scope = Resolve(resolver, command.Scope ?? string.Empty, unresolved);
+        var username = Resolve(resolver, command.Username ?? string.Empty, unresolved);
+        var password = Resolve(resolver, command.Password ?? string.Empty, unresolved);
+
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return Json(new TokenResult { Succeeded = false, Problem = localizer["auth.noTokenUrl"].Value });
+        }
+
+        if (unresolved.Count > 0)
+        {
+            return Json(new TokenResult
+            {
+                Succeeded = false,
+                Problem = localizer["request.unresolved"].Value,
+                Detail = string.Join(", ", unresolved.Select(u => u.Reference)),
+            });
+        }
+
+        var form = new List<KeyValueEntry>
+        {
+            new("grant_type", command.Grant == "password" ? "password" : "client_credentials"),
+        };
+
+        if (!string.IsNullOrWhiteSpace(scope)) form.Add(new KeyValueEntry("scope", scope));
+
+        if (command.Grant == "password")
+        {
+            form.Add(new KeyValueEntry("username", username));
+            form.Add(new KeyValueEntry("password", password));
+        }
+
+        var headers = new List<KeyValueEntry>();
+
+        // Both are in the specification and servers disagree about which they accept. The switch is
+        // there because guessing wrong produces a 401 that says nothing about which half was wrong.
+        if (command.CredentialsInHeader && !string.IsNullOrWhiteSpace(clientId))
+        {
+            var pair = Convert.ToBase64String(
+                System.Text.Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
+
+            headers.Add(new KeyValueEntry("Authorization", $"Basic {pair}"));
+        }
+        else
+        {
+            if (!string.IsNullOrWhiteSpace(clientId)) form.Add(new KeyValueEntry("client_id", clientId));
+            if (!string.IsNullOrWhiteSpace(clientSecret))
+                form.Add(new KeyValueEntry("client_secret", clientSecret));
+        }
+
+        var result = await executor.SendAsync(
+            new HttpRequestDefinition
+            {
+                Method = "POST",
+                Url = url,
+                Headers = headers,
+                Body = new RequestBody { Kind = BodyKind.FormUrlEncoded, Form = form },
+            },
+            policy,
+            cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "request.token", projectId, "Request", null, Trim(url),
+            new Dictionary<string, string?>
+            {
+                ["environment"] = environment?.Name,
+                ["grant"] = command.Grant,
+                ["status"] = result.Succeeded ? result.StatusCode.ToString() : "failed",
+            }), cancellationToken);
+
+        if (!result.Succeeded)
+        {
+            return Json(new TokenResult { Succeeded = false, Problem = result.Failure!.Message });
+        }
+
+        if (result.StatusCode is < 200 or > 299)
+        {
+            return Json(new TokenResult
+            {
+                Succeeded = false,
+                StatusCode = result.StatusCode,
+                Problem = localizer["auth.refused", result.StatusCode].Value,
+
+                // The server own words. A token endpoint that says «invalid_scope» has already
+                // answered the question, and hiding it to keep the message tidy answers nothing.
+                Detail = Shorten(result.Body, 400),
+            });
+        }
+
+        return Read(result.Body, result.StatusCode);
+    }
+
+    /// <summary>
+    /// Reads a token out of whatever the server sent back.
+    ///
+    /// The field names are the specification, and the fallbacks are what real servers send: some
+    /// answer with «token», some with «id_token», and one popular framework nests the lot under
+    /// «data». Guessing here is worth doing because the alternative is telling somebody their
+    /// working token endpoint is not one.
+    /// </summary>
+    private IActionResult Read(string body, int statusCode)
+    {
+        try
+        {
+            var root = System.Text.Json.Nodes.JsonNode.Parse(body);
+            var node = root?["data"] is System.Text.Json.Nodes.JsonObject nested ? nested : root;
+
+            var token = Field(node, "access_token") ?? Field(node, "accessToken")
+                ?? Field(node, "token") ?? Field(node, "id_token");
+
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return Json(new TokenResult
+                {
+                    Succeeded = false,
+                    StatusCode = statusCode,
+                    Problem = localizer["auth.noToken"].Value,
+                    Detail = Shorten(body, 400),
+                });
+            }
+
+            var expires = node?["expires_in"] ?? node?["expiresIn"];
+
+            return Json(new TokenResult
+            {
+                Succeeded = true,
+                StatusCode = statusCode,
+                AccessToken = token,
+                TokenType = Field(node, "token_type") ?? Field(node, "tokenType") ?? "Bearer",
+                ExpiresIn = expires is not null && int.TryParse(expires.ToString(), out var seconds)
+                    ? seconds
+                    : null,
+            });
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Json(new TokenResult
+            {
+                Succeeded = false,
+                StatusCode = statusCode,
+                Problem = localizer["auth.notJson"].Value,
+                Detail = Shorten(body, 400),
+            });
+        }
+    }
+
+    private static string? Field(System.Text.Json.Nodes.JsonNode? node, string name) =>
+        node?[name]?.ToString() is { Length: > 0 } value ? value : null;
+
+    private static string Shorten(string? text, int limit) =>
+        text is null ? string.Empty : text.Length <= limit ? text : text[..limit] + "…";
+
+    /// <summary>
     /// Joins a relative path onto the environment's base URL.
     ///
     /// Left alone when the path is already absolute, because someone pasting a full URL into the
