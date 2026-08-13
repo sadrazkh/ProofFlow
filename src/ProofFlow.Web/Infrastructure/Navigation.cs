@@ -17,6 +17,7 @@ public static class Navigation
         var sections = new List<NavSection>
         {
             new("nav.overview", [
+                new NavItem("demo.start", "rocket", "/start", Capability.ViewProject),
                 new NavItem("nav.dashboard", "layout-dashboard", "/", Capability.ViewProject),
                 new NavItem("nav.projects", "folder-open", "/projects", Capability.ViewProject),
             ]),

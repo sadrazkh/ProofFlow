@@ -464,3 +464,103 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
   .start-step { flex-wrap: wrap; }
   .start-step .btn { margin-inline-start: calc(20px + var(--space-3)); }
 }
+
+/* ---- the first minute ------------------------------------------------------------------------ */
+
+.start-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--space-4);
+}
+
+.start-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  justify-content: space-between;
+}
+
+/* The one that needs nothing, marked so the eye lands on it first. */
+.start-card.is-first { border-color: var(--accent); }
+
+.start-card-body { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.start-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 2.25rem;
+  block-size: 2.25rem;
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-block-end: var(--space-1);
+}
+
+.start-next { margin-block-start: var(--space-4); }
+
+.start-next-list {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.start-next-list li { display: flex; align-items: center; gap: var(--space-3); }
+.start-next-list svg { inline-size: 15px; block-size: 15px; color: var(--ink-faint); }
+
+/* ---- the account a development copy comes with ------------------------------------------------ */
+
+.demo-card {
+  margin-block-start: var(--space-5);
+  padding: var(--space-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.demo-card-title {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.demo-card-rows {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.demo-card-rows dt { color: var(--ink-subtle); }
+.demo-card-rows dd { margin: 0; overflow-wrap: anywhere; }
+
+.demo-card-note { margin: 0; font-size: var(--text-xs); color: var(--ink-subtle); }
+
+.demo-card-more > summary {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.demo-card-list {
+  margin: var(--space-2) 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.demo-card-list li { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; }

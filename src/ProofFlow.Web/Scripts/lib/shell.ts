@@ -473,6 +473,31 @@ export function mountCopyButtons(): void {
   });
 }
 
+/**
+ * Fills the sign-in form with the account a development copy comes with.
+ *
+ * Printed on the page as well as filled in by the button, because the two are for different
+ * moments: reading it is how somebody signs in on their phone, and pressing it is how they get past
+ * a page they have already read nine times today.
+ */
+export function mountDemoFill(): void {
+  document.querySelectorAll<HTMLButtonElement>('button[data-fill-demo]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const [email, password] = (button.dataset.fillDemo ?? '').split('|');
+
+      const emailBox = document.querySelector<HTMLInputElement>('input[name="Email"]');
+      const passwordBox = document.querySelector<HTMLInputElement>('input[name="Password"]');
+
+      if (emailBox) emailBox.value = email ?? '';
+      if (passwordBox) passwordBox.value = password ?? '';
+
+      // Submitted rather than left filled in. The button says «fill it in», and stopping one press
+      // short of the thing somebody wanted is a small unkindness repeated all day.
+      (emailBox ?? passwordBox)?.form?.requestSubmit();
+    });
+  });
+}
+
 export function mountUnsavedGuard(): void {
   document.querySelectorAll<HTMLFormElement>('form[data-guard-unsaved]').forEach((form) => {
     const initial = new FormData(form);

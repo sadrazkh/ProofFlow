@@ -26,6 +26,9 @@ const props = defineProps<{
   environments: LabEnvironment[];
   canRun: boolean;
   canRecordBaseline: boolean;
+
+  /** An address whoever linked here had in mind. Beats what the browser remembered. */
+  url?: string | null;
 }>();
 
 const method = ref('GET');
@@ -228,6 +231,11 @@ const STORAGE_KEY = computed(() => `proofflow-request-${props.projectId}`);
 
 onMounted(() => {
   restore();
+
+  // After restore, deliberately: a link that names an address means that address, and the last one
+  // typed here is the thing being replaced rather than the thing to keep.
+  if (props.url) url.value = props.url;
+
   void loadNames();
 });
 

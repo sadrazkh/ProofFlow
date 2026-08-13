@@ -26,6 +26,7 @@ const ANONYMOUS = [
 ];
 
 const AUTHENTICATED = [
+  { name: 'quick start', path: '/start' },
   { name: 'dashboard', path: '/' },
   { name: 'projects', path: '/projects' },
   { name: 'new project', path: '/projects/new' },

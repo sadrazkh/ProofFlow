@@ -24,6 +24,7 @@ import {
   mountCronPresets,
   mountCopyButtons,
   mountCountdowns,
+  mountDemoFill,
   mountRenames,
 } from './lib/shell';
 
@@ -46,6 +47,7 @@ mountCronPresets();
 mountCopyButtons();
 mountCountdowns();
 mountRenames();
+mountDemoFill();
 // Registered before mounting, which is the only ordering that matters here.
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);

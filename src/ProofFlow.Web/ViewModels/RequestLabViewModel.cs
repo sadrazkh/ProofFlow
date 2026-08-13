@@ -7,6 +7,9 @@ public sealed record RequestLabViewModel
     public required IReadOnlyList<RequestLabEnvironment> Environments { get; init; }
     public bool CanRun { get; init; }
     public bool CanRecordBaseline { get; init; }
+
+    /// <summary>An address to start from, when whoever linked here had one in mind.</summary>
+    public string? Url { get; init; }
 }
 
 /// <summary>

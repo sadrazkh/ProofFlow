@@ -120,3 +120,26 @@ public sealed record WorkspaceSettingsViewModel
 
     public bool HasKey => !string.IsNullOrWhiteSpace(AiKeyPreview);
 }
+
+/// <summary>
+/// The first minute, as one page.
+///
+/// Nullable everywhere it points at something that may not exist yet: a workspace with no projects
+/// and no scenarios is the exact case this page is for, and a model that assumed otherwise would
+/// fall over on the only visit that matters.
+/// </summary>
+public sealed record StartViewModel
+{
+    public Guid? FirstProjectId { get; init; }
+    public string? FirstProjectName { get; init; }
+    public int ProjectCount { get; init; }
+
+    public Guid? FlowId { get; init; }
+    public Guid? FlowProjectId { get; init; }
+    public string? FlowName { get; init; }
+
+    public bool CanCreate { get; init; }
+
+    public bool HasProject => FirstProjectId is not null;
+    public bool HasFlow => FlowId is not null && FlowProjectId is not null;
+}

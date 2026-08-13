@@ -66,27 +66,43 @@ created on first run.
 cd src/ProofFlow.Web && npm install && npm run build && dotnet run
 ```
 
-Then open <http://localhost:5290> and create an account — the first one also creates a workspace.
-There is no seeded password to leak, because there is no seeded account.
+Or open `ProofFlow.slnx` in Visual Studio and press F5. Either way it comes up seeded, on
+<http://localhost:5290>, with the account printed on the sign-in page and a **Quick start** at the
+top of the sidebar — one button there makes a project pointed at the pretend API this application
+serves, so there is something to send a request to before there is anything to configure.
 
-### With demo data
+The one prerequisite is `npm install && npm run build` in `src/ProofFlow.Web`, once. The .NET build
+does not run Vite, so without it the pages render without their stylesheet.
 
-Two settings, and the password is yours to choose — a well-known one that ships in the source is
-the same as no password.
+### The account it comes with
 
-```bash
-dotnet user-secrets set "Demo:Seed" "true" --project src/ProofFlow.Web
 ```
+demo@proofflow.local
+ProofFlow!Demo2026
+```
+
+Development only, and stated on the page itself so nobody has to look it up. Four colleagues share
+the same password — `reviewer@`, `designer@`, `runner@`, `viewer@` — for trying what each role can
+and cannot do.
+
+Anywhere but Development this account does not exist: the password has no default outside
+development, and a seed with no password creates nothing and says so in the log. Choose one
+deliberately if a demo instance is wanted somewhere real:
 
 ```bash
 dotnet user-secrets set "Demo:Password" "<choose one>" --project src/ProofFlow.Web
 ```
 
-The demo account is `demo@proofflow.local`. It arrives with four colleagues, three projects, and one
-scenario that runs: **Add a product, read it back, and clear up** — sign in, keep the token, add a
-product, read a page of them, take an id out of the list, read that one, and delete what it added.
-Twelve steps and five checks, against the fake API this repository serves, so it passes as often as
-you press Run.
+Turning it off entirely:
+
+```bash
+dotnet user-secrets set "Demo:Seed" "false" --project src/ProofFlow.Web
+```
+
+It arrives with three projects and one scenario that runs: **Add a product, read it back, and clear
+up** — sign in, keep the token, add a product, read a page of them, take an id out of the list, read
+that one, and delete what it added. Twelve steps and five checks, against the fake API this
+repository serves, so it passes as often as you press Run.
 
 ### Against PostgreSQL
 

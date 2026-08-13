@@ -55,3 +55,7 @@
         @T["auth.noAccount"] <a href="/account/sign-up">@T["action.signUp"]</a>
     </p>
 </form>
+
+@* Under the form, not above it: somebody with their own account should not have to read past a
+   box that is not for them. *@
+<partial name="Pieces/_DemoCredentials" />

@@ -1,0 +1,128 @@
+@model StartViewModel
+
+@*
+    Three doors and a list, in the order somebody would actually take them.
+
+    The sandbox first, because it is the only one that needs nothing: no address, no credentials, no
+    decision. Then their own API, then whatever they already have in Postman. The demo test comes
+    last of the four because reading one is worth more once there is something of your own to
+    compare it to.
+*@
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["demo.start"]</h1>
+        <p class="page-subtitle">@T["demo.start.subtitle"]</p>
+    </div>
+</div>
+
+<div class="start-grid">
+    <section class="card start-card is-first">
+        <div class="start-card-body">
+            <span class="start-card-icon"><i data-lucide="flask-conical" aria-hidden="true"></i></span>
+            <h2 class="card-title">@T["demo.sandbox.title"]</h2>
+            <p class="section-help">@T["demo.sandbox.body"]</p>
+        </div>
+
+        @if (Model.CanCreate)
+        {
+            <form method="post" action="/start/sandbox">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i data-lucide="zap" aria-hidden="true"></i>@T["demo.sandbox.action"]
+                </button>
+            </form>
+        }
+    </section>
+
+    <section class="card start-card">
+        <div class="start-card-body">
+            <span class="start-card-icon"><i data-lucide="globe" aria-hidden="true"></i></span>
+            <h2 class="card-title">@T["demo.own.title"]</h2>
+            <p class="section-help">@T["demo.own.body"]</p>
+        </div>
+
+        @if (Model.HasProject)
+        {
+            <a class="btn btn-secondary btn-block" href="/projects/@Model.FirstProjectId/environments">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["demo.own.action"]
+            </a>
+        }
+        else
+        {
+            <a class="btn btn-secondary btn-block" href="/projects">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["project.new"]
+            </a>
+        }
+    </section>
+
+    <section class="card start-card">
+        <div class="start-card-body">
+            <span class="start-card-icon"><i data-lucide="upload" aria-hidden="true"></i></span>
+            <h2 class="card-title">@T["demo.postman.title"]</h2>
+            <p class="section-help">@T["demo.postman.body"]</p>
+        </div>
+
+        @if (Model.HasProject)
+        {
+            <a class="btn btn-secondary btn-block"
+               href="/projects/@Model.FirstProjectId/import?source=postman">
+                <i data-lucide="upload" aria-hidden="true"></i>@T["demo.postman.action"]
+            </a>
+        }
+    </section>
+
+    @if (Model.HasFlow)
+    {
+        <section class="card start-card">
+            <div class="start-card-body">
+                <span class="start-card-icon"><i data-lucide="workflow" aria-hidden="true"></i></span>
+                <h2 class="card-title">@T["demo.flow.title"]</h2>
+                <p class="section-help">@T["demo.flow.body"]</p>
+            </div>
+
+            <a class="btn btn-secondary btn-block"
+               href="/projects/@Model.FlowProjectId/scenarios/@Model.FlowId">
+                <i data-lucide="workflow" aria-hidden="true"></i>@T["demo.flow.action"]
+            </a>
+        </section>
+    }
+</div>
+
+@*
+    What the rest of the sidebar is for, in one list rather than eleven entries.
+
+    Each line goes somewhere only when there is a project to go to — before that, they are the shape
+    of what is coming rather than links that land on an empty page.
+*@
+<section class="card start-next">
+    <h2 class="card-title">@T["demo.next.title"]</h2>
+
+    <ol class="start-next-list">
+        @{
+            var steps = new (string Key, string Icon, string? Href)[]
+            {
+                ("demo.next.request", "send", Model.HasProject ? $"/projects/{Model.FirstProjectId}/request" : null),
+                ("demo.next.baseline", "target", Model.HasProject ? $"/projects/{Model.FirstProjectId}/baselines" : null),
+                ("demo.next.canvas", "workflow", Model.HasProject ? $"/projects/{Model.FirstProjectId}/scenarios" : null),
+                ("demo.next.schedule", "calendar-clock", Model.HasProject ? $"/projects/{Model.FirstProjectId}/schedules" : null),
+                ("demo.next.ci", "server", Model.HasProject ? $"/projects/{Model.FirstProjectId}/settings" : null),
+            };
+        }
+
+        @foreach (var step in steps)
+        {
+            <li>
+                <i data-lucide="@step.Icon" aria-hidden="true"></i>
+                @if (step.Href is not null)
+                {
+                    <a href="@step.Href">@T[step.Key]</a>
+                }
+                else
+                {
+                    <span class="subtle">@T[step.Key]</span>
+                }
+            </li>
+        }
+    </ol>
+</section>

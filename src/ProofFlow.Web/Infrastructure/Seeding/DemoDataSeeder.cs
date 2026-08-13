@@ -32,6 +32,7 @@ public sealed class DemoDataSeeder(
     UserManager<ProofFlowUser> users,
     ISecretCipher cipher,
     ScenarioGraphService graphs,
+    DemoAccount account,
     IConfiguration configuration,
     IClock clock,
     ILogger<DemoDataSeeder> logger)
@@ -40,7 +41,7 @@ public sealed class DemoDataSeeder(
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
-        if (!configuration.GetValue("Demo:Seed", false)) return;
+        if (!account.Seeds) return;
 
         if (await db.Users.AnyAsync(cancellationToken))
         {
@@ -48,11 +49,13 @@ public sealed class DemoDataSeeder(
             return;
         }
 
-        var password = configuration["Demo:Password"];
+        var password = account.Password;
         if (string.IsNullOrWhiteSpace(password))
         {
-            // No default. A well-known password that ships in the source is the same as no
-            // password, and the first demo instance left on a public address proves it.
+            // Outside development there is no default. A well-known password that ships in the
+            // source is the same as no password, and the first demo instance left on a public
+            // address proves it. In development there is one, and the sign-in page prints it,
+            // because the cost of that is a machine somebody is sitting at.
             logger.LogWarning(
                 "Demo:Seed is on but Demo:Password is empty, so no demo account was created. " +
                 "Set Demo:Password (user-secrets or environment) to seed one.");

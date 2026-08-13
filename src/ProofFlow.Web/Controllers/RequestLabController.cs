@@ -40,7 +40,8 @@ public sealed class RequestLabController(
 {
     [HttpGet("")]
     [Authorize(Policy = Policies.ViewProject)]
-    public async Task<IActionResult> Index(Guid projectId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        Guid projectId, string? url, CancellationToken cancellationToken)
     {
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
         if (project is null) return NotFound();
@@ -68,6 +69,10 @@ public sealed class RequestLabController(
             // Checked here as well as on the endpoint. The button is hidden for somebody who
             // cannot record one, because a control that always fails is worse than no control.
             CanRecordBaseline = me.Can(Capability.RecordBaseline),
+
+            // An address handed over in the link, for the places that send somebody here with one
+            // in mind. It only wins over what the browser remembered when it is actually given.
+            Url = url,
         });
     }
 

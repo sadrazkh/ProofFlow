@@ -176,6 +176,7 @@ builder.Services.AddSingleton<PublicLinks>();
 builder.Services.AddScoped<AccountMail>();
 
 builder.Services.AddScoped<WorkspaceContextFilter>();
+builder.Services.AddSingleton<ProofFlow.Web.Infrastructure.Seeding.DemoAccount>();
 builder.Services.AddScoped<ProofFlow.Web.Infrastructure.Seeding.DemoDataSeeder>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<ComparisonScratch>();
