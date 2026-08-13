@@ -1,0 +1,103 @@
+@model EndpointFormViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["endpoint.define"]</h1>
+        <p class="page-subtitle">@T["endpoint.define.help"]</p>
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/endpoints">
+            <i data-lucide="arrow-left" class="icon-forward" aria-hidden="true"></i>@T["action.cancel"]
+        </a>
+    </div>
+</div>
+
+<div class="page-narrow">
+    <form method="post" action="/projects/@Model.ProjectId/endpoints/new" class="card">
+        @Html.AntiForgeryToken()
+
+        <div class="card-body stack">
+            <div class="field">
+                <label class="field-label" for="Name">@T["common.name"]</label>
+                <input class="input" id="Name" name="Name" dir="auto" value="@Model.Name"
+                       aria-describedby="Name-error" required />
+                <partial name="Pieces/_FieldError" model="@nameof(EndpointFormViewModel.Name)" />
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="Description">
+                    @T["common.description"]
+                    <span class="field-optional">@T["common.optional"]</span>
+                </label>
+                <textarea class="textarea" id="Description" name="Description" dir="auto"
+                          rows="2">@Model.Description</textarea>
+            </div>
+
+            <div class="endpoint-request-form">
+                <div class="field">
+                    <label class="field-label" for="Method">@T["request.method"]</label>
+                    <select class="select method-chip" id="Method" name="Method"
+                            data-tone="@MethodTone.For(Model.Method)">
+                        @foreach (var verb in EndpointFormViewModel.Methods)
+                        {
+                            <option value="@verb" selected="@(verb == Model.Method)">@verb</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="field grow">
+                    <label class="field-label" for="Url">@T["request.url"]</label>
+                    <input class="input input-mono" id="Url" name="Url" dir="ltr" value="@Model.Url"
+                           placeholder="{{environment.baseUrl}}/records/{{dataset.current.id}}"
+                           aria-describedby="Url-error" required />
+                    <partial name="Pieces/_FieldError" model="@nameof(EndpointFormViewModel.Url)" />
+                </div>
+            </div>
+
+            @* The one thing this form knows that a plain «new» form would not: an address with
+               {{dataset.current.…}} in it is the reason this page exists rather than the request
+               lab, so it is said here instead of left to be discovered by a failing send. *@
+            <p class="field-hint">@T["endpoint.define.reference"]</p>
+
+            <div class="field">
+                <label class="field-label" for="EnvironmentId">@T["environment.title"]</label>
+                <select class="select" id="EnvironmentId" name="EnvironmentId">
+                    <option value="">@T["common.none"]</option>
+                    @foreach (var environment in Model.Environments)
+                    {
+                        <option value="@environment.Id" selected="@(environment.Id == Model.EnvironmentId)">
+                            @environment.Name
+                        </option>
+                    }
+                </select>
+            </div>
+
+            <div class="field">
+                <label class="field-label" for="DataSetId">@T["endpoint.inputs.which"]</label>
+                <select class="select" id="DataSetId" name="DataSetId">
+                    <option value="">@T["endpoint.inputs.once"]</option>
+                    @foreach (var set in Model.DataSets)
+                    {
+                        <option value="@set.Id" selected="@(set.Id == Model.DataSetId)">
+                            @set.Name — @T["endpoint.inputs.rows", set.RowCount]
+                        </option>
+                    }
+                </select>
+                @if (Model.DataSets.Count == 0)
+                {
+                    <p class="field-hint">
+                        @T["endpoint.inputs.none"]
+                        <a href="/projects/@Model.ProjectId/datasets/new">@T["dataset.new"]</a>
+                    </p>
+                }
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <a class="btn btn-ghost" href="/projects/@Model.ProjectId/endpoints">@T["action.cancel"]</a>
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["endpoint.define"]
+            </button>
+        </div>
+    </form>
+</div>

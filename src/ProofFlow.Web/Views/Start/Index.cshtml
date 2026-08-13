@@ -103,7 +103,7 @@
             var steps = new (string Key, string Icon, string? Href)[]
             {
                 ("demo.next.request", "send", Model.HasProject ? $"/projects/{Model.FirstProjectId}/request" : null),
-                ("demo.next.baseline", "target", Model.HasProject ? $"/projects/{Model.FirstProjectId}/baselines" : null),
+                ("demo.next.baseline", "target", Model.HasProject ? $"/projects/{Model.FirstProjectId}/endpoints" : null),
                 ("demo.next.canvas", "workflow", Model.HasProject ? $"/projects/{Model.FirstProjectId}/scenarios" : null),
                 ("demo.next.schedule", "calendar-clock", Model.HasProject ? $"/projects/{Model.FirstProjectId}/schedules" : null),
                 ("demo.next.ci", "server", Model.HasProject ? $"/projects/{Model.FirstProjectId}/settings" : null),

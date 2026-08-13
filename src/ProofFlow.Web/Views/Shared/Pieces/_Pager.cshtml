@@ -1,0 +1,101 @@
+@model Paging
+
+@*
+    Moving between pages, and saying where you are while you do it.
+
+    Numbered links rather than only «next» and «previous», because the question a long list gets
+    asked is «is there much more of this», and two arrows answer it with «maybe». The count says it
+    outright: 26–50 of 1,262.
+
+    The window is five pages wide and slides, with the first and last always reachable. A control
+    that lists all fifty-one pages is a control that wraps onto three lines and is harder to read
+    than the table it belongs to.
+*@
+
+@{
+    var last = Model.LastPage;
+    var from = Math.Max(1, Math.Min(Model.Page - 2, last - 4));
+    var to = Math.Min(last, from + 4);
+}
+
+@if (last > 1)
+{
+    <nav class="pager" aria-label="@T["paging.label"]">
+        <p class="pager-count subtle text-xs">
+            @T["paging.showing", Model.From, Model.To, Model.Total]
+        </p>
+
+        <ul class="pager-list">
+            <li>
+                @if (Model.HasPrevious)
+                {
+                    <a class="pager-link" href="@Model.Link(Model.Page - 1)" rel="prev"
+                       aria-label="@T["paging.previous"]">
+                        <i data-lucide="chevron-left" class="icon-forward" aria-hidden="true"></i>
+                    </a>
+                }
+                else
+                {
+                    @* Present but inert, so the row does not shift sideways on the first page. *@
+                    <span class="pager-link is-disabled" aria-hidden="true">
+                        <i data-lucide="chevron-left" class="icon-forward"></i>
+                    </span>
+                }
+            </li>
+
+            @if (from > 1)
+            {
+                <li><a class="pager-link" href="@Model.Link(1)">1</a></li>
+                @if (from > 2)
+                {
+                    <li><span class="pager-gap" aria-hidden="true">…</span></li>
+                }
+            }
+
+            @for (var number = from; number <= to; number++)
+            {
+                <li>
+                    @if (number == Model.Page)
+                    {
+                        <span class="pager-link is-current" aria-current="page">@number</span>
+                    }
+                    else
+                    {
+                        <a class="pager-link" href="@Model.Link(number)">@number</a>
+                    }
+                </li>
+            }
+
+            @if (to < last)
+            {
+                @if (to < last - 1)
+                {
+                    <li><span class="pager-gap" aria-hidden="true">…</span></li>
+                }
+                <li><a class="pager-link" href="@Model.Link(last)">@last</a></li>
+            }
+
+            <li>
+                @if (Model.HasNext)
+                {
+                    <a class="pager-link" href="@Model.Link(Model.Page + 1)" rel="next"
+                       aria-label="@T["paging.next"]">
+                        <i data-lucide="chevron-right" class="icon-forward" aria-hidden="true"></i>
+                    </a>
+                }
+                else
+                {
+                    <span class="pager-link is-disabled" aria-hidden="true">
+                        <i data-lucide="chevron-right" class="icon-forward"></i>
+                    </span>
+                }
+            </li>
+        </ul>
+    </nav>
+}
+else if (Model.Total > 0)
+{
+    @* One page, so no links — but the count still earns its place: «7 of 7» is the difference
+       between a short list and a list that has been filtered down to seven without saying so. *@
+    <p class="pager-count subtle text-xs">@T["paging.total", Model.Total]</p>
+}

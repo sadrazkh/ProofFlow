@@ -239,7 +239,10 @@ public sealed class CaptureService(
         if (!approved.TryGetValue(row.Key, out var baseline))
         {
             // Nothing to differ from. In a capture this is the ordinary case; in a regression it
-            // means the set grew, which is worth seeing rather than counting as a pass.
+            // means the set grew, which is worth seeing rather than counting as a pass — and it
+            // used to be counted as one, because nothing here incremented anything and «passed»
+            // is derived from what is left over.
+            session.Unmatched++;
             return sample;
         }
 

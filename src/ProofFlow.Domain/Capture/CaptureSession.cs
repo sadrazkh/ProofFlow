@@ -58,6 +58,20 @@ public class CaptureSession : Entity, IWorkspaceOwned
     /// <summary>Samples where the request itself never completed — a timeout, a refusal, a 500.</summary>
     public int Failed { get; set; }
 
+    /// <summary>
+    /// Samples with no approved answer to compare against.
+    ///
+    /// Ordinary in a capture — that is what a capture is for. In a regression it means the set of
+    /// inputs grew since anybody last approved anything, and those rows have not been checked
+    /// against anything at all.
+    ///
+    /// Counted because it was not, and the omission was a lie by arithmetic: with «passed» derived
+    /// as completed minus differing minus failed, twelve rows nobody had ever approved reported as
+    /// «all 12 passed». A green result for a test that compared nothing is the one output this
+    /// product must never produce.
+    /// </summary>
+    public int Unmatched { get; set; }
+
     public DateTimeOffset StartedAt { get; set; }
 
     public DateTimeOffset? FinishedAt { get; set; }

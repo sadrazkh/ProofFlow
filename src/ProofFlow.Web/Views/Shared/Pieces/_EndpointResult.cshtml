@@ -1,0 +1,62 @@
+@model EndpointLastResult
+
+@*
+    How the last test went, in one line.
+
+    Four numbers rather than a verdict, because "failed" hides the shape of the failure: two
+    hundred inputs where one differs is a different morning from two hundred where a hundred and
+    ninety failed to connect. The zeroes are not drawn — a row that says «198 passed» is read
+    faster than one that says «198 passed · 0 differ · 0 failed», and the absence carries the same
+    news.
+
+    «Not checked» is the fourth, and it is the one that was missing. A row with no approved answer
+    was compared against nothing and counted as a pass, so twelve brand-new inputs reported as
+    «all 12 passed».
+
+    Colour is never alone here: each number keeps its word.
+*@
+
+<span class="row" style="gap: var(--space-2); flex-wrap: wrap;">
+    @if (Model.Total == 0)
+    {
+        <span class="subtle text-xs">@T["endpoint.result.empty"]</span>
+    }
+    else
+    {
+        @if (Model.Passed > 0)
+        {
+            <span class="status status-pass">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="tabular">@Model.Passed</span>&nbsp;@T["endpoint.result.passed"]
+            </span>
+        }
+
+        @if (Model.Differing > 0)
+        {
+            <span class="status status-warn">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="tabular">@Model.Differing</span>&nbsp;@T["endpoint.result.differ"]
+            </span>
+        }
+
+        @if (Model.Failed > 0)
+        {
+            <span class="status status-fail">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="tabular">@Model.Failed</span>&nbsp;@T["endpoint.result.failed"]
+            </span>
+        }
+
+        @if (Model.Unmatched > 0)
+        {
+            <span class="status status-idle">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="tabular">@Model.Unmatched</span>&nbsp;@T["endpoint.result.unchecked"]
+            </span>
+        }
+    }
+
+    <span class="subtle text-xs">
+        <partial name="Pieces/_Timestamp" model="@(new TimestampView(Model.When))" />
+    </span>
+</span>

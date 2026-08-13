@@ -82,7 +82,7 @@ async function ensureEnvironment(page: Page, projectId: string): Promise<void> {
 
 /** Sends a request and records the response as a baseline, through the interface. */
 async function ensureBaseline(page: Page, projectId: string): Promise<void> {
-  await page.goto(`${BASE}/projects/${projectId}/baselines`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/projects/${projectId}/endpoints`, { waitUntil: 'networkidle' });
 
   if (await page.getByRole('link', { name: BASELINE_NAME, exact: true }).count() > 0) {
     console.log('Baseline already present.');
@@ -107,7 +107,7 @@ async function ensureBaseline(page: Page, projectId: string): Promise<void> {
   await page.locator('[role="dialog"] input').first().fill(BASELINE_NAME);
   await page.locator('[role="dialog"] .btn-primary').click();
 
-  await page.waitForURL(/\/baselines\/[0-9a-f-]+$/i, { timeout: 20_000 });
+  await page.waitForURL(/\/endpoints\/[0-9a-f-]+$/i, { timeout: 20_000 });
   console.log('Baseline captured.');
 }
 
@@ -118,7 +118,7 @@ async function ensureBaseline(page: Page, projectId: string): Promise<void> {
  * summary bar with counts in it, the suggestion list, and an accept decision waiting to be made.
  */
 async function compareOnce(page: Page, projectId: string): Promise<string> {
-  await page.goto(`${BASE}/projects/${projectId}/baselines`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/projects/${projectId}/endpoints`, { waitUntil: 'networkidle' });
   const href = await page.getByRole('link', { name: BASELINE_NAME, exact: true }).first()
     .getAttribute('href');
 

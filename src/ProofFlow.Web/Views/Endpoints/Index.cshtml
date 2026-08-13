@@ -1,0 +1,146 @@
+@model EndpointListViewModel
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@T["nav.endpoints"]</h1>
+        <p class="page-subtitle">@T["endpoint.subtitle"]</p>
+    </div>
+    @if (Model.CanRecord)
+    {
+        <div class="page-actions">
+            <a class="btn btn-ghost" href="/projects/@Model.ProjectId/import?source=postman">
+                <i data-lucide="upload" aria-hidden="true"></i>Postman
+            </a>
+            @* Two doors, and which one somebody uses depends on whether their address can be sent
+               as it stands. One with {{dataset.current.…}} in it cannot, and the lab would only
+               refuse it. *@
+            <a class="btn btn-secondary" href="/projects/@Model.ProjectId/endpoints/new">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["endpoint.define"]
+            </a>
+            <a class="btn btn-primary" href="/projects/@Model.ProjectId/request">
+                <i data-lucide="send" aria-hidden="true"></i>@T["endpoint.new"]
+            </a>
+        </div>
+    }
+</div>
+
+@if (Model.Endpoints.Count == 0)
+{
+    @* An endpoint is recorded from a response, not typed into a form, so the empty state points at
+       the place responses come from rather than offering a "new" button that would open a form
+       with nothing to put in it. *@
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="target" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["endpoint.empty.title"]</h2>
+            <p class="empty-body">@T["endpoint.empty.body"]</p>
+            @if (Model.CanRecord)
+            {
+                <div class="empty-actions">
+                    <a class="btn btn-primary" href="/projects/@Model.ProjectId/request">
+                        <i data-lucide="send" aria-hidden="true"></i>@T["endpoint.empty.action"]
+                    </a>
+                    <a class="btn btn-secondary" href="/projects/@Model.ProjectId/import?source=postman">
+                        <i data-lucide="upload" aria-hidden="true"></i>@T["endpoint.empty.import"]
+                    </a>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="table-wrap">
+            <table class="table table-hover">
+                <caption class="sr-only">@T["nav.endpoints"]</caption>
+                <thead>
+                <tr>
+                    <th>@T["common.name"]</th>
+                    <th>@T["endpoint.request"]</th>
+                    <th>@T["environment.title"]</th>
+                    <th class="numeric">@T["endpoint.inputs"]</th>
+                    <th>@T["endpoint.lastResult"]</th>
+                    <th>@T["common.updated"]</th>
+                </tr>
+                </thead>
+                <tbody>
+                @foreach (var endpoint in Model.Endpoints)
+                {
+                    @* Whether there is an approved answer, on the row itself. It decides what the
+                       Test button can do, and after an import there are hundreds of endpoints in
+                       exactly this state — a request that has been brought over and never run. *@
+                    <tr data-approved="@(endpoint.LatestStatus == BaselineStatus.Approved ? "true" : "false")">
+                        <td>
+                            <a href="/projects/@Model.ProjectId/endpoints/@endpoint.Id" dir="auto">
+                                @endpoint.Name
+                            </a>
+                            @if (endpoint.VersionCount == 0)
+                            {
+                                <span class="badge badge-idle">@T["endpoint.noAnswer"]</span>
+                            }
+                            else if (endpoint.LatestStatus != BaselineStatus.Approved)
+                            {
+                                <span class="badge @BaselineStatusTone.For(endpoint.LatestStatus)">
+                                    @T[$"baseline.status.{endpoint.LatestStatus}"]
+                                </span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(endpoint.Description))
+                            {
+                                <p class="text-xs subtle truncate" dir="auto"
+                                   style="max-inline-size: 42ch;">@endpoint.Description</p>
+                            }
+                        </td>
+                        <td>
+                            @* Forced left-to-right: a path is not a sentence, and in a Persian page
+                               «GET /products/{id}» otherwise renders with the method on the wrong end. *@
+                            <span class="endpoint-request" dir="ltr">
+                                <span class="method-chip" data-tone="@MethodTone.For(endpoint.Method)">
+                                    @endpoint.Method
+                                </span>
+                                <code class="endpoint-path truncate">@endpoint.Url</code>
+                            </span>
+                        </td>
+                        <td>
+                            @if (endpoint.EnvironmentName is { } environmentName)
+                            {
+                                <span dir="auto">@environmentName</span>
+                            }
+                            else
+                            {
+                                @* Not "0" and not blank: it genuinely is not tied to one. *@
+                                <span class="subtle">@T["common.none"]</span>
+                            }
+                        </td>
+                        <td class="numeric">
+                            @if (endpoint.InputCount > 0)
+                            {
+                                <span class="tabular">@endpoint.InputCount</span>
+                            }
+                            else
+                            {
+                                <span class="subtle text-xs">@T["endpoint.once"]</span>
+                            }
+                        </td>
+                        <td>
+                            @if (endpoint.Last is { } last)
+                            {
+                                <partial name="Pieces/_EndpointResult" model="last" />
+                            }
+                            else
+                            {
+                                <span class="subtle text-xs">@T["endpoint.neverTested"]</span>
+                            }
+                        </td>
+                        <td>
+                            <partial name="Pieces/_Timestamp" model="@(new TimestampView(endpoint.UpdatedAt))" />
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <partial name="Pieces/_Pager" model="Model.Page" />
+}

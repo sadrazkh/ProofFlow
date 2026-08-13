@@ -8,6 +8,12 @@
     @if (Model.CanEdit)
     {
         <div class="page-actions">
+            @* Templates live here rather than in the sidebar. They are one of the three ways to
+               get a scenario — start from nothing, start from a template, or bring one over — and
+               a destination of their own put a shop window between somebody and their work. *@
+            <a class="btn btn-ghost" href="/projects/@Model.ProjectId/templates">
+                <i data-lucide="square-stack" aria-hidden="true"></i>@T["template.title"]
+            </a>
             @* Beside «new», because bringing a collection over is the other way to get a first one. *@
             <a class="btn btn-secondary" href="/projects/@Model.ProjectId/import?source=postman">
                 <i data-lucide="upload" aria-hidden="true"></i>@T["portability.source.postman"]

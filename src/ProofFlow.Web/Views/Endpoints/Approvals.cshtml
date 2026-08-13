@@ -45,7 +45,7 @@ else
                     {
                         <tr>
                             <td>
-                                <a href="/projects/@Model.ProjectId/baselines/@version.BaselineId" dir="auto">
+                                <a href="/projects/@Model.ProjectId/endpoints/@version.BaselineId" dir="auto">
                                     @version.BaselineName
                                 </a>
                                 <span class="badge badge-idle tabular" dir="ltr">v@(version.Number)</span>
@@ -76,7 +76,7 @@ else
                                 {
                                     <div class="row">
                                         <form method="post"
-                                              action="/projects/@Model.ProjectId/baselines/@version.BaselineId/versions/@version.VersionId/approve">
+                                              action="/projects/@Model.ProjectId/endpoints/@version.BaselineId/versions/@version.VersionId/approve">
                                             @Html.AntiForgeryToken()
                                             <button type="submit" class="btn btn-secondary btn-sm">
                                                 <i data-lucide="check" aria-hidden="true"></i>@T["approval.approve"]
@@ -84,7 +84,7 @@ else
                                         </form>
 
                                         <a class="btn btn-ghost btn-sm"
-                                           href="/projects/@Model.ProjectId/baselines/@version.BaselineId">
+                                           href="/projects/@Model.ProjectId/endpoints/@version.BaselineId">
                                             @T["approval.look"]
                                         </a>
                                     </div>
@@ -92,7 +92,7 @@ else
                                 else
                                 {
                                     <a class="btn btn-ghost btn-sm"
-                                       href="/projects/@Model.ProjectId/baselines/@version.BaselineId">
+                                       href="/projects/@Model.ProjectId/endpoints/@version.BaselineId">
                                         @T["approval.look"]
                                     </a>
                                 }
@@ -160,8 +160,11 @@ else
                             </td>
                             <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(session.StartedAt))" /></td>
                             <td>
+                                @* To the endpoint the sweep belongs to, at the section that shows
+                                   what it found. There is no page for a capture session any more,
+                                   and there should not be: a sweep is something an endpoint did. *@
                                 <a class="btn btn-secondary btn-sm"
-                                   href="/projects/@Model.ProjectId/captures/@session.SessionId">
+                                   href="/projects/@Model.ProjectId/endpoints/@session.BaselineId#test">
                                     @T["approval.review"]
                                 </a>
                             </td>

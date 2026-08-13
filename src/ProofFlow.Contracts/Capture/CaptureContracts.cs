@@ -46,6 +46,9 @@ public sealed record CaptureSessionDto
     public required int TotalRows { get; init; }
     public required int Completed { get; init; }
     public required int Differing { get; init; }
+
+    /// <summary>Rows with no approved answer to compare against — checked by nothing.</summary>
+    public int Unmatched { get; init; }
     public required int Failed { get; init; }
     public string? StoppedReason { get; init; }
 

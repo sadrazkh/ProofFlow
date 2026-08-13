@@ -84,7 +84,7 @@ async function open(canReview = true) {
   // document, so a component left mounted by an earlier test still answers `a` and approves things
   // in a test that never pressed anything.
   const queue = mount(ReviewQueue, {
-    props: { projectId: 'p', sessionId: 's', canReview },
+    props: { base: '/projects/p/endpoints/e/tests/s', canReview },
     attachTo: document.body,
   });
 

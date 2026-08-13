@@ -368,7 +368,7 @@ async function saveBaseline(): Promise<void> {
 
   try {
     const created = await api.post<{ url: string }>(
-      `/projects/${props.projectId}/baselines/capture`,
+      `/projects/${props.projectId}/endpoints/capture`,
       {
         name: capture.value.name,
         description: capture.value.description || null,

@@ -9,8 +9,7 @@ import { island, mountIslands } from './lib/islands';
 import RequestLab from './islands/RequestLab.vue';
 import BaselineWorkbench from './islands/BaselineWorkbench.vue';
 import DataSetEditor from './islands/DataSetEditor.vue';
-import ReviewQueue from './islands/ReviewQueue.vue';
-import RegressionWizard from './islands/RegressionWizard.vue';
+import EndpointTest from './islands/EndpointTest.vue';
 import ScenarioCanvas from './islands/ScenarioCanvas.vue';
 import RunConsole from './islands/RunConsole.vue';
 import EnvironmentMatrix from './islands/EnvironmentMatrix.vue';
@@ -58,8 +57,9 @@ mountBusyForms();
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);
 island('dataset-editor', DataSetEditor);
-island('review-queue', ReviewQueue);
-island('regression-wizard', RegressionWizard);
+// The review queue is no longer an island of its own: it is what the test section renders once a
+// test has run, and reaching it meant knowing which capture session to open.
+island('endpoint-test', EndpointTest);
 island('scenario-canvas', ScenarioCanvas);
 island('run-console', RunConsole);
 island('environment-matrix', EnvironmentMatrix);

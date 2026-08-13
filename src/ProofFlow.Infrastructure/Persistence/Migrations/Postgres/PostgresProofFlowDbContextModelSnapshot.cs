@@ -167,6 +167,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<Guid>("CreatedByUserId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("DataSetId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Description")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -192,6 +195,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DataSetId");
 
                     b.HasIndex("EnvironmentId");
 
@@ -526,6 +531,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("character varying(1000)");
 
                     b.Property<int>("TotalRows")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Unmatched")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
@@ -2163,6 +2171,11 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 
             modelBuilder.Entity("ProofFlow.Domain.Baselines.Baseline", b =>
                 {
+                    b.HasOne("ProofFlow.Domain.Data.DataSet", "DataSet")
+                        .WithMany()
+                        .HasForeignKey("DataSetId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
                         .WithMany()
                         .HasForeignKey("EnvironmentId");
@@ -2172,6 +2185,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasForeignKey("ProjectId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("DataSet");
 
                     b.Navigation("Environment");
 

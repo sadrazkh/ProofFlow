@@ -15,6 +15,14 @@ public sealed class BaselineConfiguration : IEntityTypeConfiguration<Baseline>
         builder.HasIndex(b => new { b.WorkspaceId, b.ProjectId, b.Name }).IsUnique();
         builder.HasIndex(b => new { b.ProjectId, b.EnvironmentId });
 
+        // SetNull rather than Cascade: deleting a set of inputs must not delete the endpoints that
+        // were checked against it. What is lost is the pairing, and the endpoint goes back to
+        // «run it once» — which is recoverable by choosing another set, unlike the alternative.
+        builder.HasOne(b => b.DataSet)
+            .WithMany()
+            .HasForeignKey(b => b.DataSetId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         builder.HasMany(b => b.Versions)
             .WithOne(v => v.Baseline!)
             .HasForeignKey(v => v.BaselineId)

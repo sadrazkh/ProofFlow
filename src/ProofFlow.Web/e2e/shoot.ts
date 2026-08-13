@@ -65,11 +65,9 @@ const PAGES: Target[] = [
 const PROJECT_PAGES: { name: string; path: (projectId: string) => string }[] = [
   { name: 'environments', path: (id) => `/projects/${id}/environments` },
   { name: 'request', path: (id) => `/projects/${id}/request` },
-  { name: 'baselines', path: (id) => `/projects/${id}/baselines` },
+  { name: 'endpoints', path: (id) => `/projects/${id}/endpoints` },
   { name: 'datasets', path: (id) => `/projects/${id}/datasets` },
   { name: 'dataset-new', path: (id) => `/projects/${id}/datasets/new` },
-  { name: 'captures', path: (id) => `/projects/${id}/captures` },
-  { name: 'wizard', path: (id) => `/projects/${id}/wizard` },
   { name: 'scenarios', path: (id) => `/projects/${id}/scenarios` },
   { name: 'runs', path: (id) => `/projects/${id}/runs` },
   { name: 'matrix', path: (id) => `/projects/${id}/matrix` },
@@ -147,8 +145,8 @@ async function establishSession(browser: Browser): Promise<
   let baselinePath: string | null = null;
 
   if (projectId) {
-    await page.goto(`${BASE}/projects/${projectId}/baselines`, { waitUntil: 'networkidle' });
-    baselinePath = await page.locator('td a[href*="/baselines/"]').first()
+    await page.goto(`${BASE}/projects/${projectId}/endpoints`, { waitUntil: 'networkidle' });
+    baselinePath = await page.locator('td a[href*="/endpoints/"]').first()
       .getAttribute('href').catch(() => null);
   }
 

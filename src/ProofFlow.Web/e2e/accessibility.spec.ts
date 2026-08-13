@@ -43,11 +43,9 @@ const AUTHENTICATED = [
 const PROJECT_PAGES = [
   { name: 'environments', path: (id: string) => `/projects/${id}/environments` },
   { name: 'request lab', path: (id: string) => `/projects/${id}/request` },
-  { name: 'baselines', path: (id: string) => `/projects/${id}/baselines` },
+  { name: 'endpoints', path: (id: string) => `/projects/${id}/endpoints` },
   { name: 'data sets', path: (id: string) => `/projects/${id}/datasets` },
   { name: 'new data set', path: (id: string) => `/projects/${id}/datasets/new` },
-  { name: 'captures', path: (id: string) => `/projects/${id}/captures` },
-  { name: 'wizard', path: (id: string) => `/projects/${id}/wizard` },
   { name: 'scenarios', path: (id: string) => `/projects/${id}/scenarios` },
   { name: 'runs', path: (id: string) => `/projects/${id}/runs` },
   { name: 'matrix', path: (id: string) => `/projects/${id}/matrix` },
@@ -253,15 +251,16 @@ for (const theme of ['light', 'dark'] as const) {
         const id = await firstProject(page);
         expect(id, 'the demo seed should have created a project').not.toBeNull();
 
-        await page.goto(`${BASE}/projects/${id}/baselines`, { waitUntil: 'networkidle' });
+        await page.goto(`${BASE}/projects/${id}/endpoints`, { waitUntil: 'networkidle' });
 
-        // A baseline defined for sample-based work has no approved whole-response version, so its
+        // An endpoint defined for sample-based work has no approved whole-response version, so its
         // Compare button is correctly disabled — auditing that one would measure an empty screen.
-        const href = await page.locator('tr', { has: page.locator('.badge-pass') })
-          .locator('a[href*="/baselines/"]').first()
+        // The row says which it is, so this asks rather than guessing from a status colour.
+        const href = await page.locator('tr[data-approved="true"]')
+          .locator('a[href*="/endpoints/"]').first()
           .getAttribute('href').catch(() => null);
 
-        test.skip(!href, 'No baseline with an approved version. Run e2e/demo.ts first.');
+        test.skip(!href, 'No endpoint with an approved version. Run e2e/demo.ts first.');
 
         await page.goto(`${BASE}${href}`, { waitUntil: 'networkidle' });
         await assertOn(page, href!);
@@ -279,9 +278,10 @@ for (const theme of ['light', 'dark'] as const) {
       /**
        * The review queue with samples in it.
        *
-       * Loading the capture list and auditing that would measure a table of links. The queue is the
-       * dense part — six status tones, a selection model, a diff beside it — and it only exists
-       * once a sweep has run, so this one finds a session and refuses to report if it is empty.
+       * It no longer has a page of its own — it is the bottom half of an endpoint, once that
+       * endpoint has been tested. That is the change, and it is why this walks to an endpoint that
+       * has inputs instead of to a list of capture sessions. The queue is still the dense part:
+       * six status tones, a selection model and a diff beside it.
        */
       test('review queue', async ({ page }) => {
         test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
@@ -289,11 +289,15 @@ for (const theme of ['light', 'dark'] as const) {
         const id = await firstProject(page);
         expect(id, 'the demo seed should have created a project').not.toBeNull();
 
-        await page.goto(`${BASE}/projects/${id}/captures`, { waitUntil: 'networkidle' });
-        const href = await page.locator('td a[href*="/captures/"]').first()
+        await page.goto(`${BASE}/projects/${id}/endpoints`, { waitUntil: 'networkidle' });
+
+        // The endpoints that have been tested are the ones with a result in the last column, and
+        // only those have a queue underneath them.
+        const href = await page.locator('tr', { has: page.locator('.status') })
+          .locator('a[href*="/endpoints/"]').first()
           .getAttribute('href').catch(() => null);
 
-        test.skip(!href, 'No sweep recorded. Run e2e/demo-regression.ts first.');
+        test.skip(!href, 'No endpoint has been tested. Run e2e/demo-regression.ts first.');
 
         await page.goto(`${BASE}${href}`, { waitUntil: 'networkidle' });
         await assertOn(page, href!);

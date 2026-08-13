@@ -42,7 +42,7 @@ async function firstProjectId(page: Page): Promise<string> {
 
 /** Sends a request and records the response, through the request lab. */
 async function record(page: Page, projectId: string, name: string): Promise<string> {
-  await page.goto(`${BASE}/projects/${projectId}/baselines`, { waitUntil: 'networkidle' });
+  await page.goto(`${BASE}/projects/${projectId}/endpoints`, { waitUntil: 'networkidle' });
 
   const existing = await page.getByRole('link', { name, exact: true }).first()
     .getAttribute('href').catch(() => null);
@@ -64,7 +64,7 @@ async function record(page: Page, projectId: string, name: string): Promise<stri
   await page.locator('[role="dialog"] input').first().fill(name);
   await page.locator('[role="dialog"] .btn-primary').click();
 
-  await page.waitForURL(/\/baselines\/[0-9a-f-]+$/i, { timeout: 20_000 });
+  await page.waitForURL(/\/endpoints\/[0-9a-f-]+$/i, { timeout: 20_000 });
   console.log(`"${name}" recorded.`);
 
   return new URL(page.url()).pathname;

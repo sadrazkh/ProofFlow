@@ -33,20 +33,23 @@ public static class Navigation
             // and has no page, and «variables», which is part of the environment it belongs to and
             // is edited there. A sidebar that 404s is worse than a shorter sidebar, and the command
             // palette reads this same map — so it offered them too.
+            //
+            // Four more went with the endpoint page. «Baselines» and «Captures» were the two halves
+            // of one job seen from two angles, «Guided setup» was a nine-step apology for that job
+            // having no page, and the per-endpoint half of the review queue now lives on the
+            // endpoint. Eleven destinations under Build and Verify became seven, and none of the
+            // seven is named after a mechanism.
             sections.Add(new NavSection("nav.section_build", [
+                new NavItem("nav.endpoints", "target", $"{basePath}/endpoints", Capability.ViewProject),
                 new NavItem("nav.scenarios", "workflow", $"{basePath}/scenarios", Capability.ViewProject),
-                new NavItem("template.title", "square-stack", $"{basePath}/templates", Capability.ViewProject),
                 new NavItem("nav.datasets", "table-2", $"{basePath}/datasets", Capability.ViewProject),
-                new NavItem("nav.wizard", "wand-sparkles", $"{basePath}/wizard", Capability.ViewProject),
                 new NavItem("nav.environments", "globe", $"{basePath}/environments", Capability.ViewProject),
             ]));
 
             sections.Add(new NavSection("nav.section_verify", [
-                new NavItem("nav.baselines", "target", $"{basePath}/baselines", Capability.ViewProject),
-                new NavItem("nav.captures", "inbox", $"{basePath}/captures", Capability.ViewProject),
-                new NavItem("approval.title", "check-check", $"{basePath}/approvals", Capability.ViewProject),
                 new NavItem("nav.runs", "history", $"{basePath}/runs", Capability.ViewRun),
                 new NavItem("nav.matrix", "layout-grid", $"{basePath}/matrix", Capability.ViewRun),
+                new NavItem("approval.title", "check-check", $"{basePath}/approvals", Capability.ViewProject),
             ]));
 
             sections.Add(new NavSection("nav.section_operate", [

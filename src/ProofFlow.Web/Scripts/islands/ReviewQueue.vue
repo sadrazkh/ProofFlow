@@ -25,8 +25,16 @@ import {
  */
 
 const props = defineProps<{
-  projectId: string;
-  sessionId: string;
+  /**
+   * Where this test's samples live, up to and including the session — everything below appends
+   * «/samples» and «/review» to it.
+   *
+   * A path rather than the two ids it used to take, because the same queue is now reached from
+   * inside an endpoint rather than from a page of its own, and a component that rebuilds a route
+   * out of parts is a component that has to be edited every time the route moves.
+   */
+  base: string;
+
   canReview: boolean;
 }>();
 
@@ -70,8 +78,7 @@ async function load(): Promise<void> {
   if (differingOnly.value) query.set('differing', 'true');
 
   try {
-    const page = await api.get<SamplePage>(
-      `/projects/${props.projectId}/captures/${props.sessionId}/samples?${query}`);
+    const page = await api.get<SamplePage>(`${props.base}/samples?${query}`);
 
     session.value = page.session;
     rows.value = page.rows;
@@ -97,8 +104,7 @@ async function select(index: number): Promise<void> {
   diffPending.value = true;
 
   try {
-    diff.value = await api.get<DiffResult>(
-      `/projects/${props.projectId}/captures/${props.sessionId}/samples/${row.id}/diff`);
+    diff.value = await api.get<DiffResult>(`${props.base}/samples/${row.id}/diff`);
   } catch (error) {
     toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
   } finally {
@@ -143,8 +149,7 @@ async function decide(status: 'Approved' | 'Rejected' | 'Reviewed'): Promise<voi
   reviewing.value = true;
 
   try {
-    await api.post(`/projects/${props.projectId}/captures/${props.sessionId}/review`,
-      { sampleIds: ids, status });
+    await api.post(`${props.base}/review`, { sampleIds: ids, status });
 
     toast(t(`capture.marked.${status}`, ids.length), 'success');
 

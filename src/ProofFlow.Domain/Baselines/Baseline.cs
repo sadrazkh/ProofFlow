@@ -1,4 +1,5 @@
 using ProofFlow.Domain.Common;
+using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
 
@@ -31,6 +32,22 @@ public class Baseline : Entity, IWorkspaceOwned
     public Guid? EnvironmentId { get; set; }
 
     public ProjectEnvironment? Environment { get; set; }
+
+    /// <summary>
+    /// The inputs this is checked against, if there are any.
+    ///
+    /// Null means «run it once», which is the honest state for an endpoint that takes no
+    /// parameters and a perfectly ordinary way to use one. When it is set, pressing Test sweeps
+    /// the request across that set's current version instead of sending it a single time.
+    ///
+    /// Stored here rather than chosen at the moment of testing because it is a property of the
+    /// endpoint and not of the press: somebody who picked «two thousand study identifiers» in
+    /// March should not have to remember that choice in June, and a Test button that opens a
+    /// dialog asking which inputs to use is a Test button nobody presses casually.
+    /// </summary>
+    public Guid? DataSetId { get; set; }
+
+    public DataSet? DataSet { get; set; }
 
     public required string Name { get; set; }
 

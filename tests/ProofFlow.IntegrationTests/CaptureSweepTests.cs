@@ -162,6 +162,25 @@ public sealed class CaptureSweepTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_regression_over_inputs_nobody_has_approved_is_not_a_pass()
+    {
+        await using var context = Db();
+
+        // The first test of a new set of inputs. Nothing has been approved, so every row was
+        // compared against nothing — and «compared against nothing» is not «matched».
+        var session = await Capture(context).RunAsync(Command("Regression"));
+
+        session.Completed.Should().Be(6);
+        session.Differing.Should().Be(0);
+        session.Failed.Should().Be(0);
+
+        // This is the whole assertion. It was zero, and the page above it derives «passed» as
+        // completed minus the other three — so six unchecked rows rendered as «all 6 passed»,
+        // which is a green result for a test that verified nothing.
+        session.Unmatched.Should().Be(6);
+    }
+
+    [Fact]
     public async Task A_second_sweep_against_approved_answers_finds_nothing()
     {
         await using var context = Db();

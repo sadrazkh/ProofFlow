@@ -156,6 +156,9 @@ html[dir='rtl'] .btn .icon-forward { transform: scaleX(-1); }
   cursor: not-allowed;
 }
 
+/* Matches .btn-sm and .input-sm, for a control that sits in a toolbar rather than in a form. */
+.select-sm { block-size: 28px; font-size: var(--text-xs); padding-inline: var(--space-2) var(--space-6); }
+
 .input-mono { font-family: var(--font-mono); font-size: var(--text-xs); direction: ltr; text-align: start; }
 html[dir='rtl'] .input-mono { text-align: left; }
 
@@ -307,6 +310,57 @@ html[dir='rtl'] .select { background-position: left var(--space-3) center; }
   vertical-align: middle;
 }
 .table tbody tr:last-child td { border-block-end: 0; }
+
+/* ---- pager ---------------------------------------------------------------------------------- */
+
+/*
+  Sits under the card rather than inside it, because it is about the list and not part of it — and
+  because a control on --canvas is visibly a control while the same control on --surface reads as
+  one more table row.
+*/
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-block-start: var(--space-3);
+}
+
+.pager-count { margin: 0; font-variant-numeric: tabular-nums; }
+
+.pager-list { display: flex; align-items: center; gap: 2px; list-style: none; margin: 0; padding: 0; }
+
+.pager-link {
+  display: grid;
+  place-items: center;
+  min-inline-size: 30px;
+  block-size: 30px;
+  padding-inline: var(--space-2);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-muted);
+  transition: background-color var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+}
+.pager-link:hover { background: var(--surface-hover); color: var(--ink); }
+.pager-link svg { inline-size: 15px; block-size: 15px; }
+
+/* The current page is a surface, not a colour: this is a position, not an action. */
+.pager-link.is-current {
+  background: var(--surface-active);
+  border-color: var(--line);
+  color: var(--ink);
+  font-weight: var(--weight-medium);
+}
+.pager-link.is-disabled { color: var(--ink-faint); pointer-events: none; }
+
+.pager-gap { display: inline-block; min-inline-size: 20px; text-align: center; color: var(--ink-faint); }
+
+/* Outside a .btn, so the button rule does not reach it. Which way «forward» points is the
+   reading direction's business in both places. */
+html[dir='rtl'] .pager-link .icon-forward { transform: scaleX(-1); }
 .table tbody tr { transition: background-color var(--motion-fast) var(--ease-out); }
 .table-hover tbody tr:hover { background: var(--surface-hover); }
 .table td.numeric, .table th.numeric { text-align: end; font-variant-numeric: tabular-nums; }

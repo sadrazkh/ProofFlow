@@ -358,7 +358,7 @@ async function main(): Promise<void> {
       await page.waitForSelector('[role="dialog"]');
       await page.locator('[role="dialog"] input').first().fill(BASELINE);
       await page.locator('[role="dialog"] .btn-primary').click();
-      await page.waitForURL(/\/baselines\/[0-9a-f-]+$/i, { timeout: 25_000 });
+      await page.waitForURL(/\/endpoints\/[0-9a-f-]+$/i, { timeout: 25_000 });
 
       return BASELINE;
     });

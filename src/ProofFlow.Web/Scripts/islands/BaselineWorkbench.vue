@@ -57,7 +57,7 @@ async function compare(): Promise<void> {
 
   try {
     const response = await api.post<{ diff: DiffResult; suggestions: Suggestion[] }>(
-      `/projects/${props.projectId}/baselines/${props.baselineId}/compare`,
+      `/projects/${props.projectId}/endpoints/${props.baselineId}/compare`,
       { environmentId: environmentId.value || null },
     );
 
@@ -78,7 +78,7 @@ async function saveRules(): Promise<void> {
   saving.value = true;
 
   try {
-    await api.post(`/projects/${props.projectId}/baselines/${props.baselineId}/rules`,
+    await api.post(`/projects/${props.projectId}/endpoints/${props.baselineId}/rules`,
       rules.value.filter((rule) => rule.path.trim().length > 0));
 
     savedRules.value = JSON.stringify(rules.value);
@@ -150,7 +150,7 @@ async function propose(paths: string[]): Promise<void> {
 
   try {
     const result = await api.post<{ number: number }>(
-      `/projects/${props.projectId}/baselines/${props.baselineId}/accept`,
+      `/projects/${props.projectId}/endpoints/${props.baselineId}/accept`,
       { acceptedPaths: paths, newRules, description: null },
     );
 

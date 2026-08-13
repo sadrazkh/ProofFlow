@@ -1,0 +1,331 @@
+@using System.Text.Json
+@model EndpointDetailViewModel
+@{
+    var workbench = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        baselineId = Model.Endpoint.Id,
+        environments = Model.Environments.Select(e => new
+        {
+            id = e.Id, name = e.Name, baseUrl = e.BaseUrl, isProduction = e.IsProduction,
+        }),
+        initialRules = Model.Rules,
+        defaultEnvironmentId = Model.Endpoint.EnvironmentId,
+        canRecord = Model.CanRecord,
+        canRun = Model.CanRun,
+        hasApprovedVersion = Model.Approved is not null,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+    var test = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        endpointId = Model.Endpoint.Id,
+        inputCount = Model.Inputs?.RowCount ?? 0,
+        dataSetName = Model.Inputs?.Name,
+        canRun = Model.CanRun,
+        // Either capability: approving needs ApproveBaseline, and marking a row reviewed or
+        // rejected needs the right to record. The queue offers what the reader may actually do.
+        canReview = Model.CanRecord || Model.CanApprove,
+        lastSessionId = Model.LastTest?.Id,
+        environments = Model.Environments.Select(e => new
+        {
+            id = e.Id, name = e.Name, isProduction = e.IsProduction,
+        }),
+        defaultEnvironmentId = Model.Endpoint.EnvironmentId,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title" dir="auto">@Model.Endpoint.Name</h1>
+        @if (!string.IsNullOrWhiteSpace(Model.Endpoint.Description))
+        {
+            <p class="page-subtitle" dir="auto">@Model.Endpoint.Description</p>
+        }
+    </div>
+    <div class="page-actions">
+        <a class="btn btn-secondary" href="/projects/@Model.ProjectId/endpoints">
+            <i data-lucide="arrow-left" class="icon-forward" aria-hidden="true"></i>@T["nav.endpoints"]
+        </a>
+    </div>
+</div>
+
+@if (Model.AwaitingReview is { } awaiting)
+{
+    @* The one thing that blocks everything else, said before the reader scrolls. A proposed
+       version does nothing until somebody approves it — including not being compared against. *@
+    <div class="card card-pad stack-2">
+        <div class="row wrap">
+            <span class="badge badge-warn">
+                <i data-lucide="clock" aria-hidden="true"></i>@T["baseline.status.PendingApproval"]
+            </span>
+            <span dir="auto">@T["baseline.awaitingReview", awaiting.Number]</span>
+            <span class="grow"></span>
+
+            @if (Model.CanApprove)
+            {
+                <form method="post"
+                      action="/projects/@Model.ProjectId/endpoints/@Model.Endpoint.Id/versions/@awaiting.Id/approve">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i data-lucide="check" aria-hidden="true"></i>@T["action.approve"]
+                    </button>
+                </form>
+                <form method="post"
+                      action="/projects/@Model.ProjectId/endpoints/@Model.Endpoint.Id/versions/@awaiting.Id/reject"
+                      data-confirm="@T["baseline.confirmReject", awaiting.Number]">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary btn-sm">
+                        <i data-lucide="x" aria-hidden="true"></i>@T["action.reject"]
+                    </button>
+                </form>
+            }
+            else
+            {
+                <span class="text-xs subtle">@T["baseline.approvalNeededBySomeoneElse"]</span>
+            }
+        </div>
+    </div>
+}
+
+@*
+    Four sections down the page rather than four tabs.
+
+    Tabs were the obvious layout and the wrong one: the question this page answers is "is this
+    endpoint still right", and answering it means reading the request, then the inputs, then what
+    correct looks like, then pressing the button — in that order, once. Tabs would hide three
+    quarters of that behind a click each and make the order somebody's guess.
+*@
+<div class="endpoint-sections">
+
+    @* 1 — the request *@
+    <section class="card" id="request">
+        <header class="card-header">
+            <div>
+                <h2 class="card-title">@T["endpoint.section.request"]</h2>
+                <p class="card-subtitle">@T["endpoint.section.request.help"]</p>
+            </div>
+            <a class="btn btn-ghost btn-sm" href="/projects/@Model.ProjectId/request?baseline=@Model.Endpoint.Id">
+                <i data-lucide="send" aria-hidden="true"></i>@T["endpoint.openInLab"]
+            </a>
+        </header>
+
+        <div class="card-body">
+            <form method="post"
+                  action="/projects/@Model.ProjectId/endpoints/@Model.Endpoint.Id/request"
+                  class="endpoint-request-form">
+                @Html.AntiForgeryToken()
+
+                <div class="field">
+                    <label class="field-label" for="method">@T["request.method"]</label>
+                    <select class="select method-chip" id="method" name="method"
+                            data-tone="@MethodTone.For(Model.Method)"
+                            @(Model.CanRecord ? "" : "disabled")>
+                        @foreach (var verb in new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS" })
+                        {
+                            <option value="@verb" selected="@(verb == Model.Method)">@verb</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="field grow">
+                    <label class="field-label" for="url">@T["request.url"]</label>
+                    <input class="input input-mono" id="url" name="url" dir="ltr" value="@Model.Url"
+                           placeholder="{{environment.baseUrl}}/products/1"
+                           @(Model.CanRecord ? "" : "readonly") />
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="environmentId">@T["environment.title"]</label>
+                    <select class="select" id="environmentId" name="environmentId"
+                            @(Model.CanRecord ? "" : "disabled")>
+                        @* «None» is a real answer, not a missing one: an endpoint that should
+                           return the same thing everywhere is deliberately not tied to one. *@
+                        <option value="">@T["common.none"]</option>
+                        @foreach (var environment in Model.Environments)
+                        {
+                            <option value="@environment.Id"
+                                    selected="@(environment.Id == Model.Endpoint.EnvironmentId)">
+                                @environment.Name
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                @if (Model.CanRecord)
+                {
+                    <div class="field">
+                        <span class="field-label" aria-hidden="true">&nbsp;</span>
+                        <button type="submit" class="btn btn-secondary">@T["action.save"]</button>
+                    </div>
+                }
+            </form>
+
+            @if (string.IsNullOrWhiteSpace(Model.Url))
+            {
+                <p class="field-hint">@T["endpoint.noRequest"]</p>
+            }
+        </div>
+    </section>
+
+    @* 2 — the inputs *@
+    <section class="card" id="inputs">
+        <header class="card-header">
+            <div>
+                <h2 class="card-title">@T["endpoint.section.inputs"]</h2>
+                <p class="card-subtitle">@T["endpoint.section.inputs.help"]</p>
+            </div>
+            @if (Model.Inputs is { } chosen)
+            {
+                <a class="btn btn-ghost btn-sm" href="/projects/@Model.ProjectId/datasets/@chosen.Id">
+                    <i data-lucide="table-2" aria-hidden="true"></i>@T["endpoint.editInputs"]
+                </a>
+            }
+        </header>
+
+        <div class="card-body">
+            @if (Model.DataSets.Count == 0)
+            {
+                <div class="empty empty-inline">
+                    <p class="empty-body">@T["endpoint.inputs.none"]</p>
+                    <div class="empty-actions">
+                        <a class="btn btn-secondary btn-sm" href="/projects/@Model.ProjectId/datasets/new">
+                            <i data-lucide="plus" aria-hidden="true"></i>@T["dataset.new"]
+                        </a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <form method="post"
+                      action="/projects/@Model.ProjectId/endpoints/@Model.Endpoint.Id/inputs"
+                      class="row wrap">
+                    @Html.AntiForgeryToken()
+
+                    <div class="field grow">
+                        <label class="field-label" for="dataSetId">@T["endpoint.inputs.which"]</label>
+                        <select class="select" id="dataSetId" name="dataSetId"
+                                @(Model.CanRecord ? "" : "disabled")>
+                            @* Not a blank first option: «run it once» is what no inputs means, and
+                               saying so is the difference between a choice and an oversight. *@
+                            <option value="">@T["endpoint.inputs.once"]</option>
+                            @foreach (var set in Model.DataSets)
+                            {
+                                <option value="@set.Id" selected="@(set.Id == Model.Endpoint.DataSetId)">
+                                    @set.Name — @T["endpoint.inputs.rows", set.RowCount]
+                                </option>
+                            }
+                        </select>
+                    </div>
+
+                    @if (Model.CanRecord)
+                    {
+                        <div class="field">
+                            <span class="field-label" aria-hidden="true">&nbsp;</span>
+                            <button type="submit" class="btn btn-secondary">@T["action.save"]</button>
+                        </div>
+                    }
+                </form>
+            }
+        </div>
+    </section>
+
+    @* 3 — what correct looks like *@
+    <section class="card-plain" id="expected">
+        <div class="section-head">
+            <h2 class="card-title">@T["endpoint.section.expected"]</h2>
+            <p class="card-subtitle">@T["endpoint.section.expected.help"]</p>
+        </div>
+
+        @* The island. The skeleton is the same shape as what replaces it, so the page below does
+           not move when Vue takes over. *@
+        <div data-island="baseline-workbench" data-props="@workbench">
+            <div class="card card-pad stack">
+                <div class="row">
+                    <div class="skeleton" style="inline-size: 220px; block-size: 32px;"></div>
+                    <div class="skeleton grow" style="block-size: 32px;"></div>
+                </div>
+                <div class="skeleton" style="block-size: 300px;"></div>
+            </div>
+        </div>
+    </section>
+
+    @* 4 — test *@
+    <section class="card-plain" id="test">
+        <div class="section-head">
+            <h2 class="card-title">@T["endpoint.section.test"]</h2>
+            <p class="card-subtitle">@T["endpoint.section.test.help"]</p>
+        </div>
+
+        <div data-island="endpoint-test" data-props="@test">
+            <div class="card card-pad stack">
+                <div class="skeleton" style="inline-size: 180px; block-size: 34px;"></div>
+                <div class="skeleton" style="block-size: 120px;"></div>
+            </div>
+        </div>
+    </section>
+
+    @* 5 — history. Last, because it is the answer to a question nobody asks first. *@
+    <section class="card card-pad stack-2" id="history">
+        <h2 class="card-title">@T["baseline.history"]</h2>
+
+        @if (Model.Versions.Count == 0)
+        {
+            <p class="field-hint">@T["endpoint.noVersions"]</p>
+        }
+        else
+        {
+            <div class="version-rail">
+                @foreach (var version in Model.Versions)
+                {
+                    <article class="version-item is-@(version.Status.ToString().ToLowerInvariant())">
+                        <div class="version-mark">
+                            <i data-lucide="@BaselineStatusTone.Icon(version.Status)" aria-hidden="true"></i>
+                        </div>
+                        <div>
+                            <div class="version-head">
+                                <span class="version-number">@T["baseline.version", version.Number]</span>
+                                <span class="badge @BaselineStatusTone.For(version.Status)">
+                                    @T[$"baseline.status.{version.Status}"]
+                                </span>
+                            </div>
+
+                            <p class="version-meta">
+                                <partial name="Pieces/_Timestamp" model="@(new TimestampView(version.CreatedAt))" />
+                                <span aria-hidden="true">·</span>
+                                <span class="tabular">@version.StatusCode</span>
+                                <span aria-hidden="true">·</span>
+                                @T["baseline.bodySize", version.BodyLength]
+                            </p>
+
+                            @if (!string.IsNullOrWhiteSpace(version.Description))
+                            {
+                                <p class="version-description" dir="auto">@version.Description</p>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(version.RejectionReason))
+                            {
+                                <p class="version-rejection" dir="auto">
+                                    @T["baseline.rejectionReason", version.RejectionReason]
+                                </p>
+                            }
+
+                            @if (version.Status == BaselineStatus.PendingApproval && Model.CanApprove)
+                            {
+                                <div class="version-actions">
+                                    <form method="post"
+                                          action="/projects/@Model.ProjectId/endpoints/@Model.Endpoint.Id/versions/@version.Id/approve">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-secondary btn-sm">
+                                            @T["action.approve"]
+                                        </button>
+                                    </form>
+                                </div>
+                            }
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+</div>

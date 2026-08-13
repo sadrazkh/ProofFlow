@@ -1,0 +1,109 @@
+/*
+  The endpoint page: one list and one long screen.
+
+  The screen is deliberately one column. An endpoint is read top to bottom — what is sent, what it
+  is sent with, what the answer should be, and then the button — and a two-column layout would put
+  half of that beside the reader's line of sight and make the order a matter of where their eye
+  landed.
+*/
+
+/* ---- the list ------------------------------------------------------------------------------ */
+
+/* Method and path travel together and always left-to-right, whatever the page's direction is:
+   «GET /products/{id}» read from the right is not an address anybody recognises. */
+.endpoint-request {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-inline-size: 0;
+  max-inline-size: 46ch;
+}
+
+.endpoint-path {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  min-inline-size: 0;
+}
+
+/*
+  The same chip, sized for a table cell rather than for a toolbar.
+
+  .method-chip is written for the request lab's <select>, where it is 104px wide so that GET and
+  OPTIONS do not resize the row as somebody changes it. Reused verbatim on a static span it looked
+  like an empty text field with GET typed into it — a control, in a list of things that are not
+  controls.
+*/
+.endpoint-request .method-chip {
+  display: inline-block;
+  min-inline-size: 0;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-xs);
+  line-height: 1.6;
+}
+
+/* ---- the page ------------------------------------------------------------------------------ */
+
+.endpoint-sections { display: flex; flex-direction: column; gap: var(--space-5); }
+
+/*
+  A section whose contents bring their own card — the workbench and the test island each render
+  one, and wrapping those in a second card produced a border inside a border.
+*/
+.card-plain { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.section-head { display: flex; flex-direction: column; gap: 2px; }
+
+/* Method, address, environment and a save button on one line, wrapping to two on a narrow
+   screen. The address takes whatever is left, because it is the field that is actually long. */
+.endpoint-request-form {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.endpoint-request-form .field { min-inline-size: 0; }
+.endpoint-request-form .field.grow { flex: 1 1 320px; }
+.endpoint-request-form .method-chip { inline-size: auto; min-inline-size: 108px; }
+.endpoint-request-form .select:not(.method-chip) { inline-size: auto; min-inline-size: 180px; }
+
+/* ---- the test ------------------------------------------------------------------------------ */
+
+.endpoint-test-bar { gap: var(--space-3); }
+
+.endpoint-test-result {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-block-start: var(--space-3);
+  padding-block-start: var(--space-3);
+  border-block-start: 1px solid var(--line-subtle);
+}
+
+/*
+  Said before the request goes out.
+
+  Its own thing rather than a badge: a badge is a label on something, and this is a sentence about
+  what is about to happen to a production system. It reads as a warning because it is one.
+*/
+.endpoint-warning {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--warn-border);
+  background: var(--warn-soft);
+  color: var(--warn-ink);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+}
+.endpoint-warning svg { inline-size: 15px; block-size: 15px; flex: none; }
+
+@media (max-width: 899px) {
+  /* The address stops sharing a line with the method below this width; at 390px the three
+     controls side by side left the address twelve characters wide. */
+  .endpoint-request-form .field.grow { flex-basis: 100%; }
+}
