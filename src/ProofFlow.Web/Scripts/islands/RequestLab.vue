@@ -2,8 +2,10 @@
 import { Icon } from '../lib/Icon';
 import { computed, onMounted, ref, watch } from 'vue';
 import KeyValueTable, { type KeyValueRow } from './KeyValueTable.vue';
+import ReferencePicker from './ReferencePicker.vue';
 import ResponseViewer from './ResponseViewer.vue';
 import { api, ApiError } from '../lib/api';
+import { insertAtCaret } from '../lib/caret';
 import { t } from '../lib/i18n';
 import { toast } from '../lib/toast';
 import {
@@ -49,6 +51,29 @@ const methodTone = computed(() => METHODS.find((m) => m.name === method.value)?.
  * Checked in the browser against the *names* the server published, never by asking the server per
  * keystroke. Names are safe to hold here; values are not, and a secret's value never arrives.
  */
+/** The same names the chips are checked against, in the shape the picker wants. */
+const catalogue = computed(() => ({
+  environment: known.value.environment,
+  variables: known.value.variables,
+  secrets: known.value.secrets,
+
+  // A lab request is not a scenario: there is no step before it and nothing was asked when it
+  // started. Offering either would offer something that cannot resolve here.
+  inputs: [],
+  steps: [],
+}));
+
+const urlBox = ref<HTMLInputElement | null>(null);
+const bodyBox = ref<HTMLTextAreaElement | null>(null);
+
+function insertIntoUrl(text: string): void {
+  if (urlBox.value) url.value = insertAtCaret(urlBox.value, text);
+}
+
+function insertIntoBody(text: string): void {
+  if (bodyBox.value) body.value = insertAtCaret(bodyBox.value, text);
+}
+
 const references = computed(() => {
   const text = [url.value, body.value,
     ...query.value.flatMap((r) => [r.name, r.value]),
@@ -237,14 +262,17 @@ function useValue(path: string, value: unknown): void {
           <option v-for="m in METHODS" :key="m.name" :value="m.name">{{ m.name }}</option>
         </select>
 
-        <div class="grow" style="min-inline-size: 0;">
+        <div class="grow request-url" style="min-inline-size: 0;">
           <input
+            ref="urlBox"
             v-model="url"
             class="input input-mono"
             :placeholder="environment?.baseUrl ? '/fake/categories' : 'https://api.example.com/orders'"
             :aria-label="t('request.url')"
             @keydown.enter="send"
           />
+
+          <ReferencePicker :catalogue="catalogue" :field="t('request.url')" @pick="insertIntoUrl" />
         </div>
 
         <select v-model="environmentId" class="select" :aria-label="t('nav.environments')" style="max-inline-size: 200px;">
@@ -305,6 +333,7 @@ function useValue(path: string, value: unknown): void {
           v-if="tab === 'query'"
           v-model="query"
           :label="t('request.query')"
+          :catalogue="catalogue"
           name-placeholder="page"
           value-placeholder="1"
         />
@@ -313,6 +342,7 @@ function useValue(path: string, value: unknown): void {
           v-else-if="tab === 'headers'"
           v-model="headers"
           :label="t('request.headers')"
+          :catalogue="catalogue"
           name-placeholder="Authorization"
           value-placeholder="Bearer {{secrets.apiToken}}"
         />
@@ -324,7 +354,12 @@ function useValue(path: string, value: unknown): void {
               {{ kind }}
             </button>
           </div>
-          <textarea v-model="body" class="textarea input-mono" rows="10"
+          <div class="request-body-line">
+            <span class="grow"></span>
+            <ReferencePicker :catalogue="catalogue" :field="t('request.body')" @pick="insertIntoBody" />
+          </div>
+
+          <textarea ref="bodyBox" v-model="body" class="textarea input-mono" rows="10"
                     :aria-label="t('request.body')"
                     placeholder='{"username":"demo","password":"{{secrets.demoPassword}}"}'></textarea>
         </div>

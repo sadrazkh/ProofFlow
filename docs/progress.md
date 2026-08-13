@@ -925,6 +925,7 @@ Nothing new. That is the honest result rather than a shortage of looking.
 | Writing one with a model | A workspace holds a base URL, a model and a key; the key is sealed with the same cipher as every secret and shown as four characters. OpenRouter by default. The button only exists once a key is in place |
 | What the model is told | The node catalogue, generated from the catalogue rather than written out, and the rules a graph is rejected for breaking. What comes back is put through the canvas's own validator and refused if it would not run |
 | Nothing is saved | A drawn graph lands as unsaved changes, through the undo history, so the first thing somebody can do is press Ctrl+Z and get their canvas back |
+| Writing a reference without knowing it | Every field that takes one has a `{ }` beside it: the environment's names, the project's variables and secrets, the scenario's inputs, and — for a step on the canvas — the output of every step that runs before it, searchable, inserted where the cursor was. Nobody has to know that the scope is «vars» and not «variables», or how a response is shaped |
 | A flow to read | Seeded with the demo workspace: sign in, keep the token, add a product, read a page, take an id out of it, read that one, and delete what it added. Twelve steps, five checks, and it passes twice in a row because the last two steps put the API back |
 | Account | `demo@proofflow.local`, password from `Demo:Password`. Off unless `Demo:Seed` is on |
 | Tests | 696 passing — 509 unit, 144 integration, 43 component; 113 accessibility checks. Acceptance: 20 of 20 |
@@ -955,6 +956,11 @@ writes the size back onto the node, and the canvas counted that as an edit — s
 asked to confirm work nobody had done. Meanwhile dragging a connection changed only the edges, which
 nothing was watching, so a real edit went unmarked. Both are one bug: «unsaved» now means the shape
 that would be sent differs from the shape that was agreed.
+
+**A menu inside a scrolling panel is a menu with four items.** The reference list opened inside the
+inspector, which is a narrow column that scrolls, so it was clipped by it — and in Persian it opened
+off the side of the window entirely. It is teleported out and placed against the button, clamped
+back onto the screen from either edge.
 
 **The canvas was fitting to nothing.** It fitted one tick after the graph arrived, before the cards
 had a size, and left every scenario parked at its top left. It fits when the nodes are measured now.

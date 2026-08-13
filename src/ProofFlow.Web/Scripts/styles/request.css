@@ -272,3 +272,96 @@
   .method-chip { min-inline-size: 88px; }
   .response-head .segmented { margin-inline-start: 0; }
 }
+
+/*
+  Offering what can go between braces.
+
+  Anchored to the button and hung from its inline-end, so it opens back toward the middle of the
+  window. The inspector is a narrow column against whichever edge the reading direction puts it on,
+  and a menu that opened outward from there opened off the screen — which is what it did, in Persian,
+  the first time it was tried.
+*/
+.reference-picker { position: relative; display: inline-flex; }
+
+.reference-picker-button { color: var(--ink-faint); }
+.reference-picker-button:hover:not(:disabled) { color: var(--accent); }
+.reference-picker-button[aria-expanded="true"] { color: var(--accent); background: var(--surface-hover); }
+
+.reference-menu {
+  /* Fixed and placed from script, because it is teleported out of a panel that scrolls. */
+  position: fixed;
+  z-index: var(--z-menu);
+  inline-size: 20rem;
+  max-inline-size: min(20rem, calc(100vw - 1rem));
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.reference-groups {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-block-size: 17rem;
+  overflow-y: auto;
+}
+
+.reference-group {
+  padding: var(--space-2) var(--space-2) var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.reference-option {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.reference-option.is-active { background: var(--accent-soft); }
+
+.reference-option-label {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.reference-option-insert {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+.reference-empty,
+.reference-hint {
+  margin: 0;
+  padding: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}
+
+.reference-hint { border-block-start: 1px solid var(--line); }
+
+/* The field and its picker share a line, and the field takes whatever the button leaves. */
+.request-url,
+.kv-value {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.request-url > .input,
+.kv-value > .input { flex: 1 1 auto; min-inline-size: 0; }
+
+.request-body-line { display: flex; align-items: center; }

@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import KeyValueTable, { type KeyValueRow } from './KeyValueTable.vue';
+import ReferencePicker from './ReferencePicker.vue';
 import { t } from '../lib/i18n';
 import { MATCHER_GROUPS } from './baselineTypes';
+import { fieldWithin, type TextField } from '../lib/caret';
+import { insertAtCaret } from '../lib/caret';
+import { EMPTY_CATALOGUE, type ReferenceCatalogue } from './referenceTypes';
 import type { GraphNodeDto, GraphProblem, NodeSpecDto, PropertyDto } from './graphTypes';
 
 /**
@@ -24,6 +28,9 @@ const props = defineProps<{
   environments: { id: string; name: string; isProduction: boolean }[];
   canEdit: boolean;
   canRun: boolean;
+
+  /** What can be written between braces here — offered, so nobody has to remember it. */
+  catalogue?: ReferenceCatalogue;
 }>();
 
 const emit = defineEmits<{
@@ -88,6 +95,33 @@ function setRows(name: string, next: KeyValueRow[]): void {
 }
 
 const matchers = MATCHER_GROUPS;
+
+const catalogue = computed(() => props.catalogue ?? EMPTY_CATALOGUE);
+
+/**
+ * Which fields are worth offering references in.
+ *
+ * Not a number, not a choice, not a checkbox — a reference resolves to text, and offering to put
+ * one into a field that takes «200» or «GET» would be offering something that cannot work.
+ */
+function takesReferences(property: PropertyDto): boolean {
+  return property.kind === 'Text' || property.kind === 'LongText' || property.kind === 'Url'
+    || property.kind === 'JsonPath' || property.kind === 'Expression';
+}
+
+/** One wrapper per property, so the picker can find the field it belongs to. */
+const wrappers = ref<Record<string, HTMLElement | null>>({});
+
+function hold(name: string, element: unknown): void {
+  wrappers.value[name] = (element as HTMLElement | null) ?? null;
+}
+
+function insert(name: string, text: string): void {
+  const field: TextField | null = fieldWithin(wrappers.value[name] ?? null);
+  if (!field) return;
+
+  set(name, insertAtCaret(field, text) || null);
+}
 </script>
 
 <template>
@@ -135,10 +169,22 @@ const matchers = MATCHER_GROUPS;
 
       <div class="inspector-body stack-2">
         <template v-for="property in visible" :key="property.name">
-          <label class="field">
+          <label class="field" :ref="(el) => hold(property.name, el)">
             <span class="field-label">
               {{ t(property.labelKey) }}
               <span v-if="!property.required" class="field-optional">{{ t('common.optional') }}</span>
+
+              <!--
+                Beside the label rather than inside the field. An icon sitting on top of a text box
+                covers the end of what is written in it, which in this product is usually the part
+                somebody is editing.
+              -->
+              <ReferencePicker
+                v-if="canEdit && takesReferences(property)"
+                :catalogue="catalogue"
+                :field="t(property.labelKey)"
+                @pick="insert(property.name, $event)"
+              />
             </span>
 
             <select
@@ -203,6 +249,7 @@ const matchers = MATCHER_GROUPS;
               v-else-if="property.kind === 'KeyValues'"
               :model-value="rows(property.name)"
               :label="t(property.labelKey)"
+              :catalogue="catalogue"
               @update:model-value="setRows(property.name, $event)"
             />
 

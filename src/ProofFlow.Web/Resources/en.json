@@ -187,24 +187,19 @@
   "start": {
     "title": "Getting started",
     "subtitle": "Four things, and this card goes away on its own once the last one is done.",
-
     "project": "A project",
     "project.what": "One system under test. It holds the places you can point it at, the tests you draw, and everything they have ever found.",
     "project.action": "Make one",
-
     "environment": "An environment",
     "environment.what": "Where the requests actually go — staging, local, production. The same test runs against each of them.",
     "environment.action": "Add one",
-
     "scenario": "A test",
     "scenario.what": "Drawn as a picture: send a request, check the answer, do something about it if the answer is wrong.",
     "scenario.action": "Draw one",
-
     "run": "A run",
     "run.what": "Press Run and watch it happen, step by step. What it found is kept, so you can come back to it next month.",
     "run.action": "Run it"
   },
-
   "dashboard": {
     "title": "Dashboard",
     "greeting": "Hello, {0}",
@@ -1461,7 +1456,6 @@
     "invite.accepted": "You are in.",
     "invite.sent": "An invitation is on its way to {0}."
   },
-
   "mail": {
     "notConfigured": "No mail server is configured.",
     "failed": "The mail server would not take the message.",
@@ -1474,7 +1468,6 @@
     "invite.action": "Join the workspace",
     "invite.ignore": "If you were not expecting this, you can ignore it. Nothing happens until you follow the link."
   },
-
   "portability": {
     "export": "Export",
     "export.subtitle": "This project as a file you can keep in a repository.",
@@ -1528,7 +1521,6 @@
     "preview.notes": "What did not come across",
     "preview.confirm": "Import {0} things"
   },
-
   "import": {
     "empty": "There was nothing to read.",
     "tooLarge": "That file is too big to import.",
@@ -1563,7 +1555,6 @@
     "note.oauth2": "An OAuth2 token was found and not kept — it is somebody’s live session.",
     "note.unknownAuth": "An authentication kind this does not know was skipped."
   },
-
   "template": {
     "title": "Templates",
     "subtitle": "Twelve scenarios to start from. Choosing one writes a real graph you can change.",
@@ -1605,7 +1596,6 @@
     "cleanup.title": "Tidy up afterwards",
     "cleanup.summary": "Make something, test it, and take it away again whatever happened."
   },
-
   "retention": {
     "label": "Keep response bodies and logs for",
     "days": "{0} days",
@@ -1613,7 +1603,6 @@
     "help": "What a run decided — passed or failed, how long it took, which checks held — is kept for ever. This is about the bulk: the bodies each step produced, the log lines and the artefacts. Those are what make a database grow without limit, and what is most likely to still hold somebody's personal data long after anybody needed it.",
     "cleared": "The bodies and log for this run have been cleared."
   },
-
   "input": {
     "title": "What this test needs to be told",
     "hint": "An input is answered per run — the order to look up, the customer to sign in as. Use it in any step as {{inputs.name}}. A variable belongs to an environment and is the same every time; this is not.",
@@ -1626,12 +1615,10 @@
     "missing": "This test needs a value for: {0}.",
     "given": "Given"
   },
-
   "workspaceSettings": {
     "title": "Workspace settings",
     "saved": "Saved."
   },
-
   "ai": {
     "title": "Writing a test with a model",
     "subtitle": "Describe what to check and a first draft appears on the canvas, for you to read and change. Nothing is saved until you save it.",
@@ -1664,41 +1651,32 @@
     "unreadable": "The model answered with something ProofFlow could not read as a scenario.",
     "invalidGraph": "The model drew a scenario that would not run, so it was not used. Try saying it differently."
   },
-
   "runner": {
     "title": "Runners",
     "subtitle": "Machines that run your tests from somewhere ProofFlow cannot reach.",
-
     "list": "Runners",
     "list.subtitle": "One agent usually serves everything reachable from where it sits.",
-
     "add": "Add a runner",
     "add.body": "Creating one issues a code. You then run the agent on the machine that can reach the API, and give it that code.",
     "name.placeholder": "Office network",
     "name.hint": "Where it runs, in the words your team already uses for that place.",
     "needsName": "Give the runner a name first.",
-
     "code.title": "The enrollment code for «{0}»",
     "code.body": "Shown once. Nothing here can produce it again — if it is lost, issue another.",
     "code.expires": "Expires {0}.",
     "code.countdown": "Expires in {0}",
     "code.expired": "This code has expired. Issue another.",
     "code.command": "On the machine that can reach the API:",
-
     "reissue": "Issue a new code",
     "cannotReissue": "That runner is already enrolled, so a new code would not help. Revoke it and add another.",
-
     "revoke": "Revoke",
     "revoke.title": "Revoke this runner?",
     "revoke.body": "«{0}» stops being able to claim work immediately, and its token stops opening anything. Every environment pointed at it will have nowhere to run until another is chosen. This cannot be undone.",
-
     "host": "Host",
     "lastSeen": "Last asked for work",
     "states": "What each state means",
-
     "empty.title": "No runners yet",
     "empty.body": "You only need one if some environment lives where this server cannot reach it. Everything else runs from here.",
-
     "state.waiting": "Waiting for the agent",
     "state.waiting.hint": "The code has been issued and nobody has used it yet. Run the agent on the other machine and give it the code.",
     "state.expired": "Code expired",
@@ -1709,5 +1687,18 @@
     "state.missing.hint": "Enrolled, but has not asked for work in three minutes. Something on that host has stopped.",
     "state.revoked": "Revoked",
     "state.revoked.hint": "Withdrawn. Its token no longer opens anything, and it cannot be brought back."
+  },
+  "reference": {
+    "insert": "Insert a reference",
+    "insertInto": "Insert a reference into {0}",
+    "search": "Search what is available",
+    "none": "Nothing to offer here yet. Add an environment variable, a secret, or a step before this one.",
+    "hint": "Chosen text is written where the cursor was. Anything not listed can still be typed.",
+    "group.environment": "Environment",
+    "group.vars": "Variables",
+    "group.secrets": "Secrets",
+    "group.inputs": "Inputs",
+    "group.steps": "Earlier steps",
+    "group.run": "This run"
   }
 }

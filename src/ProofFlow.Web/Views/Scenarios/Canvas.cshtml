@@ -12,6 +12,10 @@
         canEdit = Model.CanEdit,
         canRun = Model.CanRun,
         canDraw = Model.CanDraw,
+
+        // The names only. What they are answered with is a per-run thing and belongs in the bar.
+        inputs = Model.Inputs.Select(input => input.Name),
+        environmentId = Model.Scenario.EnvironmentId,
     }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 

@@ -7,6 +7,7 @@ import { MiniMap } from '@vue-flow/minimap';
 import WorkflowNodeCard from './WorkflowNodeCard.vue';
 import NodePalette from './NodePalette.vue';
 import NodeInspector from './NodeInspector.vue';
+import { EMPTY_CATALOGUE, type ReferenceCatalogue } from './referenceTypes';
 import { api, ApiError } from '../lib/api';
 import { t } from '../lib/i18n';
 import { toast } from '../lib/toast';
@@ -41,6 +42,12 @@ const props = defineProps<{
   canEdit: boolean;
   canRun: boolean;
   canDraw: boolean;
+
+  /** What this scenario asks before it runs, offered in every field as {{inputs.name}}. */
+  inputs: string[];
+
+  /** Whose variables and secrets to offer. The one this scenario runs in unless told otherwise. */
+  environmentId: string | null;
 }>();
 
 const {
@@ -100,11 +107,62 @@ const selected = computed<GraphNodeDto | null>(() => {
 
 const selectedSpec = computed(() => selected.value ? byKey.value.get(selected.value.key) ?? null : null);
 
+/**
+ * The names this environment publishes. Fetched once, and only names.
+ *
+ * The same endpoint the request builder uses, for the same reason: a secret's value never comes to
+ * the browser, and knowing that one is called «apiToken» is what somebody needs to write a header.
+ */
+const names = ref({ environment: [] as string[], variables: [] as string[], secrets: [] as string[] });
+
+/**
+ * Which steps the selected one can already read.
+ *
+ * Walked backwards along the connections rather than taken from the whole graph. Offering every
+ * step would offer ones that run afterwards, and a reference to a step that has not happened yet
+ * resolves to nothing at exactly the moment somebody is trying to work out why.
+ */
+const reachable = computed<string[]>(() => {
+  if (!selected.value) return [];
+
+  const before = new Map<string, string[]>();
+  for (const edge of edges.value) {
+    const list = before.get(edge.target) ?? [];
+    list.push(edge.source);
+    before.set(edge.target, list);
+  }
+
+  const seen = new Set<string>();
+  const queue = [...(before.get(selected.value.id) ?? [])];
+
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    queue.push(...(before.get(id) ?? []));
+  }
+
+  return nodes.value
+    .filter((node) => seen.has(node.id))
+    .map((node) => (node.data as { name?: string }).name ?? '')
+    .filter((name) => name.length > 0);
+});
+
+const catalogue = computed<ReferenceCatalogue>(() => ({
+  ...EMPTY_CATALOGUE,
+  environment: names.value.environment,
+  variables: names.value.variables,
+  secrets: names.value.secrets,
+  inputs: props.inputs,
+  steps: reachable.value,
+}));
+
 const errors = computed(() => problems.value.filter((p) => p.severity === 'Error'));
 const warnings = computed(() => problems.value.filter((p) => p.severity === 'Warning'));
 
 onMounted(async () => {
   await loadCatalogue();
+  await loadNames();
   await loadGraph();
 
   document.addEventListener('keydown', onKey);
@@ -157,6 +215,19 @@ async function draw(): Promise<void> {
     toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
   } finally {
     drawing.value = false;
+  }
+}
+
+async function loadNames(): Promise<void> {
+  try {
+    // With the environment, because half of what is worth offering — baseUrl, and every secret
+    // defined for one place rather than for all of them — does not exist without it.
+    const environment = props.environmentId ?? props.environments[0]?.id ?? '';
+
+    names.value = await api.get(
+      `/projects/${props.projectId}/request/variables?environmentId=${environment}`);
+  } catch {
+    // Only the offer degrades. Anything already written still resolves at run time.
   }
 }
 
@@ -864,6 +935,7 @@ onNodesInitialized(() => {
       :environments="environments"
       :can-edit="canEdit"
       :can-run="canRun"
+      :catalogue="catalogue"
       @update="updateSelected"
       @property="setProperty"
       @remove="removeSelected"

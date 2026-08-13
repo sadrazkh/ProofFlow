@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
+import { ref } from 'vue';
+import ReferencePicker from './ReferencePicker.vue';
+import { insertAtCaret } from '../lib/caret';
+import { EMPTY_CATALOGUE, type ReferenceCatalogue } from './referenceTypes';
 import { t } from '../lib/i18n';
 
 /**
@@ -15,11 +19,28 @@ export type KeyValueRow = { name: string; value: string; enabled: boolean };
 
 const rows = defineModel<KeyValueRow[]>({ required: true });
 
-defineProps<{
+const props = defineProps<{
   namePlaceholder?: string;
   valuePlaceholder?: string;
   label: string;
+
+  /** Offered in the value column, where a header carries a token far more often than a name does. */
+  catalogue?: ReferenceCatalogue;
 }>();
+
+const catalogue = () => props.catalogue ?? EMPTY_CATALOGUE;
+
+/** One per row's value box, so a picker writes into the line it sits on. */
+const values = ref<(HTMLInputElement | null)[]>([]);
+
+function insert(index: number, text: string): void {
+  const field = values.value[index];
+  const row = rows.value[index];
+  if (!field || !row) return;
+
+  row.value = insertAtCaret(field, text);
+  onInput(index);
+}
 
 function onInput(index: number): void {
   const row = rows.value[index];
@@ -74,13 +95,23 @@ function remove(index: number): void {
           />
         </td>
         <td>
-          <input
-            v-model="row.value"
-            class="input input-mono kv-input"
-            :placeholder="valuePlaceholder"
-            :aria-label="t('variable.value')"
-            @input="onInput(index)"
-          />
+          <span class="kv-value">
+            <input
+              :ref="(el) => { values[index] = el as HTMLInputElement | null; }"
+              v-model="row.value"
+              class="input input-mono kv-input"
+              :placeholder="valuePlaceholder"
+              :aria-label="t('variable.value')"
+              @input="onInput(index)"
+            />
+
+            <ReferencePicker
+              v-if="props.catalogue"
+              :catalogue="catalogue()"
+              :field="t('variable.value')"
+              @pick="insert(index, $event)"
+            />
+          </span>
         </td>
         <td class="kv-actions">
           <button
