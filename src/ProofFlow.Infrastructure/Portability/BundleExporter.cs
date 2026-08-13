@@ -222,6 +222,13 @@ public sealed class BundleExporter(ProofFlowDbContext db, ScenarioGraphService g
             .Where(version => approvedIds.Contains(version.Id))
             .ToDictionaryAsync(version => version.Id, cancellation);
 
+        // By slug, the way everything else in the file refers to everything else. The set itself
+        // travels under DataSets; this is only the pairing.
+        var dataSets = await db.DataSets
+            .Where(set => set.ProjectId == projectId)
+            .Select(set => new { set.Id, set.Name })
+            .ToDictionaryAsync(set => set.Id, set => Slug.From(set.Name, "dataset"), cancellation);
+
         return
         [
             .. baselines.Select(baseline => new BundleBaseline
@@ -231,6 +238,9 @@ public sealed class BundleExporter(ProofFlowDbContext db, ScenarioGraphService g
                 Description = baseline.Description,
                 Environment = baseline.EnvironmentId is { } id
                     ? environments.GetValueOrDefault(id)
+                    : null,
+                DataSet = baseline.DataSetId is { } setId
+                    ? dataSets.GetValueOrDefault(setId)
                     : null,
                 RequestJson = baseline.RequestJson,
                 Approved = Version(baseline, approved),

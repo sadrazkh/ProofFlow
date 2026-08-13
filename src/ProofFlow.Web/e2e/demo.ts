@@ -102,7 +102,7 @@ async function ensureBaseline(page: Page, projectId: string): Promise<void> {
   await page.getByRole('button', { name: /send|ارسال/i }).click();
   await page.waitForSelector('.response-head', { timeout: 20_000 });
 
-  await page.getByRole('button', { name: /save as baseline|ذخیره به‌عنوان/i }).click();
+  await page.getByRole('button', { name: /keep this answer|این پاسخ را نگه دار/i }).click();
   await page.waitForSelector('[role="dialog"]');
   await page.locator('[role="dialog"] input').first().fill(BASELINE_NAME);
   await page.locator('[role="dialog"] .btn-primary').click();

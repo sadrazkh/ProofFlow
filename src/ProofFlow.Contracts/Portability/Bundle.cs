@@ -144,6 +144,10 @@ public sealed record BundleBaseline
     public required string Name { get; init; }
     public string? Description { get; init; }
     public string? Environment { get; init; }
+
+    /// <summary>The set of inputs it is checked against, by slug, or null for «send it once».</summary>
+    public string? DataSet { get; init; }
+
     public string? RequestJson { get; init; }
 
     /// <summary>

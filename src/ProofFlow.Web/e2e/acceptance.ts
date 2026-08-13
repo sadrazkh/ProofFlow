@@ -354,7 +354,7 @@ async function main(): Promise<void> {
     });
 
     await stage('Record what correct looks like', async () => {
-      await page.getByRole('button', { name: /save as baseline|ذخیره به‌عنوان/i }).click();
+      await page.getByRole('button', { name: /keep this answer|این پاسخ را نگه دار/i }).click();
       await page.waitForSelector('[role="dialog"]');
       await page.locator('[role="dialog"] input').first().fill(BASELINE);
       await page.locator('[role="dialog"] .btn-primary').click();
@@ -402,15 +402,14 @@ async function main(): Promise<void> {
       await page.waitForSelector('[data-island-mounted="true"]');
       await page.waitForSelector('.wf-node');
 
-      await addNode(page, 'HTTP', 'HTTP request');
+      // A new scenario opens as the smallest chain there is — start, a request, a check — rather
+      // than as one dot on an empty canvas. So this fills one in instead of building one, which is
+      // also what somebody does.
+      const steps = await page.locator('.wf-node').count();
+      if (steps !== 3) throw new Error(`A new scenario should open as a chain of three, not ${steps}.`);
+
       await page.locator('.wf-node').nth(1).click();
       await setProperty(page, 'Address', '{{environment.baseUrl}}/records/{{vars.recordId}}');
-
-      await addNode(page, 'status', 'Check the status code');
-
-      await connect(page, 0, 'Then', 1, 'In');
-      await connect(page, 1, 'Then', 2, 'In');
-      await connect(page, 1, 'Response', 2, 'Response');
 
       await page.locator('.canvas-bar .btn-primary').click();
       await page.waitForTimeout(1200);

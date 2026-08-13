@@ -12,6 +12,7 @@ using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
+using ProofFlow.Domain.Scenarios;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Identity;
 using ProofFlow.Infrastructure.Persistence;
@@ -179,6 +180,99 @@ public sealed class EndpointPageTests(ProofFlowApplication app) : IClassFixture<
         request.GetProperty("headers").EnumerateArray()
             .Select(header => header.GetProperty("name").GetString())
             .Should().Contain("Authorization");
+    }
+
+    [Fact]
+    public async Task A_scenario_that_is_one_call_moves_to_endpoints_with_its_request_intact()
+    {
+        var (client, projectId, workspaceId) = await SignedInAsync(endpoints: 0);
+        var scenarioId = await OneCallScenarioAsync(workspaceId, projectId);
+
+        var page = $"/projects/{projectId}/scenarios";
+
+        var response = await client.PostAsync($"{page}/{scenarioId}/move-to-endpoint",
+            await FormAsync(client, page, []));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        using var scope = app.Services.CreateScope();
+        var db = Db(scope.ServiceProvider);
+
+        var endpoint = await db.Baselines.IgnoreQueryFilters()
+            .SingleAsync(candidate => candidate.ProjectId == projectId);
+
+        endpoint.Name.Should().Be("Read a product");
+
+        // The request, not just the name. A move that produced an endpoint with no address would
+        // look like it worked and leave somebody retyping what the graph already knew.
+        var request = JsonDocument.Parse(endpoint.RequestJson!).RootElement;
+
+        request.GetProperty("method").GetString().Should().Be("POST");
+        request.GetProperty("url").GetString().Should().Be("{{environment.baseUrl}}/products/1");
+        request.GetProperty("body").GetProperty("content").GetString().Should().Be(Payload);
+        request.GetProperty("headers").EnumerateArray()
+            .Select(header => header.GetProperty("name").GetString())
+            .Should().Contain("Accept");
+
+        // Archived, not deleted: a schedule may name it and a run from March still does.
+        var scenario = await db.Scenarios.IgnoreQueryFilters()
+            .SingleAsync(candidate => candidate.Id == scenarioId);
+
+        scenario.ArchivedAt.Should().NotBeNull();
+    }
+
+    private const string Payload = "{\"q\":1}";
+
+    /// <summary>A scenario of start → one request, which is what an import used to produce.</summary>
+    private async Task<Guid> OneCallScenarioAsync(Guid workspaceId, Guid projectId)
+    {
+        using var scope = app.Services.CreateScope();
+        var db = Db(scope.ServiceProvider);
+
+        var scenario = new TestScenario
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = projectId,
+            Name = "Read a product",
+        };
+        db.Scenarios.Add(scenario);
+
+        var version = new ScenarioVersion
+        {
+            WorkspaceId = workspaceId,
+            ScenarioId = scenario.Id,
+            Number = 1,
+            IsValid = true,
+        };
+        db.ScenarioVersions.Add(version);
+        scenario.DraftVersionId = version.Id;
+
+        db.WorkflowNodes.Add(new WorkflowNode
+        {
+            WorkspaceId = workspaceId,
+            ScenarioVersionId = version.Id,
+            Key = "core.start",
+            Name = "start",
+        });
+
+        db.WorkflowNodes.Add(new WorkflowNode
+        {
+            WorkspaceId = workspaceId,
+            ScenarioVersionId = version.Id,
+            Key = "http.request",
+            Name = "the call",
+            PropertiesJson = JsonSerializer.Serialize(new Dictionary<string, string?>
+            {
+                ["method"] = "POST",
+                ["url"] = "{{environment.baseUrl}}/products/1",
+                ["headers"] = "[{\"name\":\"Accept\",\"value\":\"application/json\",\"enabled\":true}]",
+                ["bodyKind"] = "json",
+                ["body"] = Payload,
+            }),
+        });
+
+        await db.SaveChangesAsync();
+        return scenario.Id;
     }
 
     // ---- scaffolding ----------------------------------------------------------------------------

@@ -1207,7 +1207,11 @@
     "empty": {
       "title": "No scenario yet",
       "body": "A scenario is a test drawn as a picture: send a request, check the answer, do something about it if the answer is wrong."
-    }
+    },
+    "moveToEndpoint": "Move to endpoints",
+    "moveConfirm": "Move «{0}» to endpoints? The scenario is archived, not deleted.",
+    "moved": "«{0}» is an endpoint now.",
+    "notOneCall": "That scenario is not a single call, so there is nothing to move it to."
   },
   "graphProblem": {
     "noStart": "This scenario has no starting point, so nothing would run. Add a Start.",

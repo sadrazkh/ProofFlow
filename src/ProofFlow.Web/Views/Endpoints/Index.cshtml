@@ -72,24 +72,33 @@ else
                        exactly this state — a request that has been brought over and never run. *@
                     <tr data-approved="@(endpoint.LatestStatus == BaselineStatus.Approved ? "true" : "false")">
                         <td>
+                            @* The name on its own line, and everything else under it.
+                               Not for looks: a link with text beside it is a link inside a text
+                               block, where colour alone has to carry the distinction and does not
+                               — the accent measures 1.67:1 against muted text. The rule in
+                               base.css underlines those; a name is better off simply not being
+                               one. *@
                             <a href="/projects/@Model.ProjectId/endpoints/@endpoint.Id" dir="auto">
                                 @endpoint.Name
                             </a>
-                            @if (endpoint.VersionCount == 0)
-                            {
-                                <span class="badge badge-idle">@T["endpoint.noAnswer"]</span>
-                            }
-                            else if (endpoint.LatestStatus != BaselineStatus.Approved)
-                            {
-                                <span class="badge @BaselineStatusTone.For(endpoint.LatestStatus)">
-                                    @T[$"baseline.status.{endpoint.LatestStatus}"]
-                                </span>
-                            }
-                            @if (!string.IsNullOrWhiteSpace(endpoint.Description))
-                            {
-                                <p class="text-xs subtle truncate" dir="auto"
-                                   style="max-inline-size: 42ch;">@endpoint.Description</p>
-                            }
+
+                            <div class="endpoint-name-meta">
+                                @if (endpoint.VersionCount == 0)
+                                {
+                                    <span class="badge badge-idle">@T["endpoint.noAnswer"]</span>
+                                }
+                                else if (endpoint.LatestStatus != BaselineStatus.Approved)
+                                {
+                                    <span class="badge @BaselineStatusTone.For(endpoint.LatestStatus)">
+                                        @T[$"baseline.status.{endpoint.LatestStatus}"]
+                                    </span>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(endpoint.Description))
+                                {
+                                    <span class="text-xs subtle truncate" dir="auto"
+                                          style="max-inline-size: 42ch;">@endpoint.Description</span>
+                                }
+                            </div>
                         </td>
                         <td>
                             @* Forced left-to-right: a path is not a sentence, and in a Persian page

@@ -2,17 +2,20 @@ using ProofFlow.Domain.Scenarios;
 using ProofFlow.Infrastructure.Scenarios;
 using ProofFlow.Contracts.Scenarios;
 using System.Security.Cryptography;
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Application.Common;
 using ProofFlow.Domain.Authorization;
+using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Identity;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Workspaces;
+using ProofFlow.TestEngine.Http;
 
 namespace ProofFlow.Web.Infrastructure.Seeding;
 
@@ -107,7 +110,7 @@ public sealed class DemoDataSeeder(
         var persian = (configuration["Demo:Culture"] ?? "en")
             .StartsWith("fa", StringComparison.OrdinalIgnoreCase);
 
-        (Project Project, ProjectEnvironment Local)? first = null;
+        (Project Project, ProjectEnvironment Local, ProjectEnvironment Staging)? first = null;
 
         foreach (var demo in DemoProjects)
         {
@@ -123,8 +126,8 @@ public sealed class DemoDataSeeder(
 
             db.Projects.Add(project);
 
-            var local = Environments(workspace.Id, project);
-            first ??= (project, local);
+            var (local, staging) = Environments(workspace.Id, project);
+            first ??= (project, local, staging);
         }
 
         await ColleaguesAsync(workspace.Id, password, persian);
@@ -133,7 +136,8 @@ public sealed class DemoDataSeeder(
 
         if (first is { } start)
         {
-            await FlowAsync(workspace.Id, user.Id, start.Project, start.Local, cancellationToken);
+            await FlowAsync(
+                workspace.Id, user.Id, start.Project, start.Local, start.Staging, cancellationToken);
         }
 
         user.LastWorkspaceId = workspace.Id;
@@ -238,7 +242,8 @@ public sealed class DemoDataSeeder(
     /// Both reachable ones are on loopback, which the URL guard refuses by default — so they say so
     /// explicitly, which is the clearest place anybody will see that setting demonstrated.
     /// </summary>
-    private ProjectEnvironment Environments(Guid workspaceId, Project project)
+    private (ProjectEnvironment Local, ProjectEnvironment Staging) Environments(
+        Guid workspaceId, Project project)
     {
         var fake = configuration["Demo:BaseUrl"] ?? "http://localhost:5290/fake";
 
@@ -256,7 +261,7 @@ public sealed class DemoDataSeeder(
 
         db.Environments.Add(local);
 
-        db.Environments.Add(new ProjectEnvironment
+        var staging = new ProjectEnvironment
         {
             WorkspaceId = workspaceId,
             ProjectId = project.Id,
@@ -266,7 +271,9 @@ public sealed class DemoDataSeeder(
             Kind = EnvironmentKind.Staging,
             AllowPrivateNetwork = true,
             SortOrder = 1,
-        });
+        };
+
+        db.Environments.Add(staging);
 
         db.Environments.Add(new ProjectEnvironment
         {
@@ -280,7 +287,7 @@ public sealed class DemoDataSeeder(
             SortOrder = 2,
         });
 
-        return local;
+        return (local, staging);
     }
 
 
@@ -296,7 +303,8 @@ public sealed class DemoDataSeeder(
     /// answers "how do I refer to that" for each of them by example rather than by documentation.
     /// </summary>
     private async Task FlowAsync(
-        Guid workspaceId, Guid userId, Project project, ProjectEnvironment local,
+        Guid workspaceId, Guid userId, Project project,
+        ProjectEnvironment local, ProjectEnvironment staging,
         CancellationToken cancellation)
     {
         // The fake API's own login takes these, so the flow signs in for real rather than
@@ -304,20 +312,30 @@ public sealed class DemoDataSeeder(
         // scenario refers to it by name — which is the thing worth showing.
         var sealedPassword = cipher.Seal("demo-password");
 
-        db.Secrets.Add(new Secret
+        // One per environment, under the same name.
+        //
+        // That is what a secret is for — the step says {{secrets.apiPassword}} and each environment
+        // answers with its own — and it is also the thing that was missing. Only Local had one, so
+        // running the demo scenario against Staging failed at the first step, every step after it
+        // failed for want of a token, and a matrix comparing the two had no step that reached the
+        // server on both sides. Three of four cells red is a demonstration of a broken setup.
+        foreach (var environment in new[] { local, staging })
         {
-            WorkspaceId = workspaceId,
-            ProjectId = project.Id,
-            EnvironmentId = local.Id,
-            Name = "apiPassword",
-            Description = "The demo API password. Written in a step as {{secrets.apiPassword}}.",
-            Ciphertext = sealedPassword.Ciphertext,
-            Nonce = sealedPassword.Nonce,
-            Tag = sealedPassword.Tag,
-            KeyVersion = sealedPassword.KeyVersion,
-            Preview = "word",
-            CreatedByUserId = userId,
-        });
+            db.Secrets.Add(new Secret
+            {
+                WorkspaceId = workspaceId,
+                ProjectId = project.Id,
+                EnvironmentId = environment.Id,
+                Name = "apiPassword",
+                Description = "The demo API password. Written in a step as {{secrets.apiPassword}}.",
+                Ciphertext = sealedPassword.Ciphertext,
+                Nonce = sealedPassword.Nonce,
+                Tag = sealedPassword.Tag,
+                KeyVersion = sealedPassword.KeyVersion,
+                Preview = "word",
+                CreatedByUserId = userId,
+            });
+        }
 
         db.Variables.Add(new EnvironmentVariable
         {
@@ -371,6 +389,49 @@ public sealed class DemoDataSeeder(
         await db.SaveChangesAsync(cancellation);
 
         logger.LogInformation("Seeded a complete scenario: {Name}.", scenario.Name);
+
+        await EndpointAsync(workspaceId, userId, project, local, cancellation);
+    }
+
+    /// <summary>
+    /// One endpoint beside the one chain.
+    ///
+    /// The product does two things and a workspace that showed only one of them taught half of it.
+    /// A chain — sign in, keep the token, read a list, take an id out of it — is what the canvas is
+    /// for; a single call kept and compared is what most people arrive wanting. Both are on the
+    /// first screen somebody sees now.
+    ///
+    /// No approved answer, deliberately. Recording one here would mean the seeder deciding what
+    /// correct looks like, and the whole point of the page is the moment somebody sends it once,
+    /// reads what came back, and agrees. The endpoint page says so where the answer would be.
+    /// </summary>
+    private async Task EndpointAsync(
+        Guid workspaceId, Guid userId, Project project, ProjectEnvironment local,
+        CancellationToken cancellation)
+    {
+        var request = new HttpRequestDefinition
+        {
+            Method = "GET",
+            Url = "{{environment.baseUrl}}/records/1",
+        };
+
+        db.Baselines.Add(new Baseline
+        {
+            WorkspaceId = workspaceId,
+            ProjectId = project.Id,
+            EnvironmentId = local.Id,
+            Name = "One record",
+            Description =
+                "A single call, kept. Press Test to send it again and find out whether the answer "
+                + "moved. Give it a set of inputs and the same button sweeps every row.",
+            RequestJson = JsonSerializer.Serialize(
+                request, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+            CreatedByUserId = userId,
+        });
+
+        await db.SaveChangesAsync(cancellation);
+
+        logger.LogInformation("Seeded an endpoint: One record.");
     }
 
     /// <summary>

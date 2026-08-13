@@ -64,7 +64,7 @@ public sealed class BundleImporter(
             Count("environment", bundle.Environments.Select(e => e.Slug), taken.Environments, skipped),
             // By name, the same thing the write checks and the same thing the database enforces.
             Count("scenario", bundle.Scenarios.Select(s => s.Name), taken.Scenarios, skipped),
-            Count("baseline", bundle.Baselines.Select(b => b.Slug), taken.Baselines, skipped),
+            Count("baseline", bundle.Baselines.Select(b => b.Name), taken.Baselines, skipped),
             Count("dataset", bundle.DataSets.Select(d => d.Slug), taken.DataSets, skipped),
             Count("schedule", bundle.Schedules.Select(s => Slug.From(s.Name, "schedule")), taken.Schedules, skipped),
         };
@@ -115,8 +115,12 @@ public sealed class BundleImporter(
 
         var environments = await EnvironmentsAsync(project, bundle, taken, skipped, cancellation);
         var scenarios = await ScenariosAsync(project, bundle, taken, environments, skipped, cancellation);
-        var baselines = BaselinesFrom(project, bundle, taken, environments, skipped);
-        var dataSets = DataSetsFrom(project, bundle, taken, skipped);
+
+        // Before the endpoints, because an endpoint names the set of inputs it is checked against
+        // and cannot be given an id that does not exist yet.
+        var dataSets = await DataSetsAsync(project, bundle, taken, skipped, cancellation);
+
+        var baselines = BaselinesFrom(project, bundle, taken, environments, dataSets, skipped);
 
         await db.SaveChangesAsync(cancellation);
 
@@ -136,7 +140,7 @@ public sealed class BundleImporter(
                 new ImportCount("environment", environments.Added, environments.Existing),
                 new ImportCount("scenario", scenarios, 0),
                 new ImportCount("baseline", baselines, 0),
-                new ImportCount("dataset", dataSets, 0),
+                new ImportCount("dataset", dataSets.Added, 0),
                 new ImportCount("schedule", schedules, 0),
                 new ImportCount("secret", secrets, 0),
             ],
@@ -363,13 +367,18 @@ public sealed class BundleImporter(
 
     private int BaselinesFrom(
         Project project, Bundle bundle, Taken taken, EnvironmentMap environments,
-        List<string> skipped)
+        DataSetMap dataSets, List<string> skipped)
     {
         var added = 0;
 
         foreach (var incoming in bundle.Baselines)
         {
-            if (taken.Baselines.Contains(incoming.Slug))
+            // By name, and added as it goes. The unique index is on the name, so checking a slug
+            // let two requests called the same thing in different folders both through and failed
+            // at the database — which is a two-thousand-request import that dies in the middle.
+            // The scenario path learned this the hard way; this one had the same bug, unexercised
+            // until an import started producing endpoints instead of scenarios.
+            if (!taken.Baselines.Add(incoming.Name))
             {
                 skipped.Add(incoming.Slug);
                 continue;
@@ -384,6 +393,14 @@ public sealed class BundleImporter(
                 EnvironmentId = incoming.Environment is { } slug
                     ? environments.BySlug.GetValueOrDefault(slug)
                     : null,
+
+                // The pairing with a set of inputs, by slug. Without it an exported endpoint
+                // arrives on the far side having forgotten what it is checked against, and the
+                // Test button asks a question somebody already answered.
+                DataSetId = incoming.DataSet is { } set
+                    ? dataSets.BySlug.GetValueOrDefault(set)
+                    : null,
+
                 RequestJson = incoming.RequestJson,
                 CreatedByUserId = me.UserId ?? Guid.Empty,
             };
@@ -420,9 +437,29 @@ public sealed class BundleImporter(
         return added;
     }
 
-    private int DataSetsFrom(Project project, Bundle bundle, Taken taken, List<string> skipped)
+    /// <summary>
+    /// The inputs, written first and mapped by slug.
+    ///
+    /// It saves before it returns, which the other collections do not: an endpoint arriving after
+    /// it needs a real id to point at, and EF will not give one out for an entity that is only
+    /// tracked. One extra round trip, once per import.
+    /// </summary>
+    private async Task<DataSetMap> DataSetsAsync(
+        Project project, Bundle bundle, Taken taken, List<string> skipped,
+        CancellationToken cancellation)
     {
         var added = 0;
+        var bySlug = new Dictionary<string, Guid>(StringComparer.Ordinal);
+
+        // The ones already here count too. A second import of the same file should pair its
+        // endpoints with the set that arrived the first time rather than with nothing.
+        foreach (var existing in await db.DataSets
+                     .Where(set => set.ProjectId == project.Id)
+                     .Select(set => new { set.Id, set.Name })
+                     .ToListAsync(cancellation))
+        {
+            bySlug[Slug.From(existing.Name, "dataset")] = existing.Id;
+        }
 
         foreach (var incoming in bundle.DataSets)
         {
@@ -472,10 +509,22 @@ public sealed class BundleImporter(
                 });
             }
 
+            bySlug[incoming.Slug] = set.Id;
             added++;
         }
 
-        return added;
+        // Saved here rather than with everything else, so the ids handed out above are real by the
+        // time an endpoint is told to point at one.
+        if (added > 0) await db.SaveChangesAsync(cancellation);
+
+        return new DataSetMap { Added = added, BySlug = bySlug };
+    }
+
+    /// <summary>Which set of inputs each slug in the file turned into.</summary>
+    private sealed class DataSetMap
+    {
+        public int Added { get; init; }
+        public Dictionary<string, Guid> BySlug { get; init; } = new(StringComparer.Ordinal);
     }
 
     private async Task<int> SchedulesAsync(
@@ -585,7 +634,8 @@ public sealed class BundleImporter(
             // that slug the same are two rows the database is perfectly happy with — and skipping
             // the second as «already here» lost it for a collision that did not exist.
             Scenarios = [.. scenarios],
-            Baselines = [.. baselines.Select(name => Slug.From(name, "baseline"))],
+            // Names, for the same reason as the scenarios above.
+            Baselines = [.. baselines],
             DataSets = [.. dataSets.Select(name => Slug.From(name, "dataset"))],
             Schedules = [.. schedules.Select(name => Slug.From(name, "schedule"))],
         };

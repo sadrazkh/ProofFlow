@@ -52,9 +52,10 @@ else
                 <thead>
                 <tr>
                     <th>@T["common.name"]</th>
-                    <th>@T["scenario.steps"]</th>
+                    <th class="numeric">@T["scenario.steps"]</th>
                     <th>@T["common.status"]</th>
                     <th>@T["common.updated"]</th>
+                    <th><span class="sr-only">@T["common.actions"]</span></th>
                 </tr>
                 </thead>
                 <tbody>
@@ -68,7 +69,7 @@ else
                                 <p class="text-xs subtle" dir="auto">@scenario.Description</p>
                             }
                         </td>
-                        <td class="tabular">@scenario.NodeCount</td>
+                        <td class="numeric tabular">@scenario.NodeCount</td>
                         <td>
                             <div class="row" style="gap: var(--space-2);">
                                 @* Three separate facts, and none of them implies another: a scenario can
@@ -93,10 +94,27 @@ else
                             </div>
                         </td>
                         <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(scenario.UpdatedAt))" /></td>
+                        <td class="numeric">
+                            @* A chain of one is not a chain. Offered rather than done: the name may
+                               mean something to somebody, and this archives the scenario. *@
+                            @if (scenario.IsReallyAnEndpoint && Model.CanRecord)
+                            {
+                                <form method="post"
+                                      action="/projects/@Model.ProjectId/scenarios/@scenario.Id/move-to-endpoint"
+                                      data-confirm="@T["scenario.moveConfirm", scenario.Name]">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-ghost btn-sm">
+                                        <i data-lucide="target" aria-hidden="true"></i>@T["scenario.moveToEndpoint"]
+                                    </button>
+                                </form>
+                            }
+                        </td>
                     </tr>
                 }
                 </tbody>
             </table>
         </div>
     </div>
+
+    <partial name="Pieces/_Pager" model="Model.Page" />
 }

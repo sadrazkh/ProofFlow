@@ -1,49 +1,55 @@
+using System.Text.Json;
 using FluentAssertions;
 using ProofFlow.Infrastructure.Portability;
 using ProofFlow.Infrastructure.Portability.Importers;
+using ProofFlow.TestEngine.Http;
 
 namespace ProofFlow.Tests;
 
 /// <summary>
 /// A foreign file becomes a bundle, and the bundle importer is the only thing that writes.
 ///
-/// What matters here is that each request becomes a scenario somebody could press Run on: three
-/// steps, wired together, with a check on the end. A scenario with nothing to assert passes whatever
-/// the API does, which is worse than no scenario at all.
+/// What matters here is that each request becomes an <i>endpoint</i>. It used to become a scenario
+/// of three steps, and these tests asserted that shape faithfully — which is why they all failed
+/// the moment the shape changed, and why they are rewritten rather than removed. A collection of
+/// two thousand requests is two thousand endpoints; a scenario is a chain, and none of those was
+/// one.
+///
+/// The request itself has to survive the crossing whole: method, address, headers and body. An
+/// import that produced a list of names and lost the payloads would look like it worked right up
+/// until somebody pressed Test.
 /// </summary>
 public class ImportedBundleTests
 {
+    private static HttpRequestDefinition Request(Contracts.Portability.BundleBaseline endpoint) =>
+        JsonSerializer.Deserialize<HttpRequestDefinition>(
+            endpoint.RequestJson!,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+
     [Fact]
-    public void A_curl_command_becomes_a_scenario_with_a_check_on_it()
+    public void A_curl_command_becomes_an_endpoint_carrying_the_whole_request()
     {
         var bundle = ImportedBundle.From(CurlImporter.Read(
             """curl -X POST https://api.example.com/products -H 'Accept: application/json' -d '{"name":"Anvil"}'"""));
 
-        var scenario = bundle.Scenarios.Should().ContainSingle().Subject;
+        // Not a scenario. A single call is an endpoint, and the section for chains stays for chains.
+        bundle.Scenarios.Should().BeEmpty();
 
-        scenario.Graph.Nodes.Select(node => node.Key)
-            .Should().BeEquivalentTo(["core.start", "http.request", "assert.status"],
-                options => options.WithStrictOrdering());
+        var endpoint = bundle.Baselines.Should().ContainSingle().Subject;
+        var request = Request(endpoint);
 
-        // Three edges: the two that order the steps, and the data edge without which the check has
-        // nothing to look at.
-        scenario.Graph.Edges.Should().HaveCount(3);
-        scenario.Graph.Edges.Should().ContainSingle(edge =>
-            edge.FromPort == "response" && edge.ToPort == "response");
+        request.Method.Should().Be("POST");
+        request.Url.Should().Be("https://api.example.com/products");
+        request.Body!.Content.Should().Be("""{"name":"Anvil"}""");
+        request.Headers.Should().ContainSingle(header => header.Name == "Accept");
 
-        var request = scenario.Graph.Nodes[1];
-
-        request.Properties["method"].Should().Be("POST");
-        request.Properties["url"].Should().Be("https://api.example.com/products");
-        request.Properties["bodyKind"].Should().Be("json");
-        request.Properties["body"].Should().Be("""{"name":"Anvil"}""");
-
-        // Headers are written in the shape the runner reads back.
-        request.Properties["headers"].Should().Contain("\"name\":\"Accept\"");
+        // Nothing has been sent, so there is nothing to approve. Inventing an answer here would be
+        // deciding what correct looks like from a file somebody exported out of Postman.
+        endpoint.Approved.Should().BeNull();
     }
 
     [Fact]
-    public void The_base_url_becomes_an_environment_and_the_scenario_points_at_it()
+    public void The_base_url_becomes_an_environment_and_the_endpoint_points_at_it()
     {
         var bundle = ImportedBundle.From(CurlImporter.Read("curl https://api.example.com/products"));
 
@@ -52,11 +58,11 @@ public class ImportedBundleTests
         environment.Slug.Should().Be("imported");
         environment.BaseUrl.Should().Be("https://api.example.com");
 
-        bundle.Scenarios.Single().Environment.Should().Be("imported");
+        bundle.Baselines.Single().Environment.Should().Be("imported");
     }
 
     [Fact]
-    public void A_folder_name_goes_into_the_scenario_name_rather_than_being_dropped()
+    public void A_folder_name_goes_into_the_endpoint_name_rather_than_being_dropped()
     {
         var bundle = ImportedBundle.From(PostmanImporter.Read("""
             {
@@ -68,12 +74,12 @@ public class ImportedBundleTests
             }
             """));
 
-        bundle.Scenarios.Select(scenario => scenario.Name)
+        bundle.Baselines.Select(endpoint => endpoint.Name)
             .Should().BeEquivalentTo(["Products · List", "Orders · List"]);
 
         // And the two are distinct, which is what stops the second one being skipped as a
         // collision with the first.
-        bundle.Scenarios.Select(scenario => scenario.Slug).Should().OnlyHaveUniqueItems();
+        bundle.Baselines.Select(endpoint => endpoint.Slug).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
@@ -89,12 +95,16 @@ public class ImportedBundleTests
             }
             """));
 
-        bundle.Scenarios.Should().HaveCount(2);
-        bundle.Scenarios.Select(scenario => scenario.Slug).Should().OnlyHaveUniqueItems();
+        bundle.Baselines.Should().HaveCount(2);
+        bundle.Baselines.Select(endpoint => endpoint.Slug).Should().OnlyHaveUniqueItems();
+
+        // Names too, and not only slugs: the unique index is on the name, so two rows the slug
+        // rule kept apart can still be one row the database refuses.
+        bundle.Baselines.Select(endpoint => endpoint.Name).Should().OnlyHaveUniqueItems();
     }
 
     [Fact]
-    public void An_open_api_document_becomes_one_scenario_per_operation_with_its_own_status()
+    public void An_open_api_document_becomes_one_endpoint_per_operation()
     {
         var bundle = ImportedBundle.From(OpenApiImporter.Read("""
             {
@@ -111,15 +121,16 @@ public class ImportedBundleTests
             """));
 
         bundle.Project.Name.Should().Be("Catalog API");
-        bundle.Scenarios.Should().HaveCount(2);
+        bundle.Baselines.Should().HaveCount(2);
 
-        Expected(bundle, "List").Should().Be("200");
-        Expected(bundle, "Create").Should().Be("201");
+        // The document's success status is not thrown away. There is nowhere structural to put it
+        // — an endpoint's expectation is the answer somebody approved, and nothing has been sent —
+        // so it is said to the person who will send it.
+        Description(bundle, "List").Should().NotContain("answers");
+        Description(bundle, "Create").Should().Contain("201");
 
-        static string? Expected(Contracts.Portability.Bundle bundle, string name) =>
-            bundle.Scenarios.Single(scenario => scenario.Name == name)
-                .Graph.Nodes.Single(node => node.Key == "assert.status")
-                .Properties["expected"];
+        static string? Description(Contracts.Portability.Bundle bundle, string name) =>
+            bundle.Baselines.Single(endpoint => endpoint.Name == name).Description;
     }
 
     [Fact]
@@ -135,7 +146,7 @@ public class ImportedBundleTests
     }
 
     [Fact]
-    public void A_form_body_is_written_the_way_the_runner_will_send_it()
+    public void A_form_body_survives_the_crossing_without_the_rows_somebody_switched_off()
     {
         var bundle = ImportedBundle.From(PostmanImporter.Read("""
             {
@@ -157,11 +168,15 @@ public class ImportedBundleTests
             }
             """));
 
-        var request = bundle.Scenarios.Single().Graph.Nodes.Single(node => node.Key == "http.request");
+        var request = Request(bundle.Baselines.Single());
 
-        request.Properties["bodyKind"].Should().Be("form");
+        request.Body!.Kind.Should().Be(BodyKind.FormUrlEncoded);
 
-        // Encoded, and without the row somebody switched off.
-        request.Properties["body"].Should().Be("grant%20type=password");
+        // The disabled row travels — the engine is what decides not to send it — but it travels
+        // marked, so somebody opening the endpoint sees the row they switched off rather than
+        // wondering where it went.
+        request.Body.Form.Should().HaveCount(2);
+        request.Body.Form.Should().ContainSingle(field => field.Name == "skip" && !field.Enabled);
+        request.Body.Form.Should().ContainSingle(field => field.Name == "grant type" && field.Enabled);
     }
 }

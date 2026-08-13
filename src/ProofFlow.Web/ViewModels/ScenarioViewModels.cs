@@ -8,7 +8,11 @@ public sealed record ScenarioListViewModel
     public required Guid ProjectId { get; init; }
     public required string ProjectName { get; init; }
     public required IReadOnlyList<ScenarioSummary> Scenarios { get; init; }
+    public required Paging Page { get; init; }
     public bool CanEdit { get; init; }
+
+    /// <summary>Whether the reader may make an endpoint, which is what «move this» does.</summary>
+    public bool CanRecord { get; init; }
 }
 
 /// <summary>
@@ -22,7 +26,17 @@ public sealed record ScenarioSummary(
     int NodeCount,
     bool IsPublished,
     bool? IsValid,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt)
+{
+    /// <summary>
+    /// A chain of one, which is not a chain.
+    ///
+    /// Start plus one request, or start plus a request plus a check — the two shapes an import
+    /// used to produce. They are endpoints wearing a canvas, and this is what lets the list say so
+    /// and offer to move them rather than leaving eleven thousand of them where chains live.
+    /// </summary>
+    public bool IsReallyAnEndpoint => NodeCount is > 0 and <= 3;
+}
 
 public sealed record ScenarioCanvasViewModel
 {

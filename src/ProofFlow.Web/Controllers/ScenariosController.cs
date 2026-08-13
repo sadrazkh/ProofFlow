@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -5,10 +6,12 @@ using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Authorization;
+using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Scenarios;
 using ProofFlow.Infrastructure.Ai;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Scenarios;
+using ProofFlow.TestEngine.Http;
 using ProofFlow.Web.Infrastructure;
 using ProofFlow.Web.ViewModels;
 
@@ -30,14 +33,25 @@ public sealed partial class ScenariosController(
 {
     [HttpGet("")]
     [Authorize(Policy = Policies.ViewProject)]
-    public async Task<IActionResult> Index(Guid projectId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        Guid projectId, int? page, CancellationToken cancellationToken)
     {
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
         if (project is null) return NotFound();
 
-        var rows = await db.Scenarios
-            .Where(s => s.ProjectId == projectId && s.ArchivedAt == null)
+        var query = db.Scenarios.Where(s => s.ProjectId == projectId && s.ArchivedAt == null);
+
+        var total = await query.CountAsync(cancellationToken);
+        var current = Paging.Clamp(page, Paging.DefaultPageSize, total);
+
+        // Paged, and it took an imported collection to notice: eleven thousand scenarios rendered
+        // as eleven thousand rows, which is not a list anybody can use. Imports produce endpoints
+        // now, so this will rarely be long again — but «rarely» is not a reason to render
+        // everything, and the scenario list is the other one that never paged.
+        var rows = await query
             .OrderBy(s => s.Name)
+            .Skip((current - 1) * Paging.DefaultPageSize)
+            .Take(Paging.DefaultPageSize)
             .Select(s => new ScenarioSummary(
                 s.Id,
                 s.Name,
@@ -59,8 +73,146 @@ public sealed partial class ScenariosController(
             ProjectId = projectId,
             ProjectName = project.Name,
             Scenarios = rows,
+            Page = new Paging
+            {
+                Page = current,
+                PageSize = Paging.DefaultPageSize,
+                Total = total,
+                Path = $"/projects/{projectId}/scenarios",
+            },
             CanEdit = me.Can(Capability.EditTest),
+            CanRecord = me.Can(Capability.RecordBaseline),
         });
+    }
+
+    /// <summary>
+    /// Turns a scenario that is one call into the endpoint it always was.
+    ///
+    /// Offered rather than done automatically, and offered per scenario rather than in bulk: the
+    /// name might mean something to somebody, and a button that quietly rewrote eleven thousand
+    /// rows is not a button anybody should press without looking. What it moves is the request —
+    /// method, address, headers, body — which is everything a one-step graph actually held.
+    ///
+    /// The scenario is archived, not deleted. It might be referenced by a schedule, and a run from
+    /// March still names it.
+    /// </summary>
+    [HttpPost("{scenarioId:guid}/move-to-endpoint")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    public async Task<IActionResult> MoveToEndpoint(
+        Guid projectId, Guid scenarioId, CancellationToken cancellationToken)
+    {
+        var scenario = await db.Scenarios
+            .FirstOrDefaultAsync(s => s.Id == scenarioId && s.ProjectId == projectId, cancellationToken);
+        if (scenario is null) return NotFound();
+
+        var nodes = await db.WorkflowNodes
+            .Where(node => node.ScenarioVersionId == scenario.DraftVersionId)
+            .Select(node => new { node.Key, node.PropertiesJson })
+            .ToListAsync(cancellationToken);
+
+        // One request and nothing else that sends anything. Two requests is a chain, however
+        // short, and moving it would throw the second one away.
+        var requests = nodes.Where(node => node.Key == "http.request").ToList();
+
+        if (requests.Count != 1)
+        {
+            TempData.Error(localizer["scenario.notOneCall"]);
+            return Redirect($"/projects/{projectId}/scenarios");
+        }
+
+        if (await db.Baselines.AnyAsync(
+                b => b.ProjectId == projectId && b.Name == scenario.Name, cancellationToken))
+        {
+            TempData.Error(localizer["baseline.nameTaken", scenario.Name]);
+            return Redirect($"/projects/{projectId}/scenarios");
+        }
+
+        var endpoint = new Baseline
+        {
+            WorkspaceId = scenario.WorkspaceId,
+            ProjectId = projectId,
+            EnvironmentId = scenario.EnvironmentId,
+            Name = scenario.Name,
+            Description = scenario.Description,
+            RequestJson = RequestFrom(requests[0].PropertiesJson),
+            CreatedByUserId = me.UserId ?? Guid.Empty,
+        };
+
+        db.Baselines.Add(endpoint);
+
+        // Archived rather than deleted: a schedule may name it, and a run from March still does.
+        scenario.ArchivedAt = DateTimeOffset.UtcNow;
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.created", projectId, nameof(Baseline), endpoint.Id, endpoint.Name,
+            new Dictionary<string, string?> { ["from"] = "scenario" }), cancellationToken);
+
+        TempData.Success(localizer["scenario.moved", endpoint.Name]);
+        return Redirect($"/projects/{projectId}/endpoints/{endpoint.Id}");
+    }
+
+    /// <summary>
+    /// The node's properties, as the request the endpoint page reads.
+    ///
+    /// A node stores its request flattened — method and url as strings, headers and query as JSON
+    /// inside a string — because that is what a property grid can edit. An endpoint stores an
+    /// HttpRequestDefinition. This is the one place the two shapes meet.
+    /// </summary>
+    private static string RequestFrom(string? propertiesJson)
+    {
+        var properties = propertiesJson is { Length: > 0 }
+            ? JsonSerializer.Deserialize<Dictionary<string, string?>>(propertiesJson) ?? []
+            : [];
+
+        var request = new HttpRequestDefinition
+        {
+            Method = properties.GetValueOrDefault("method") ?? "GET",
+            Url = properties.GetValueOrDefault("url") ?? string.Empty,
+            Headers = Entries(properties.GetValueOrDefault("headers")),
+            Query = Entries(properties.GetValueOrDefault("query")),
+            Body = Body(properties),
+        };
+
+        return JsonSerializer.Serialize(
+            request, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        static IReadOnlyList<KeyValueEntry> Entries(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json)) return [];
+
+            try
+            {
+                return JsonSerializer.Deserialize<List<KeyValueEntry>>(
+                    json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? [];
+            }
+            catch (JsonException)
+            {
+                // A property somebody hand-edited. Losing the headers is bad; refusing to move the
+                // endpoint at all because of them is worse, and the detail page shows what arrived.
+                return [];
+            }
+        }
+
+        static RequestBody? Body(Dictionary<string, string?> properties)
+        {
+            var content = properties.GetValueOrDefault("body");
+            if (string.IsNullOrWhiteSpace(content)) return null;
+
+            return new RequestBody
+            {
+                Kind = properties.GetValueOrDefault("bodyKind") switch
+                {
+                    "json" => BodyKind.Json,
+                    "form" => BodyKind.FormUrlEncoded,
+                    "raw" => BodyKind.Xml,
+                    _ => BodyKind.Text,
+                },
+                Content = content,
+            };
+        }
     }
 
     [HttpGet("new")]
@@ -90,8 +242,13 @@ public sealed partial class ScenariosController(
         db.Scenarios.Add(scenario);
         await db.SaveChangesAsync(cancellationToken);
 
-        // A start node from the beginning. An empty canvas with no way to begin is a puzzle, and
-        // the validator would immediately complain about a graph nobody has drawn yet.
+        // A chain from the beginning: start, a request, and a check on what came back.
+        //
+        // It used to be a lone start node, which is a canvas with one dot on it — and the shape of
+        // a thing teaches what the thing is for. A scenario is a chain, and somebody who opens a
+        // new one should be looking at the smallest chain there is rather than at an empty page
+        // with a palette beside it. The request has no address yet, so nothing runs until somebody
+        // fills one in; that is a form to complete, not a puzzle to solve.
         await graphs.SaveAsync(scenario, new GraphDto
         {
             Nodes =
@@ -99,10 +256,37 @@ public sealed partial class ScenariosController(
                 new()
                 {
                     Id = "start", Key = "core.start",
-                    Name = localizer["node.core.start.title"].Value, X = 80, Y = 80,
+                    Name = localizer["node.core.start.title"].Value, X = 80, Y = 120,
+                },
+                new()
+                {
+                    Id = "request", Key = "http.request",
+                    Name = localizer["node.http.request.title"].Value, X = 360, Y = 120,
+                    Properties = new Dictionary<string, string?>
+                    {
+                        ["method"] = "GET",
+                        ["url"] = "{{environment.baseUrl}}/",
+                    },
+                },
+                new()
+                {
+                    Id = "check", Key = "assert.status",
+                    Name = localizer["node.assert.status.title"].Value, X = 640, Y = 120,
+                    Properties = new Dictionary<string, string?> { ["expected"] = "200" },
                 },
             ],
-            Edges = [],
+            Edges =
+            [
+                new() { Id = "e1", FromId = "start", FromPort = "out", ToId = "request", ToPort = "in" },
+                new() { Id = "e2", FromId = "request", FromPort = "out", ToId = "check", ToPort = "in" },
+
+                // The data edge, without which the check has nothing to look at.
+                new()
+                {
+                    Id = "e3", FromId = "request", FromPort = "response",
+                    ToId = "check", ToPort = "response",
+                },
+            ],
         }, cancellationToken);
 
         await audit.RecordAsync(new AuditEntry(

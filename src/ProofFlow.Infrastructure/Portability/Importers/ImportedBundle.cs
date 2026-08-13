@@ -1,7 +1,6 @@
 using System.Text.Json;
 using ProofFlow.Application.Common;
 using ProofFlow.Contracts.Portability;
-using ProofFlow.Contracts.Scenarios;
 using ProofFlow.TestEngine.Http;
 
 namespace ProofFlow.Infrastructure.Portability.Importers;
@@ -74,9 +73,9 @@ public static class ImportedBundle
                 Description = imported.Description,
             },
             Environments = environments,
-            Scenarios =
+            Baselines =
             [
-                .. imported.Requests.Select(request => Scenario(request, environments, used, titles)),
+                .. imported.Requests.Select(request => Endpoint(request, environments, used, titles)),
             ],
             SecretsToSupply =
             [
@@ -89,21 +88,19 @@ public static class ImportedBundle
         };
     }
 
-    private static BundleScenario Scenario(
+    private static BundleBaseline Endpoint(
         ImportedRequest imported, List<BundleEnvironment> environments,
         HashSet<string> used, HashSet<string> titles)
     {
-        var request = imported.Request;
-
         // The folder or tag goes into the name rather than being dropped. Forty requests called
-        // "Get" would otherwise be forty scenarios called "Get".
+        // "Get" would otherwise be forty endpoints called "Get".
         var title = string.IsNullOrWhiteSpace(imported.Group)
             ? imported.Name
             : $"{imported.Group} · {imported.Name}";
 
         // The name, made distinct and made to fit, because the database has an opinion about both.
         //
-        // A scenario's name is unique per project — and a real collection has two requests called
+        // An endpoint's name is unique per project — and a real collection has two requests called
         // the same thing in the same folder more often than not, which produced two rows with two
         // different slugs and one name, and an import that died on «an error occurred while saving
         // the entity changes» partway through. Two hundred characters is the column; a folder path
@@ -111,111 +108,41 @@ public static class ImportedBundle
         title = Fit(title, 200);
         title = Unique(title, titles);
 
-        return new BundleScenario
+        return new BundleBaseline
         {
-            Slug = Unique(Slug.From(title, "scenario"), used),
+            Slug = Unique(Slug.From(title, "baseline"), used),
             Name = title,
-            Description = imported.Description,
+            Description = Describe(imported),
             Environment = environments.Count > 0 ? EnvironmentSlug : null,
-            Graph = new GraphDto
-            {
-                Nodes =
-                [
-                    new GraphNodeDto
-                    {
-                        Id = "n1", Key = "core.start", Name = "start", X = 0, Y = 0,
-                    },
-                    new GraphNodeDto
-                    {
-                        Id = "n2",
-                        Key = "http.request",
-                        Name = imported.Name,
-                        X = 240,
-                        Y = 0,
-                        Properties = Properties(request),
-                    },
-                    new GraphNodeDto
-                    {
-                        Id = "n3",
-                        Key = "assert.status",
-                        Name = "status",
-                        X = 480,
-                        Y = 0,
-                        Properties = new Dictionary<string, string?>
-                        {
-                            ["expected"] = imported.ExpectedStatus.ToString(),
-                        },
-                    },
-                ],
-                Edges =
-                [
-                    new GraphEdgeDto { Id = "e1", FromId = "n1", FromPort = "out", ToId = "n2", ToPort = "in" },
-                    new GraphEdgeDto { Id = "e2", FromId = "n2", FromPort = "out", ToId = "n3", ToPort = "in" },
 
-                    // The data edge, without which the check has nothing to look at.
-                    new GraphEdgeDto
-                    {
-                        Id = "e3", FromId = "n2", FromPort = "response", ToId = "n3", ToPort = "response",
-                    },
-                ],
-            },
+            // The request as the engine reads it, serialised the way the endpoint page expects to
+            // find it — the same shape the request lab writes when somebody keeps a response.
+            RequestJson = JsonSerializer.Serialize(imported.Request, Pairs),
+
+            // No approved answer. Nothing has been sent yet, so there is nothing to approve, and
+            // an import that invented one would be an import that decided what correct looks like
+            // on the strength of a file somebody exported from Postman.
+            Approved = null,
         };
     }
 
-    private static Dictionary<string, string?> Properties(HttpRequestDefinition request)
+    /// <summary>
+    /// The description, with the document's success status appended when it is not the obvious one.
+    ///
+    /// An OpenAPI document that says an operation answers 204 is telling somebody something they
+    /// will otherwise find out by recording a 204 and wondering whether it was meant. There is
+    /// nowhere better to put it: an endpoint's expectation is the answer that was approved, and
+    /// nothing has been sent yet, so this is a note to the person who will send it.
+    /// </summary>
+    private static string? Describe(ImportedRequest imported)
     {
-        var properties = new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            ["method"] = request.Method,
-            ["url"] = request.Url,
-        };
+        if (imported.ExpectedStatus is 200 or 0) return imported.Description;
 
-        if (request.Headers.Count > 0)
-        {
-            properties["headers"] = JsonSerializer.Serialize(
-                request.Headers.Select(header => new
-                {
-                    name = header.Name,
-                    value = header.Value,
-                    enabled = header.Enabled,
-                }),
-                Pairs);
-        }
+        var note = $"The document says this answers {imported.ExpectedStatus}.";
 
-        if (request.Query.Count > 0)
-        {
-            properties["query"] = JsonSerializer.Serialize(
-                request.Query.Select(entry => new
-                {
-                    name = entry.Name,
-                    value = entry.Value,
-                    enabled = entry.Enabled,
-                }),
-                Pairs);
-        }
-
-        if (request.Body is { } body && body.Kind != BodyKind.None)
-        {
-            properties["bodyKind"] = body.Kind switch
-            {
-                BodyKind.Json or BodyKind.GraphQl => "json",
-                BodyKind.FormUrlEncoded or BodyKind.Multipart => "form",
-                BodyKind.Xml => "raw",
-                _ => "text",
-            };
-
-            properties["body"] = body.Form.Count > 0
-                ? string.Join('&', body.Form
-                    .Where(field => field.Enabled)
-                    .Select(field => $"{Uri.EscapeDataString(field.Name)}={Uri.EscapeDataString(field.Value)}"))
-                : body.Content ?? string.Empty;
-        }
-
-        // Authentication is not a node property — it belongs to the environment, where a reference
-        // to a secret can be resolved once for every step rather than copied onto each of them.
-        // What survives the crossing is the header the importer already wrote.
-
-        return properties;
+        return string.IsNullOrWhiteSpace(imported.Description)
+            ? note
+            : string.Join("\n\n", imported.Description, note);
     }
 
     /// <summary>
