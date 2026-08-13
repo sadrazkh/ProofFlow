@@ -127,7 +127,7 @@ public sealed class EndpointsController(
             ProjectName = project.Name,
             Endpoints = [.. rows.Select(row =>
             {
-                var request = Request(row.RequestJson);
+                var request = Stored(row.RequestJson);
                 return new EndpointSummary(
                     row.Id,
                     row.Name,
@@ -215,7 +215,7 @@ public sealed class EndpointsController(
                 s.StartedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
-        var request = Request(endpoint.RequestJson);
+        var request = Stored(endpoint.RequestJson);
 
         Breadcrumbs(project.Name, projectId, endpoint.Name);
         ViewData["Title"] = endpoint.Name;
@@ -442,7 +442,7 @@ public sealed class EndpointsController(
         // Only the two fields this form owns are written back. The stored request may carry
         // headers, a body and an authentication block that the request lab put there, and a form
         // that serialised its own two fields over the top would silently delete all of it.
-        var existing = Request(endpoint.RequestJson) ?? new HttpRequestDefinition();
+        var existing = Stored(endpoint.RequestJson) ?? new HttpRequestDefinition();
 
         endpoint.RequestJson = JsonSerializer.Serialize(
             existing with
@@ -574,7 +574,7 @@ public sealed class EndpointsController(
             .FirstOrDefaultAsync(b => b.Id == endpointId && b.ProjectId == projectId, cancellationToken);
         if (endpoint is null) return NotFound();
 
-        var request = Request(endpoint.RequestJson);
+        var request = Stored(endpoint.RequestJson);
         if (request is null) return Json(Failed(localizer["baseline.noRequest"].Value));
 
         var environmentId = command.EnvironmentId ?? endpoint.EnvironmentId;
@@ -977,7 +977,15 @@ public sealed class EndpointsController(
 
     // ---- plumbing ------------------------------------------------------------------------------
 
-    private static HttpRequestDefinition? Request(string? json)
+    /// <summary>
+    /// The stored request, read back.
+    ///
+    /// Called Stored rather than Request, which is what it was: a controller inherits a Request
+    /// property that is the incoming HTTP request, and a private method of the same name hides it.
+    /// Nothing here needed the property, so it compiled — and the next person to write
+    /// Request.Headers in this file would have got a very confusing error about a string.
+    /// </summary>
+    private static HttpRequestDefinition? Stored(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return null;
 

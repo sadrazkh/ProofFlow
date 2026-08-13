@@ -67,7 +67,7 @@ Nothing to install beyond the .NET 10 SDK and Node 22. The default database is a
 created on first run.
 
 ```bash
-cd src/ProofFlow.Web && npm install && npm run build && dotnet run
+cd src/ProofFlow.Web && dotnet run
 ```
 
 Or open `ProofFlow.slnx` in Visual Studio and press F5. Either way it comes up seeded, on
@@ -75,8 +75,20 @@ Or open `ProofFlow.slnx` in Visual Studio and press F5. Either way it comes up s
 top of the sidebar — one button there makes a project pointed at the pretend API this application
 serves, so there is something to send a request to before there is anything to configure.
 
-The one prerequisite is `npm install && npm run build` in `src/ProofFlow.Web`, once. The .NET build
-does not run Vite, so without it the pages render without their stylesheet.
+The .NET build runs Vite. It used to be a separate `npm run build` somebody had to remember, and
+forgetting it served whatever JavaScript happened to be in `wwwroot/build` from the last time
+anybody ran it — a feature added that morning simply not there, with no error to explain it. The
+build is incremental, so it costs nothing when nothing changed, and `npm install` runs only when
+`node_modules` is missing. Pass `-p:SkipFrontendBuild=true` for a build that must not shell out.
+
+**If it will not start**, the usual cause is that something else already holds the port:
+
+```bash
+netstat -ano | findstr :5290
+```
+
+Anything listed there is a previous run that did not stop — including one left behind by a debugger
+or a terminal that was closed rather than interrupted.
 
 ### The account it comes with
 
