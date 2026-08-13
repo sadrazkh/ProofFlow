@@ -3,12 +3,16 @@
 Prove your API still does what it did yesterday.
 
 ProofFlow is a self-hosted platform for building, running and reviewing API tests **without writing
-code**. Run an endpoint, approve what came back, and it becomes a baseline — field by field, with
-the parts that change on every call marked as changing. Run it again next week and ProofFlow tells
-you which field moved, from what, to what, and whether that was allowed.
+code**. It does two things, and the sidebar is two words long because of it.
 
-For anything larger than one endpoint there is a canvas: drag steps together, feed each one's
-output into the next, and run the whole chain against as many environments as you have.
+**Endpoints** are the simple job. One request, kept: send it, read what came back, agree that it is
+right. Give it a list of inputs — two thousand study identifiers, or five — and one button sends it
+once per row and tells you which answers moved, field by field, with the parts that change on every
+call marked as changing. Bring a Postman collection over and every request in it arrives here.
+
+**Scenarios** are chains. Sign in, keep the token, read a list, take an id out of it, read that one,
+put the API back the way it was. Drag the steps together on a canvas, feed each one's output into
+the next, and run the whole thing against as many environments as you have.
 
 A scenario can name what it needs answering — an order id, a page, a customer — and ask for it when
 it runs. The same values go in the body of the API call that starts a run, so a pipeline supplies

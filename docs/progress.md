@@ -1031,6 +1031,100 @@ the suite grouping is in the backlog below rather than pretending to exist in a 
 
 ---
 
+## The section that was not what it was for
+
+Two problems, both visible in the running product, and one of them was mine.
+
+**The Scenarios section had stopped being about scenarios.** A scenario is a chain — sign in, keep
+the token, read a list, take an id out of it, read that one. That worked. But the Postman importer
+wrapped every single request in a three-node graph and filed it there, so a thirty-megabyte
+collection produced 11,321 scenarios of which 11,320 were one HTTP call. The section that exists for
+chains became the place chains could not be found. The list also had no paging, so it tried to
+render all of them.
+
+**And the simple job had no home.** Call one endpoint, keep what came back, run it against a list of
+inputs, press one button to check it again. Every piece of that already worked — `Baseline` carries
+the request, its environment, a six-state approval cycle and the comparison rules; `CaptureService`
+already sweeps one across a data set — and it was spread over five sidebar entries named after the
+mechanisms: Baselines, Data sets, Captures, Review queue, Guided setup. None of them was called
+«the endpoint I want to test».
+
+No new entity. A baseline *is* an endpoint. What it gained is one nullable column — which set of
+inputs it is checked against — so the Test button stops asking a question somebody answers the same
+way every time. Everything else was naming and the shape of a page.
+
+`/projects/{id}/endpoints` is a paged list and one screen per endpoint: the request, the inputs,
+what correct looks like, Test, and the history. The nine-step wizard is gone — four of its steps
+were a form, and that form is one card now. Captures and the per-endpoint review folded in; the
+workspace approvals inbox stayed, because «is anything waiting on me» is a different question.
+Build and Verify went from eleven entries to seven, and the sidebar fits on a laptop without
+scrolling for the first time.
+
+Imports produce endpoints. Scenarios are paged, a scenario of three nodes or fewer is offered a
+button that moves it where it belongs, and a new one opens as the smallest chain there is instead
+of one dot on an empty canvas.
+
+**The word «baseline» is out of the interface** — all 42 strings, both languages, including the
+audit sentences. The entity, the table and the action keys keep the name; nobody reading a page has
+to learn it.
+
+### The palette
+
+It was violet on near-white greys: thin borders, page and card almost the same colour, very airy
+spacing. It read like a landing page rather than something to work in all day. The three-layer token
+rule held — components consume semantics and never name a primitive — so 253 tokens in one file
+changed the whole application.
+
+The neutrals are neutral now, and wide at both ends: a page at `#f6f7f9` that a white card sits on
+top of, a border at `#d7dbe2` that can be seen, ink at `#0f1319`. The accent is a deeper indigo,
+deliberately far from every status hue, and spent only where a decision is being made — the primary
+action, the current page, a selection. The empty-state art, the avatar and an uncoloured project
+mark all went neutral, and a project's default accent moved from indigo to slate, because twelve
+uncoloured projects showing twelve indigo chips is how the one colour that means «press this» stops
+meaning anything.
+
+Density came in a step: card padding 20 → 16, header and footer 16 → 12, table rows 12 → 8 vertical,
+page frame 24 → 20. The line height did not change; what went was margin that was not buying
+legibility.
+
+### What building it found
+
+**The Test button reported «all 12 passed» for twelve inputs it had compared against nothing.** Rows
+with no approved answer incremented no counter, and «passed» is derived from what is left over. The
+service's own comment said this was worth seeing rather than counting as a pass, and the code did
+the opposite. It says «12 not checked» now, which is what the first test of a new set of inputs
+honestly is.
+
+**The role called Reviewer could not approve a captured answer.** The endpoint required
+`RecordBaseline`, which Reviewer does not have — while a test designer, deliberately denied
+`ApproveBaseline`, could. The capability is checked per decision now.
+
+**The frontend build failed on every build that changed a bundle and passed on the retry.** That
+reads as flakiness and is an ordering bug: an item glob expands when the project is read, so it
+holds the previous build's hashed filenames. Re-globbing inside a target hooked before
+`AssignTargetPaths` did not fix it either — the copy list is gathered from more than one place. A
+`Copy` task after `Build` has no ordering question in it.
+
+**Staging never had a copy of the demo secret**, so the seeded scenario failed at sign-in there and
+every step after it failed for want of a token. Three of four matrix cells red, and a comparison
+with no shared step to show — a demonstration of a broken setup rather than of environment
+comparison. Two cells pass now and the comparison has five steps.
+
+**The endpoint list put the name link beside a badge**, which makes colour the only thing
+distinguishing it: 1.67:1 against muted text. The rule for that was already written down in
+`base.css`; the markup was not following it.
+
+**The baseline importer deduped by slug against a unique index that is on the name** — the same bug
+the scenario importer was fixed for, sitting unexercised because nothing had ever imported baselines
+in bulk. It would have died halfway through the first real collection.
+
+**And a screenshot script said «sign-in failed» whenever anything was missing**, including a database
+that simply had no approved baseline in it. Twelve minutes spent looking for an authentication
+problem is the point at which a warning stops being a warning.
+
+
+---
+
 ## Backlog
 
 Everything found and deliberately not done. None of it blocks using the product; each entry says why
