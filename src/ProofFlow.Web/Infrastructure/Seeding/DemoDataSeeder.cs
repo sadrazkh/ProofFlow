@@ -96,12 +96,15 @@ public sealed class DemoDataSeeder(
             JoinedAt = clock.UtcNow,
         });
 
-        // Demo content is data, not interface text, so it cannot come from the translation
-        // catalogue and switch with the reader — a project description is a column. It is seeded
-        // in one language, and which one is a setting rather than an assumption, because English
-        // paragraphs sitting inside a Persian panel is exactly the failure the whole localisation
-        // effort exists to prevent.
-        var persian = (configuration["Demo:Culture"] ?? "fa")
+        // Demo content is data, not interface text: a project description is a column, so it is
+        // written once and read by everybody whatever language they chose.
+        //
+        // Which makes English the right default rather than an Anglocentric one. The names beside
+        // these descriptions are «Catalog API» and «Orders API» — names of systems, untranslated
+        // by the same rule — and Persian prose beside an English name reads as broken in both
+        // languages. English beside English reads as sample data, which is what it is. The setting
+        // is still there for a demo being shown to a Persian-speaking room.
+        var persian = (configuration["Demo:Culture"] ?? "en")
             .StartsWith("fa", StringComparison.OrdinalIgnoreCase);
 
         (Project Project, ProjectEnvironment Local)? first = null;

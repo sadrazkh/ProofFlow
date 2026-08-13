@@ -95,7 +95,10 @@ public sealed class StartController(
             WorkspaceId = workspaceId,
             Name = SandboxName,
             Slug = Slug.From(SandboxName, "project"),
-            Description = localizer["demo.sandbox.body"].Value,
+            // Not localised, deliberately. A description is a column: taking it from the
+            // catalogue would freeze whichever language its creator happened to be reading into
+            // a row that everybody else then sees.
+            Description = "Somewhere to try things, pointed at the pretend API this application serves.",
             Accent = "teal",
             CreatedByUserId = me.UserId ?? Guid.Empty,
         };

@@ -963,6 +963,26 @@ asked to confirm work nobody had done. Meanwhile dragging a connection changed o
 nothing was watching, so a real edit went unmarked. Both are one bug: «unsaved» now means the shape
 that would be sent differs from the shape that was agreed.
 
+**The reference list worked on one screen and not on the one that mattered.** It attached its
+listeners to the field on mount — and in the inspector the picker sits inside the label, above the
+input it belongs to, so at that moment the parent had not set its ref and there was nothing to
+attach to. The button worked; typing did nothing. It listens at the document now and checks the
+target, which has no ordering to get wrong. It also offered `steps.Start.response`, which resolves
+to nothing: only steps that publish a response are offered.
+
+**Twenty-one destinations, seventeen of which fit.** The sidebar's last entries sat behind the
+workspace switcher, so Export and Settings read as missing rather than as below. The sections fold
+now, the choice is remembered, and the one holding the current page is forced open whatever was
+remembered — a menu that hides where you are is worse than one that is too long.
+
+**The demo projects described themselves in Persian on the English pages.** Demo content is a column,
+not interface text, so it is written once and read by everybody: with names like «Catalog API» beside
+them, English is the only language in which that reads as sample data rather than as a bug. The
+setting to seed Persian instead is still there.
+
+**The quick-start cards had no padding.** `.card` is a border and a background; the padding lives in
+`.card-body`, and these had none — so the text ran into the button and the button sat on the border.
+
 **A menu inside a scrolling panel is a menu with four items.** The reference list opened inside the
 inspector, which is a narrow column that scrolls, so it was clipped by it — and in Persian it opened
 off the side of the window entirely. It is teleported out and placed against the button, clamped

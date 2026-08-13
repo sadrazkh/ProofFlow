@@ -142,8 +142,15 @@ const reachable = computed<string[]>(() => {
     queue.push(...(before.get(id) ?? []));
   }
 
+  // Only the ones that publish a response. Start and a checkpoint are reachable and have nothing
+  // to read, and offering «steps.Start.response.statusCode» is offering something that resolves to
+  // nothing — the exact confusion this list exists to remove.
   return nodes.value
     .filter((node) => seen.has(node.id))
+    .filter((node) => {
+      const spec = (node.data as { spec?: { outputs?: { name: string }[] } }).spec;
+      return spec?.outputs?.some((port) => port.name === 'response') ?? false;
+    })
     .map((node) => (node.data as { name?: string }).name ?? '')
     .filter((name) => name.length > 0);
 });

@@ -21,28 +21,46 @@
         <span class="sidebar-wordmark">ProofFlow</span>
     </a>
 
+@*
+    Foldable, because inside a project there are twenty-one destinations and a laptop shows about
+    seventeen. The list did scroll, but the last row was sliced by the workspace switcher, which
+    reads as «Export is missing» rather than as «there is more below».
+
+    The section holding the current page is always open, whatever was folded last time: a menu that
+    hides where you are is worse than one that is too long.
+*@
     <nav class="sidebar-scroll" aria-label="@T["nav.dashboard"]">
         @foreach (var section in sections)
         {
+            var holdsCurrent = section.Items.Any(item => Navigation.IsActive(item.Path, path));
+            var group = section.TitleKey ?? "nav.other";
+
             if (section.TitleKey is not null)
             {
-                <div class="nav-section">@T[section.TitleKey]</div>
+                <button type="button" class="nav-section" data-nav-group="@group"
+                        aria-expanded="true">
+                    <span>@T[section.TitleKey]</span>
+                    <i data-lucide="chevron-down" aria-hidden="true"></i>
+                </button>
             }
-            @foreach (var item in section.Items)
-            {
-                var active = Navigation.IsActive(item.Path, path);
-                <a class="nav-item @(active ? "is-active" : "")"
-                   href="@item.Path"
-                   @(active ? "aria-current=page" : "")
-                   title="@T[item.LabelKey]">
-                    <i data-lucide="@item.Icon" aria-hidden="true"></i>
-                    <span class="nav-label">@T[item.LabelKey]</span>
-                    @if (item.Badge is > 0)
-                    {
-                        <span class="nav-badge">@item.Badge</span>
-                    }
-                </a>
-            }
+
+            <div class="nav-group" data-nav-items="@group" data-holds-current="@holdsCurrent.ToString().ToLowerInvariant()">
+                @foreach (var item in section.Items)
+                {
+                    var active = Navigation.IsActive(item.Path, path);
+                    <a class="nav-item @(active ? "is-active" : "")"
+                       href="@item.Path"
+                       @(active ? "aria-current=page" : "")
+                       title="@T[item.LabelKey]">
+                        <i data-lucide="@item.Icon" aria-hidden="true"></i>
+                        <span class="nav-label">@T[item.LabelKey]</span>
+                        @if (item.Badge is > 0)
+                        {
+                            <span class="nav-badge">@item.Badge</span>
+                        }
+                    </a>
+                }
+            </div>
         }
     </nav>
 

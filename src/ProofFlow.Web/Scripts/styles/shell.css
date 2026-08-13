@@ -59,17 +59,59 @@ html.sidebar-collapsed .shell { --sidebar-width: 64px; }
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+
+  /*
+    Twenty-one destinations do not fit on a laptop, and the list used to end mid-row against the
+    workspace switcher — which reads as «Export is missing» rather than as «there is more».
+
+    A visible scrollbar and room under the last entry, rather than a fade: a gradient over the
+    bottom rows dims the thing it is trying to point at, and the one honest signal that a list
+    scrolls is the control for scrolling it.
+  */
+  padding-block-end: var(--space-4);
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--line-strong, var(--line)) transparent;
 }
 
 .nav-section {
-  padding: var(--space-4) var(--space-3) var(--space-1);
+  /* A button, so it can be folded — and still the same quiet label it was before. */
+  inline-size: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-3) var(--space-1);
+  background: none;
+  border: 0;
   font-size: var(--text-2xs);
+  font-family: inherit;
   font-weight: var(--weight-medium);
   color: var(--ink-subtle);
   text-transform: uppercase;
   letter-spacing: 0.07em;
   white-space: nowrap;
+  cursor: pointer;
+  text-align: start;
 }
+
+.nav-section:hover { color: var(--ink-muted); }
+
+.nav-section svg {
+  inline-size: 13px;
+  block-size: 13px;
+  transition: transform var(--motion-fast) var(--ease-out);
+}
+
+.nav-section[aria-expanded='false'] svg { transform: rotate(-90deg); }
+
+html[dir='rtl'] .nav-section[aria-expanded='false'] svg { transform: rotate(90deg); }
+
+.nav-group { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* `display: flex` on a class beats the user agent's `[hidden] { display: none }`, so folding a
+   section rotated its chevron and changed nothing else. */
+.nav-group[hidden] { display: none; }
 /* Persian has no case and does not letter-space; the same rule would render as damage. */
 html[dir='rtl'] .nav-section { text-transform: none; letter-spacing: 0; font-size: var(--text-xs); }
 
@@ -77,7 +119,7 @@ html[dir='rtl'] .nav-section { text-transform: none; letter-spacing: 0; font-siz
   display: flex;
   align-items: center;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  padding: 7px var(--space-3);
   border-radius: var(--radius-md);
   font-size: var(--text-sm);
   color: var(--ink-muted);

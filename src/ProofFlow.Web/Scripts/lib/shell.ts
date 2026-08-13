@@ -498,6 +498,64 @@ export function mountDemoFill(): void {
   });
 }
 
+/**
+ * Folds a group of destinations away, and remembers it.
+ *
+ * Inside a project the sidebar has twenty-one entries and a laptop shows about seventeen, so the
+ * last of them sat behind the workspace switcher. Folding the two sections somebody is not working
+ * in puts everything back on one screen.
+ *
+ * The section holding the current page is forced open regardless of what was remembered. A menu
+ * that hides the page you are on is worse than a menu that is too long.
+ */
+export function mountNavGroups(): void {
+  const KEY = 'pf:nav-folded';
+
+  const folded = new Set<string>(read());
+
+  function read(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(KEY) ?? '[]') as string[];
+    } catch {
+      return [];
+    }
+  }
+
+  function write(): void {
+    try {
+      localStorage.setItem(KEY, JSON.stringify([...folded]));
+    } catch {
+      // A full or disabled storage costs the memory of a preference, not the preference itself.
+    }
+  }
+
+  document.querySelectorAll<HTMLElement>('[data-nav-items]').forEach((group) => {
+    const name = group.dataset.navItems ?? '';
+    const button = document.querySelector<HTMLButtonElement>(`[data-nav-group="${name}"]`);
+    if (!button) return;
+
+    const holdsCurrent = group.dataset.holdsCurrent === 'true';
+
+    function apply(open: boolean): void {
+      group.hidden = !open;
+      button!.setAttribute('aria-expanded', String(open));
+    }
+
+    apply(holdsCurrent || !folded.has(name));
+
+    button.addEventListener('click', () => {
+      const open = button.getAttribute('aria-expanded') === 'true';
+
+      apply(!open);
+
+      if (open) folded.add(name);
+      else folded.delete(name);
+
+      write();
+    });
+  });
+}
+
 export function mountUnsavedGuard(): void {
   document.querySelectorAll<HTMLFormElement>('form[data-guard-unsaved]').forEach((form) => {
     const initial = new FormData(form);

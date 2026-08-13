@@ -240,14 +240,39 @@ function onFieldKey(raw: Event): void {
   }
 }
 
-onMounted(() => {
-  const field = props.watching?.();
-  if (!field) return;
+/*
+  Listened for at the document, not on the field.
 
-  field.addEventListener('input', onFieldInput);
-  field.addEventListener('keydown', onFieldKey);
-  field.addEventListener('blur', onFieldBlur);
+  Attaching to the element on mount looked simpler and did not work anywhere it mattered. In the
+  inspector the picker sits inside the label, above the input it belongs to, so when this component
+  mounts the parent has not set its ref yet and there is nothing to attach to — the button worked and
+  typing did nothing, which is the half that was reported. The same is true of anything that renders
+  its fields from a list, and of every re-render that replaces an element.
+
+  Delegation has none of that ordering. It costs two listeners and one identity check per keystroke.
+*/
+onMounted(() => {
+  document.addEventListener('input', onDocumentInput, true);
+  document.addEventListener('keydown', onDocumentKey, true);
+  document.addEventListener('focusout', onDocumentBlur, true);
 });
+
+function isMine(target: EventTarget | null): boolean {
+  const field = props.watching?.();
+  return field !== null && field !== undefined && target === field;
+}
+
+function onDocumentInput(event: Event): void {
+  if (isMine(event.target)) onFieldInput();
+}
+
+function onDocumentKey(event: Event): void {
+  if (isMine(event.target)) onFieldKey(event);
+}
+
+function onDocumentBlur(event: Event): void {
+  if (isMine(event.target)) onFieldBlur();
+}
 
 /**
  * Closes on the way out, but not before a click on the list has been read.
@@ -260,11 +285,9 @@ function onFieldBlur(): void {
 }
 
 onBeforeUnmount(() => {
-  const field = props.watching?.();
-
-  field?.removeEventListener('input', onFieldInput);
-  field?.removeEventListener('keydown', onFieldKey);
-  field?.removeEventListener('blur', onFieldBlur);
+  document.removeEventListener('input', onDocumentInput, true);
+  document.removeEventListener('keydown', onDocumentKey, true);
+  document.removeEventListener('focusout', onDocumentBlur, true);
 
   close();
 });
