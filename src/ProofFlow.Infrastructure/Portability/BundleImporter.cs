@@ -29,6 +29,7 @@ namespace ProofFlow.Infrastructure.Portability;
 public sealed class BundleImporter(
     ProofFlowDbContext db,
     ScenarioGraphService graphs,
+    ISecretCipher cipher,
     ICurrentUser me,
     IClock clock)
 {
@@ -61,7 +62,8 @@ public sealed class BundleImporter(
         var counts = new List<ImportCount>
         {
             Count("environment", bundle.Environments.Select(e => e.Slug), taken.Environments, skipped),
-            Count("scenario", bundle.Scenarios.Select(s => s.Slug), taken.Scenarios, skipped),
+            // By name, the same thing the write checks and the same thing the database enforces.
+            Count("scenario", bundle.Scenarios.Select(s => s.Name), taken.Scenarios, skipped),
             Count("baseline", bundle.Baselines.Select(b => b.Slug), taken.Baselines, skipped),
             Count("dataset", bundle.DataSets.Select(d => d.Slug), taken.DataSets, skipped),
             Count("schedule", bundle.Schedules.Select(s => Slug.From(s.Name, "schedule")), taken.Schedules, skipped),
@@ -96,7 +98,9 @@ public sealed class BundleImporter(
     /// not, and nothing to tell somebody which half arrived.
     /// </summary>
     public async Task<ImportResult> ApplyAsync(
-        Bundle bundle, Guid? projectId, CancellationToken cancellation = default)
+        Bundle bundle, Guid? projectId,
+        IReadOnlyDictionary<string, string>? secretValues = null,
+        CancellationToken cancellation = default)
     {
         var workspaceId = me.WorkspaceId
             ?? throw new InvalidOperationException("An import needs a workspace.");
@@ -119,6 +123,8 @@ public sealed class BundleImporter(
         // After the scenarios exist, because a schedule points at them by name.
         var schedules = await SchedulesAsync(project, bundle, taken, environments, skipped, cancellation);
 
+        var secrets = await SecretsAsync(project, environments, secretValues, cancellation);
+
         await db.SaveChangesAsync(cancellation);
 
         return new ImportResult
@@ -132,9 +138,69 @@ public sealed class BundleImporter(
                 new ImportCount("baseline", baselines, 0),
                 new ImportCount("dataset", dataSets, 0),
                 new ImportCount("schedule", schedules, 0),
+                new ImportCount("secret", secrets, 0),
             ],
             Skipped = skipped,
         };
+    }
+
+    /// <summary>
+    /// Seals the credentials that came in the file, when somebody asked for them.
+    ///
+    /// Not by default, and never silently. The rule everywhere else here is that a name crosses and
+    /// a value does not, because a token in a file somebody was handed is a token that ends up in
+    /// the database, in an export and in a screenshot. That rule holds — this is the one path where
+    /// the person doing the import says «these are mine, bring them», and what happens then is the
+    /// same thing that happens when they type one into the secrets page: sealed with the same
+    /// cipher, shown as four characters, and never returned to a page.
+    ///
+    /// An existing secret of the same name is left alone. Overwriting one because a file mentioned
+    /// it is how a working environment stops working.
+    /// </summary>
+    private async Task<int> SecretsAsync(
+        Project project, EnvironmentMap environments,
+        IReadOnlyDictionary<string, string>? values, CancellationToken cancellation)
+    {
+        if (values is null || values.Count == 0) return 0;
+
+        // The environment the imported scenarios run in, so the secret is defined where it is used.
+        var environmentId = environments.BySlug.Values.Count == 1
+            ? environments.BySlug.Values.First()
+            : (Guid?)null;
+
+        var existing = await db.Secrets
+            .Where(secret => secret.ProjectId == project.Id)
+            .Select(secret => secret.Name)
+            .ToListAsync(cancellation);
+
+        var taken = new HashSet<string>(existing, StringComparer.Ordinal);
+        var added = 0;
+
+        foreach (var (name, value) in values)
+        {
+            if (string.IsNullOrWhiteSpace(value) || !taken.Add(name)) continue;
+
+            var sealedValue = cipher.Seal(value);
+
+            db.Secrets.Add(new Secret
+            {
+                WorkspaceId = project.WorkspaceId,
+                ProjectId = project.Id,
+                EnvironmentId = environmentId,
+                Name = name,
+                Description = "Brought in with an import.",
+                Ciphertext = sealedValue.Ciphertext,
+                Nonce = sealedValue.Nonce,
+                Tag = sealedValue.Tag,
+                KeyVersion = sealedValue.KeyVersion,
+                Preview = value.Length <= 4 ? value : value[^4..],
+                CreatedByUserId = me.UserId ?? Guid.Empty,
+            });
+
+            added++;
+        }
+
+        return added;
     }
 
     // ---- the pieces --------------------------------------------------------------------------
@@ -245,7 +311,9 @@ public sealed class BundleImporter(
 
         foreach (var incoming in bundle.Scenarios)
         {
-            if (taken.Scenarios.Contains(incoming.Slug))
+            // Added as it goes, not only read: a bundle that named the same thing twice would
+            // otherwise pass this check twice and fail at the database.
+            if (!taken.Scenarios.Add(incoming.Name))
             {
                 skipped.Add(incoming.Slug);
                 continue;
@@ -513,7 +581,10 @@ public sealed class BundleImporter(
                     .Select(environment => environment.Slug)
                     .ToListAsync(cancellation),
             ],
-            Scenarios = [.. scenarios.Select(name => Slug.From(name, "scenario"))],
+            // Names, not slugs made out of names. The unique index is on the name, so two names
+            // that slug the same are two rows the database is perfectly happy with — and skipping
+            // the second as «already here» lost it for a collision that did not exist.
+            Scenarios = [.. scenarios],
             Baselines = [.. baselines.Select(name => Slug.From(name, "baseline"))],
             DataSets = [.. dataSets.Select(name => Slug.From(name, "dataset"))],
             Schedules = [.. schedules.Select(name => Slug.From(name, "schedule"))],

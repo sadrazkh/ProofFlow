@@ -964,6 +964,21 @@ asked to confirm work nobody had done. Meanwhile dragging a connection changed o
 nothing was watching, so a real edit went unmarked. Both are one bug: «unsaved» now means the shape
 that would be sent differs from the shape that was agreed.
 
+**A real collection died halfway through with «an error occurred while saving the entity
+changes».** The unique index on a scenario is over its *name*, and the importer was deduplicating by
+a slug made out of the name — two different names that slug the same were skipped as duplicates when
+they were not, and two requests called the same thing in the same folder, which is ordinary, made
+two rows with one name and stopped the import partway. Names are made distinct the way slugs already
+were, bounded to the two hundred characters the column holds, and checked against what the database
+actually enforces.
+
+**The credentials can come across now, if the person importing says so.** The rule stays what it
+was — a name crosses, a value does not — because a token in a file somebody was handed ends up in
+the database, in the next export and in the first screenshot. But the person holding their own
+collection can tick one box on the preview, and then the values are sealed with the same cipher as a
+secret typed by hand, shown afterwards as four characters, and never returned to a page. The audit
+line says it happened.
+
 **A thirty-megabyte export took six minutes and said nothing while it did.** All six were in the
 write: the change tracker kept every scenario, every version and every node it had ever seen, so by
 the two-thousandth each save was walking tens of thousands of entities to work out what had changed.

@@ -1556,7 +1556,9 @@
     "import.sending": "Sending…",
     "import.sent": "{0} of {1} sent.",
     "import.reading": "Reading it. A large collection takes a moment.",
-    "preview.writing": "Writing {0} things into the project. A large collection takes a moment."
+    "preview.writing": "Writing {0} things into the project. A large collection takes a moment.",
+    "import.credentials": "Also bring the {0} credential values this file carries",
+    "import.credentials.help": "They are sealed with the same cipher as a secret typed by hand, shown afterwards as four characters, and never returned to a page. Leave it off and only the names come across, for you to fill in yourself."
   },
   "import": {
     "empty": "There was nothing to read.",

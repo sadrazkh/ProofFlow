@@ -119,6 +119,29 @@
                 <input type="hidden" name="ticket" value="@Model.Ticket" />
                 <input type="hidden" name="asNewProject" value="@Model.AsNewProject.ToString().ToLowerInvariant()" />
 
+                @*
+                    Offered only when the file actually carries values, and off by default.
+
+                    The rule everywhere else here is that a credential's name crosses and its value
+                    does not, because a token in a file somebody was handed ends up in the database,
+                    in the next export and in the first screenshot. This is the one place where the
+                    person holding the file can say «these are mine» — and what happens then is what
+                    happens on the secrets page: sealed, previewed by four characters, never shown
+                    back.
+                *@
+                @if (Model.CredentialsInFile > 0)
+                {
+                    <label class="check-row check-row-warn">
+                        <input class="checkbox" type="checkbox" name="bringCredentials" value="true" />
+                        <span class="check-row-text">
+                            <span class="check-row-title">
+                                @T["portability.import.credentials", Model.CredentialsInFile]
+                            </span>
+                            <span class="check-row-help">@T["portability.import.credentials.help"]</span>
+                        </span>
+                    </label>
+                }
+
                 <div class="row">
                     <button type="submit" class="btn btn-primary" disabled="@(Model.Preview.Total == 0)">
                         <i data-lucide="check" aria-hidden="true"></i>@T["portability.preview.confirm", Model.Preview.Total]

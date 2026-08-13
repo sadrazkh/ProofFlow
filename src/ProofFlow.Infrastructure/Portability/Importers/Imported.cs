@@ -36,6 +36,20 @@ public sealed record Imported
     /// </summary>
     public IReadOnlyList<string> SecretsToSupply { get; init; } = [];
 
+    /// <summary>
+    /// The values behind those names, for the person who asks for them.
+    ///
+    /// Held apart from everything else on purpose. It is never written into a scenario, never put
+    /// in a bundle, and never carried into an export — a bundle that could hold a token would be a
+    /// token in every file anybody commits. It exists for one path: somebody importing their own
+    /// collection, on the import page, who ticks the box that says bring them.
+    ///
+    /// When they do, the values are sealed as secrets exactly like one typed into the secrets page.
+    /// When they do not, this is read by nobody and goes out of scope with the request.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> SecretValues { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     /// <summary>What was left behind, as resource keys. Shown to the reader before they confirm.</summary>
     public IReadOnlyList<string> Notes { get; init; } = [];
 

@@ -52,6 +52,9 @@ public sealed record ImportPreviewViewModel
 
     /// <summary>Resource keys for what the reader should know was left behind.</summary>
     public IReadOnlyList<string> Notes { get; init; } = [];
+
+    /// <summary>How many credential values the file actually carries, if any.</summary>
+    public int CredentialsInFile { get; init; }
 }
 
 /// <summary>The gallery.</summary>

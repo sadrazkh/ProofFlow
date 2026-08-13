@@ -70,15 +70,16 @@ public static class PostmanImporter
 
         var notes = new List<string>();
         var secrets = new List<string>();
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
         var requests = new List<ImportedRequest>();
 
         // Most collections declare authentication once at the top and let every request inherit it.
         // Reading only the per-request block brought across a whole API with no credentials on any
         // of it — and a folder can override the collection, so the inherited value walks down.
-        var (collectionAuth, collectionSecrets) = Authentication(root["auth"] as JsonObject, notes);
+        var (collectionAuth, collectionSecrets) = Authentication(root["auth"] as JsonObject, notes, values);
         secrets.AddRange(collectionSecrets);
 
-        Walk(root["item"] as JsonArray, group: null, collectionAuth, requests, secrets, notes);
+        Walk(root["item"] as JsonArray, group: null, collectionAuth, requests, secrets, values, notes);
 
         if (requests.Count == 0) return Imported.Refused("import.noRequests");
 
@@ -87,7 +88,7 @@ public static class PostmanImporter
         // A collection almost always declares «baseUrl» and writes every URL as {{baseUrl}}/…, and
         // leaving it among the variables imported a project with no environment at all — nothing to
         // run against, and a first run that fails on an address it cannot resolve.
-        var variables = Variables(root, secrets).ToList();
+        var variables = Variables(root, secrets, values).ToList();
         var address = variables.FirstOrDefault(v => LooksLikeBaseUrl(v.Name, v.Value));
 
         if (address is not null) variables.Remove(address);
@@ -101,6 +102,7 @@ public static class PostmanImporter
             Variables = variables,
             Requests = requests,
             SecretsToSupply = [.. secrets.Distinct(StringComparer.Ordinal)],
+            SecretValues = values,
             Notes = [.. notes.Distinct(StringComparer.Ordinal)],
         };
     }
@@ -118,6 +120,7 @@ public static class PostmanImporter
     private static Imported Environment(JsonObject root)
     {
         var secrets = new List<string>();
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
         var variables = new List<ImportedVariable>();
         string? baseUrl = null;
 
@@ -130,7 +133,11 @@ public static class PostmanImporter
 
             if (Credentials.IsCredential(name) || entry["type"]?.GetValue<string>() == "secret")
             {
-                secrets.Add(Credentials.SecretName(name));
+                var secret = Credentials.SecretName(name);
+                secrets.Add(secret);
+
+                if (Text(entry["value"]) is { Length: > 0 } held) values[secret] = held;
+
                 continue;
             }
 
@@ -154,6 +161,7 @@ public static class PostmanImporter
             Variables = variables,
             Requests = [],
             SecretsToSupply = [.. secrets.Distinct(StringComparer.Ordinal)],
+            SecretValues = values,
             Notes = ["import.note.environmentOnly"],
         };
     }
@@ -188,7 +196,8 @@ public static class PostmanImporter
     /// </summary>
     private static void Walk(
         JsonArray? items, string? group, AuthenticationSpec? inherited,
-        List<ImportedRequest> requests, List<string> secrets, List<string> notes)
+        List<ImportedRequest> requests, List<string> secrets,
+        Dictionary<string, string> values, List<string> notes)
     {
         if (items is null) return;
 
@@ -205,11 +214,11 @@ public static class PostmanImporter
             if (entry["item"] is JsonArray children)
             {
                 // A folder may declare its own, and everything inside it inherits that instead.
-                var (folderAuth, folderSecrets) = Authentication(entry["auth"] as JsonObject, notes);
+                var (folderAuth, folderSecrets) = Authentication(entry["auth"] as JsonObject, notes, values);
                 secrets.AddRange(folderSecrets);
 
                 Walk(children, group is null ? name : $"{group} / {name}",
-                    folderAuth ?? inherited, requests, secrets, notes);
+                    folderAuth ?? inherited, requests, secrets, values, notes);
 
                 continue;
             }
@@ -226,13 +235,14 @@ public static class PostmanImporter
                 Name = name,
                 Group = group,
                 Description = Text(entry["request"]?["description"]),
-                Request = Request(request, inherited, secrets, notes),
+                Request = Request(request, inherited, secrets, values, notes),
             });
         }
     }
 
     private static HttpRequestDefinition Request(
-        JsonObject request, AuthenticationSpec? inherited, List<string> secrets, List<string> notes)
+        JsonObject request, AuthenticationSpec? inherited, List<string> secrets,
+        Dictionary<string, string> values, List<string> notes)
     {
         var headers = new List<KeyValueEntry>();
 
@@ -251,6 +261,13 @@ public static class PostmanImporter
                 {
                     headers.Add(new KeyValueEntry(name, Credentials.Reference(name), enabled));
                     secrets.Add(Credentials.SecretName(name));
+
+                    if (Text(header["value"]) is { Length: > 0 } held
+                        && !held.StartsWith("{{", StringComparison.Ordinal))
+                    {
+                        values[Credentials.SecretName(name)] = held;
+                    }
+
                     continue;
                 }
 
@@ -258,7 +275,7 @@ public static class PostmanImporter
             }
         }
 
-        var (own, authSecrets) = Authentication(request["auth"] as JsonObject, notes);
+        var (own, authSecrets) = Authentication(request["auth"] as JsonObject, notes, values);
         secrets.AddRange(authSecrets);
 
         // «inherit» is a real value in these files and means exactly what it says.
@@ -375,13 +392,19 @@ public static class PostmanImporter
             ];
 
     private static (AuthenticationSpec?, IReadOnlyList<string>) Authentication(
-        JsonObject? auth, List<string> notes)
+        JsonObject? auth, List<string> notes, Dictionary<string, string> found)
     {
         if (auth is null) return (null, []);
 
         switch (auth["type"]?.GetValue<string>())
         {
             case "bearer":
+                if (Setting(auth, "bearer", "token") is { Length: > 0 } bearer
+                    && !bearer.StartsWith("{{", StringComparison.Ordinal))
+                {
+                    found["bearerToken"] = bearer;
+                }
+
                 return (new AuthenticationSpec
                 {
                     Kind = AuthenticationKind.Bearer,
@@ -389,6 +412,12 @@ public static class PostmanImporter
                 }, ["bearerToken"]);
 
             case "basic":
+                if (Setting(auth, "basic", "password") is { Length: > 0 } word
+                    && !word.StartsWith("{{", StringComparison.Ordinal))
+                {
+                    found["password"] = word;
+                }
+
                 return (new AuthenticationSpec
                 {
                     Kind = AuthenticationKind.Basic,
@@ -398,6 +427,12 @@ public static class PostmanImporter
 
             case "apikey":
                 var key = Setting(auth, "apikey", "key") ?? "X-Api-Key";
+
+                if (Setting(auth, "apikey", "value") is { Length: > 0 } supplied
+                    && !supplied.StartsWith("{{", StringComparison.Ordinal))
+                {
+                    found[Credentials.SecretName(key)] = supplied;
+                }
 
                 return (new AuthenticationSpec
                 {
@@ -444,7 +479,8 @@ public static class PostmanImporter
             .FirstOrDefault(entry => entry["key"]?.GetValue<string>() == key)?["value"]
             ?.GetValue<string>();
 
-    private static IReadOnlyList<ImportedVariable> Variables(JsonObject root, List<string> secrets)
+    private static IReadOnlyList<ImportedVariable> Variables(
+        JsonObject root, List<string> secrets, Dictionary<string, string> values)
     {
         if (root["variable"] is not JsonArray declared) return [];
 
@@ -459,7 +495,13 @@ public static class PostmanImporter
             // credential travels in one of these files. The name comes across; the value does not.
             if (Credentials.IsCredential(name))
             {
-                secrets.Add(Credentials.SecretName(name));
+                var secret = Credentials.SecretName(name);
+                secrets.Add(secret);
+
+                // Kept to one side, for the person who asks for it. Nothing reads this unless the
+                // box on the import page is ticked.
+                if (Text(entry["value"]) is { Length: > 0 } value) values[secret] = value;
+
                 continue;
             }
 

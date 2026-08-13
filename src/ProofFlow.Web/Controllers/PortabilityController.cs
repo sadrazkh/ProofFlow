@@ -227,6 +227,10 @@ public sealed class PortabilityController(
             Preview = preview,
             AsNewProject = asNewProject,
             Notes = Notes(text!, source),
+
+            // So the page can offer to bring them, and say how many, rather than listing names and
+            // leaving somebody to type each value in by hand.
+            CredentialsInFile = Credentials(text!, source)?.Count ?? 0,
         });
     }
 
@@ -236,7 +240,7 @@ public sealed class PortabilityController(
     [Authorize(Policy = Policies.ImportProject)]
     public async Task<IActionResult> Apply(
         Guid projectId, [FromForm] string ticket, [FromForm] bool asNewProject,
-        CancellationToken cancellationToken)
+        [FromForm] bool bringCredentials, CancellationToken cancellationToken)
     {
         var held = scratch.Take(me.UserId ?? Guid.Empty, ticket);
 
@@ -256,8 +260,12 @@ public sealed class PortabilityController(
             return RedirectToAction(nameof(Import), new { projectId });
         }
 
+        // Read again here rather than carried from the preview, so the values live for the length
+        // of one request and are never held anywhere between the two pages.
+        var credentials = bringCredentials ? Credentials(held.Text, held.Source) : null;
+
         var result = await importer.ApplyAsync(
-            bundle!, asNewProject ? null : projectId, cancellationToken);
+            bundle!, asNewProject ? null : projectId, credentials, cancellationToken);
 
         scratch.Release(me.UserId ?? Guid.Empty, ticket);
 
@@ -269,6 +277,10 @@ public sealed class PortabilityController(
                     ["source"] = held.Source,
                     ["added"] = result.Counts.Sum(count => count.Adding).ToString(),
                     ["skipped"] = result.Skipped.Count.ToString(),
+
+                    // Worth a line in the log on its own: somebody chose to bring credentials in
+                    // from a file, and «who decided that, and when» is the question afterwards.
+                    ["credentials"] = bringCredentials ? "brought" : null,
                 }),
             cancellationToken);
 
@@ -389,6 +401,21 @@ public sealed class PortabilityController(
     /// One write path. Three separate ones would be three places for the collision rules to
     /// disagree and three things to keep in step with the domain.
     /// </summary>
+    /// <summary>
+    /// The credential values the file carries, for the one path that asks for them.
+    ///
+    /// A ProofFlow bundle never has any — an export carries names and nothing else, deliberately —
+    /// so this only ever answers for the three foreign formats.
+    /// </summary>
+    private static IReadOnlyDictionary<string, string>? Credentials(string text, string source) =>
+        source switch
+        {
+            "openapi" => OpenApiImporter.Read(text).SecretValues,
+            "postman" => PostmanImporter.Read(text).SecretValues,
+            "curl" => CurlImporter.Read(text).SecretValues,
+            _ => null,
+        };
+
     private static (Bundle? Bundle, string? Refusal) ToBundle(string text, string source)
     {
         if (source == "proofflow") return BundleJson.Read(text);

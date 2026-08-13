@@ -37,6 +37,7 @@ public static class CurlImporter
         var headers = new List<KeyValueEntry>();
         var form = new List<KeyValueEntry>();
         var secrets = new List<string>();
+        var values = new Dictionary<string, string>(StringComparer.Ordinal);
         var notes = new List<string>();
 
         string? body = null;
@@ -59,7 +60,7 @@ public static class CurlImporter
                     break;
 
                 case "-H" or "--header":
-                    Header(Next(words, ref at), headers, secrets);
+                    Header(Next(words, ref at), headers, secrets, values);
                     break;
 
                 case "-d" or "--data" or "--data-raw" or "--data-binary" or "--data-ascii":
@@ -146,6 +147,7 @@ public static class CurlImporter
             SuggestedName = Name(url),
             BaseUrl = Origin(url),
             SecretsToSupply = [.. secrets.Distinct(StringComparer.Ordinal)],
+            SecretValues = values,
             Notes = [.. notes.Distinct(StringComparer.Ordinal)],
             Requests =
             [
@@ -173,7 +175,9 @@ public static class CurlImporter
     private static string? Next(List<string> words, ref int at) =>
         at + 1 < words.Count ? words[++at] : null;
 
-    private static void Header(string? raw, List<KeyValueEntry> headers, List<string> secrets)
+    private static void Header(
+        string? raw, List<KeyValueEntry> headers, List<string> secrets,
+        Dictionary<string, string> values)
     {
         if (string.IsNullOrWhiteSpace(raw)) return;
 
@@ -187,6 +191,10 @@ public static class CurlImporter
         {
             headers.Add(new KeyValueEntry(name, Credentials.Reference(name)));
             secrets.Add(Credentials.SecretName(name));
+
+            // Kept to one side for the box on the import page, and read by nothing otherwise.
+            if (value.Length > 0) values[Credentials.SecretName(name)] = value;
+
             return;
         }
 

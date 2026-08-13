@@ -62,6 +62,9 @@ public static class ImportedBundle
 
         var used = new HashSet<string>(StringComparer.Ordinal);
 
+        // Names as well as slugs, because the unique index is on the name.
+        var titles = new HashSet<string>(StringComparer.Ordinal);
+
         return new Bundle
         {
             Project = new BundleProject
@@ -71,7 +74,10 @@ public static class ImportedBundle
                 Description = imported.Description,
             },
             Environments = environments,
-            Scenarios = [.. imported.Requests.Select(request => Scenario(request, environments, used))],
+            Scenarios =
+            [
+                .. imported.Requests.Select(request => Scenario(request, environments, used, titles)),
+            ],
             SecretsToSupply =
             [
                 .. imported.SecretsToSupply.Select(secret => new BundleSecretName
@@ -84,7 +90,8 @@ public static class ImportedBundle
     }
 
     private static BundleScenario Scenario(
-        ImportedRequest imported, List<BundleEnvironment> environments, HashSet<string> used)
+        ImportedRequest imported, List<BundleEnvironment> environments,
+        HashSet<string> used, HashSet<string> titles)
     {
         var request = imported.Request;
 
@@ -93,6 +100,16 @@ public static class ImportedBundle
         var title = string.IsNullOrWhiteSpace(imported.Group)
             ? imported.Name
             : $"{imported.Group} · {imported.Name}";
+
+        // The name, made distinct and made to fit, because the database has an opinion about both.
+        //
+        // A scenario's name is unique per project — and a real collection has two requests called
+        // the same thing in the same folder more often than not, which produced two rows with two
+        // different slugs and one name, and an import that died on «an error occurred while saving
+        // the entity changes» partway through. Two hundred characters is the column; a folder path
+        // five deep passes it without trying.
+        title = Fit(title, 200);
+        title = Unique(title, titles);
 
         return new BundleScenario
         {
@@ -216,4 +233,14 @@ public static class ImportedBundle
 
         return $"{wanted}-{next}";
     }
+
+    /// <summary>
+    /// Cuts a name down to what the column holds, keeping the end rather than the beginning.
+    ///
+    /// The end is the part that identifies it: «Orders / Payments / Refunds / Get by id» truncated
+    /// from the right leaves four scenarios called «Orders / Payments / Refun…», and truncated from
+    /// the left leaves four that can be told apart.
+    /// </summary>
+    private static string Fit(string text, int limit) =>
+        text.Length <= limit ? text : "…" + text[^(limit - 1)..];
 }
