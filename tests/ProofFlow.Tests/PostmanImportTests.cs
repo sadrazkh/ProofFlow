@@ -106,9 +106,14 @@ public class PostmanImportTests
     [Fact]
     public void The_variable_syntax_is_the_same_syntax_so_it_survives_untouched()
     {
-        PostmanImporter.Read(Collection)
-            .Variables.Should().ContainSingle()
-            .Which.Should().Be(new ImportedVariable("baseUrl", "https://api.example.com"));
+        // The reference in the URL is left exactly as written — Postman spells a variable the same
+        // way this product does, which is the whole reason a collection crosses at all.
+        Named(PostmanImporter.Read(Collection), "List")
+            .Request.Url.Should().Contain("{{baseUrl}}");
+
+        // And what it points at is the environment's address rather than a value beside it, so the
+        // reference resolves on the first run instead of failing on an address nothing defines.
+        PostmanImporter.Read(Collection).BaseUrl.Should().Be("https://api.example.com");
     }
 
     [Fact]
@@ -194,4 +199,115 @@ public class PostmanImportTests
 
     private static ImportedRequest Named(Imported imported, string name) =>
         imported.Requests.Should().ContainSingle(request => request.Name == name).Subject;
+
+    [Fact]
+    public void Authentication_declared_once_at_the_top_reaches_every_request()
+    {
+        // The shape almost every real collection has: one auth block at the root and requests that
+        // say nothing about it. Reading only the per-request block brought a whole API across with
+        // no credential on any of it, and a 401 on the first run with nothing to point at.
+        var imported = PostmanImporter.Read(Collection);
+
+        imported.Requests.Should().NotBeEmpty();
+
+        // Everything that says nothing about auth takes the collection's, and the one request that
+        // declares its own keeps it.
+        imported.Requests
+            .Where(request => !request.Name.Contains("Sign in", StringComparison.Ordinal))
+            .Should().OnlyContain(
+                request => request.Request.Authentication != null
+                           && request.Request.Authentication.Kind == AuthenticationKind.Bearer,
+                "the collection declares bearer auth and nothing overrides it");
+
+        imported.Requests.Single(request => request.Name.Contains("Sign in", StringComparison.Ordinal))
+            .Request.Authentication!.Kind.Should().Be(AuthenticationKind.Basic);
+    }
+
+    [Fact]
+    public void A_folder_can_override_what_the_collection_said()
+    {
+        const string json = """
+            {
+              "info": {
+                "name": "Mixed",
+                "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+              },
+              "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{t}}" } ] },
+              "item": [
+                {
+                  "name": "Public",
+                  "auth": { "type": "noauth" },
+                  "item": [
+                    { "name": "Ping", "request": { "method": "GET", "url": "https://api.example.com/ping" } }
+                  ]
+                },
+                {
+                  "name": "Private",
+                  "item": [
+                    { "name": "Me", "request": { "method": "GET", "url": "https://api.example.com/me" } }
+                  ]
+                }
+              ]
+            }
+            """;
+
+        var imported = PostmanImporter.Read(json);
+
+        imported.Requests.Single(r => r.Name.Contains("Ping")).Request.Authentication
+            .Should().BeNull("the folder said noauth");
+
+        imported.Requests.Single(r => r.Name.Contains("Me")).Request.Authentication!.Kind
+            .Should().Be(AuthenticationKind.Bearer, "nothing overrode the collection");
+    }
+
+    [Fact]
+    public void An_environment_export_is_read_rather_than_refused()
+    {
+        // A different file with a different shape, and the one people hand over alongside the
+        // collection: it holds the addresses the collection refers to. Refusing it as «not Postman»
+        // was true and useless.
+        const string json = """
+            {
+              "id": "9d1f",
+              "name": "Staging",
+              "values": [
+                { "key": "baseUrl", "value": "https://staging.example.com", "enabled": true },
+                { "key": "pageSize", "value": "25", "enabled": true },
+                { "key": "apiToken", "value": "a-live-token", "enabled": true },
+                { "key": "unused", "value": "x", "enabled": false }
+              ],
+              "_postman_variable_scope": "environment"
+            }
+            """;
+
+        var imported = PostmanImporter.Read(json);
+
+        imported.Refusal.Should().BeNull();
+        imported.SuggestedName.Should().Be("Staging");
+        imported.BaseUrl.Should().Be("https://staging.example.com");
+
+        imported.Variables.Select(variable => variable.Name)
+            .Should().Contain("pageSize").And.NotContain("unused", "it was switched off")
+            .And.NotContain("apiToken", "a credential is a secret to supply, not a variable");
+
+        imported.SecretsToSupply.Should().Contain("apiToken");
+
+        // And the value never travels, whatever else does.
+        imported.Variables.Should().NotContain(variable => variable.Value.Contains("a-live-token"));
+    }
+
+    [Fact]
+    public void The_collections_base_url_becomes_the_environments_address()
+    {
+        // Almost every collection declares «baseUrl» and writes every URL as {{baseUrl}}/…. Leaving
+        // it among the variables imported a project with no environment in it: nothing to run
+        // against, and a first run that fails on an address it could not resolve.
+        var imported = PostmanImporter.Read(Collection);
+
+        imported.BaseUrl.Should().Be("https://api.example.com");
+
+        imported.Variables.Should().NotContain(
+            variable => variable.Name == "baseUrl",
+            "it is the environment now, not a value beside it");
+    }
 }

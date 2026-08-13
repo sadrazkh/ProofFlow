@@ -556,6 +556,142 @@ export function mountNavGroups(): void {
   });
 }
 
+/**
+ * Sends the file first, with a percentage, and previews it afterwards.
+ *
+ * XMLHttpRequest rather than fetch, for one reason: fetch still cannot report how much of a request
+ * body has gone. A thirty-megabyte collection is a real wait, and «43% of 31.4 MB» is the
+ * difference between waiting and wondering whether it has hung.
+ *
+ * The form still works without any of this. If the upload fails for a reason the server explained,
+ * the page says so; if it fails for a reason it did not, the form is submitted the old way rather
+ * than leaving somebody stuck behind a broken shortcut.
+ */
+export function mountUploadProgress(): void {
+  document.querySelectorAll<HTMLFormElement>('form[data-upload-to]').forEach((form) => {
+    const address = form.dataset.uploadTo!;
+    const panel = form.querySelector<HTMLElement>('.upload-progress');
+    const fill = form.querySelector<HTMLElement>('.upload-progress-fill');
+    const text = form.querySelector<HTMLElement>('.upload-progress-text');
+    const ticket = form.querySelector<HTMLInputElement>('input[name="ticket"]');
+    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+    if (!panel || !fill || !text || !ticket) return;
+
+    let uploaded = false;
+
+    function show(percent: number | null, message: string): void {
+      panel!.hidden = false;
+      text!.textContent = message;
+
+      const width = percent === null ? 100 : Math.round(percent);
+      fill!.style.inlineSize = `${width}%`;
+      fill!.setAttribute('aria-valuenow', String(width));
+      fill!.classList.toggle('is-working', percent === null);
+    }
+
+    form.addEventListener('submit', (event) => {
+      // The second pass, after the bytes are up: let it post to the preview as it always did.
+      if (uploaded) return;
+
+      const file = form.querySelector<HTMLInputElement>('input[type="file"]')?.files?.[0];
+      const pasted = form.querySelector<HTMLTextAreaElement>('textarea[name="pasted"]')?.value;
+
+      // Nothing to upload means nothing to show. The server says what is missing.
+      if (!file && !pasted?.trim()) return;
+
+      event.preventDefault();
+
+      const body = new FormData(form);
+      const request = new XMLHttpRequest();
+
+      if (submit) submit.disabled = true;
+
+      request.upload.addEventListener('progress', (progress) => {
+        if (!progress.lengthComputable) {
+          show(null, t('portability.import.sending'));
+          return;
+        }
+
+        show(
+          (progress.loaded / progress.total) * 100,
+          t('portability.import.sent', size(progress.loaded), size(progress.total)));
+      });
+
+      request.addEventListener('load', () => {
+        if (submit) submit.disabled = false;
+
+        if (request.status >= 200 && request.status < 300) {
+          const answer = JSON.parse(request.responseText) as { ticket: string };
+
+          ticket.value = answer.ticket;
+          uploaded = true;
+
+          // Reading a large document takes its own moment, and it is a moment with nothing to
+          // measure — so this one says what it is doing rather than pretending to a percentage.
+          show(null, t('portability.import.reading'));
+
+          form.submit();
+          return;
+        }
+
+        let problem = t('error.body');
+
+        try {
+          problem = (JSON.parse(request.responseText) as { problem?: string }).problem ?? problem;
+        } catch {
+          // A response that is not the JSON this endpoint returns is a proxy or a crash, and the
+          // generic sentence is the honest one.
+        }
+
+        show(0, problem);
+        panel!.classList.add('is-failed');
+      });
+
+      request.addEventListener('error', () => {
+        // The network, rather than the server. Fall back to the plain form rather than stranding
+        // somebody behind a shortcut that did not work.
+        if (submit) submit.disabled = false;
+        uploaded = true;
+        form.submit();
+      });
+
+      request.open('POST', address);
+      request.send(body);
+    });
+  });
+
+  /** Bytes, in the unit somebody would say out loud. */
+  function size(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+}
+
+/**
+ * A form whose work takes long enough that the button going quiet is not enough.
+ *
+ * No percentage: writing two thousand scenarios is one request with nothing to sample, and a bar
+ * that crept along on a timer would be inventing a number. A moving stripe and a sentence say the
+ * true thing — this is running, and here is what it is doing.
+ */
+export function mountBusyForms(): void {
+  document.querySelectorAll<HTMLFormElement>('form[data-busy-text]').forEach((form) => {
+    form.addEventListener('submit', () => {
+      const panel = form.querySelector<HTMLElement>('.upload-progress');
+      const text = form.querySelector<HTMLElement>('.upload-progress-text');
+      const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+
+      if (panel) panel.hidden = false;
+      if (text) text.textContent = form.dataset.busyText ?? '';
+
+      // After the event, so the disabled button does not stop the form being submitted.
+      window.setTimeout(() => { if (submit) submit.disabled = true; }, 0);
+    });
+  });
+}
+
 export function mountUnsavedGuard(): void {
   document.querySelectorAll<HTMLFormElement>('form[data-guard-unsaved]').forEach((form) => {
     const initial = new FormData(form);

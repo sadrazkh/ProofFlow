@@ -38,8 +38,15 @@ public sealed class PortabilityController(
     IAuditLog audit,
     IStringLocalizer localizer) : Controller
 {
-    /// <summary>How big a pasted or uploaded file may be. A description, not a database dump.</summary>
-    public const int MaxUploadBytes = 16 * 1024 * 1024;
+    /// <summary>
+    /// How big a pasted or uploaded file may be.
+    ///
+    /// Sixteen megabytes was a guess, and a real Postman export of a real API came in at thirty —
+    /// which is a description of a system rather than a database dump, and exactly the thing this
+    /// page is for. Kestrel's own default stops at 30 MB too, so the endpoint lifts it explicitly;
+    /// a limit that is enforced in two places at two numbers is a limit nobody can reason about.
+    /// </summary>
+    public const long MaxUploadBytes = 128L * 1024 * 1024;
 
     // ---- out ------------------------------------------------------------------------------------
 
@@ -118,13 +125,25 @@ public sealed class PortabilityController(
         });
     }
 
-    /// <summary>Step two: read the file, say what it would do, change nothing.</summary>
-    [HttpPost("import/preview")]
+    /// <summary>
+    /// Takes the bytes and nothing else.
+    ///
+    /// Split out from the preview so the browser can show how much of a thirty-megabyte file has
+    /// gone up. A form post gives no progress at all: the page sits on a spinner for as long as the
+    /// upload takes, which on a slow connection is a minute of no information — and «is it working
+    /// or has it hung» is the only question somebody has during it.
+    ///
+    /// It parses nothing. What comes back is a ticket and a size, and the preview reads the same
+    /// bytes out of the scratch store a moment later.
+    /// </summary>
+    [HttpPost("import/upload")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.ImportProject)]
-    public async Task<IActionResult> Preview(
+    [RequestSizeLimit(MaxUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
+    public async Task<IActionResult> Upload(
         Guid projectId, [FromForm] string source, [FromForm] string? pasted,
-        IFormFile? file, [FromForm] bool asNewProject, CancellationToken cancellationToken)
+        IFormFile? file, CancellationToken cancellationToken)
     {
         var project = await db.Projects
             .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
@@ -132,6 +151,51 @@ public sealed class PortabilityController(
         if (project is null) return NotFound();
 
         var (text, fileName, refusal) = await ReadAsync(file, pasted, cancellationToken);
+
+        if (refusal is not null) return BadRequest(new { problem = localizer[refusal].Value });
+
+        var ticket = scratch.Hold(me.UserId ?? Guid.Empty, new HeldImport(text!, source, fileName));
+
+        return Json(new
+        {
+            ticket,
+            fileName,
+            bytes = Encoding.UTF8.GetByteCount(text!),
+        });
+    }
+
+    /// <summary>Step two: read the file, say what it would do, change nothing.</summary>
+    [HttpPost("import/preview")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ImportProject)]
+    [RequestSizeLimit(MaxUploadBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadBytes)]
+    public async Task<IActionResult> Preview(
+        Guid projectId, [FromForm] string source, [FromForm] string? pasted,
+        IFormFile? file, [FromForm] bool asNewProject, [FromForm] string? ticket,
+        CancellationToken cancellationToken)
+    {
+        var project = await db.Projects
+            .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
+
+        if (project is null) return NotFound();
+
+        string? text;
+        string? fileName;
+        string? refusal;
+
+        // Already uploaded, when the browser could run the two steps: the bytes are in the scratch
+        // store and nothing goes over the wire twice. Falling back to reading the form keeps the
+        // page working with no script at all, which is the only reason the fallback exists.
+        if (scratch.Take(me.UserId ?? Guid.Empty, ticket) is { } held)
+        {
+            (text, fileName, refusal) = (held.Text, held.FileName, null);
+            source = held.Source;
+        }
+        else
+        {
+            (text, fileName, refusal) = await ReadAsync(file, pasted, cancellationToken);
+        }
 
         if (refusal is not null)
         {

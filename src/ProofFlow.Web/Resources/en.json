@@ -1552,7 +1552,11 @@
     "preview.secrets": "You will have to create these yourself",
     "preview.secrets.body": "The file names them but does not carry their values. Until they exist, anything that uses them will fail.",
     "preview.notes": "What did not come across",
-    "preview.confirm": "Import {0} things"
+    "preview.confirm": "Import {0} things",
+    "import.sending": "Sending…",
+    "import.sent": "{0} of {1} sent.",
+    "import.reading": "Reading it. A large collection takes a moment.",
+    "preview.writing": "Writing {0} things into the project. A large collection takes a moment."
   },
   "import": {
     "empty": "There was nothing to read.",
@@ -1586,7 +1590,9 @@
     "note.scripts": "Pre-request and test scripts were not carried across. ProofFlow does not run script from a file.",
     "note.fileBody": "A request sends a file from somebody’s machine. Nothing useful crosses.",
     "note.oauth2": "An OAuth2 token was found and not kept — it is somebody’s live session.",
-    "note.unknownAuth": "An authentication kind this does not know was skipped."
+    "note.unknownAuth": "An authentication kind this does not know was skipped.",
+    "note.environmentOnly": "This is a Postman environment, not a collection: it brings addresses and variable names, and no requests.",
+    "noValues": "That environment has no values in it."
   },
   "template": {
     "title": "Templates",

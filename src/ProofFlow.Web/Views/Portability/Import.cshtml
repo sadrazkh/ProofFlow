@@ -12,8 +12,19 @@
        of the journey matters as much as the pages in it. *@
     <partial name="Pieces/_ImportSteps" model="1" />
 
+@*
+    Two steps when script is available, one when it is not.
+
+    A thirty-megabyte collection takes a visible amount of time to upload, and a form post shows
+    nothing at all while it does — the page simply sits there. So the bytes go up on their own,
+    with a real percentage, and the preview is a second request that reads them back out of memory.
+
+    Without script the same form still posts straight to the preview, which is why the action is
+    the one it always was and the upload address is an attribute rather than the target.
+*@
     <form method="post" action="/projects/@Model.ProjectId/import/preview"
-          enctype="multipart/form-data" class="stack-6">
+          enctype="multipart/form-data" class="stack-6"
+          data-upload-to="/projects/@Model.ProjectId/import/upload">
         @Html.AntiForgeryToken()
 
         <section class="card card-pad stack">
@@ -74,5 +85,16 @@
             </button>
             <a class="btn btn-ghost" href="/projects/@Model.ProjectId">@T["action.cancel"]</a>
         </div>
+
+        @* Hidden until there is something to say, so the page does not carry an empty bar. *@
+        <div class="upload-progress" hidden>
+            <div class="upload-progress-track">
+                <div class="upload-progress-fill"
+                     role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+            </div>
+            <p class="upload-progress-text" role="status" aria-live="polite"></p>
+        </div>
+
+        <input type="hidden" name="ticket" value="" />
     </form>
 </div>

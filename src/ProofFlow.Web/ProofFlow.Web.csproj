@@ -34,4 +34,61 @@
     <InternalsVisibleTo Include="ProofFlow.IntegrationTests" />
   </ItemGroup>
 
+  <!--
+    The front end, built by the .NET build.
+
+    It used to be a separate command somebody had to remember, and the failure it produced is the
+    worst kind: pressing F5 in Visual Studio served whatever JavaScript happened to be in
+    wwwroot/build from the last time anybody ran Vite. Everything looked right, the page worked, and
+    a feature added that morning simply was not there — with no error anywhere to explain it.
+
+    Incremental, so it costs nothing when nothing changed: MSBuild compares the sources against a
+    stamp file and skips the target entirely. `npm install` runs only when node_modules is missing.
+    Set SkipFrontendBuild=true for a build that must not shell out — CI builds the assets itself
+    before it builds the solution.
+  -->
+  <PropertyGroup>
+    <FrontendStamp>$(BaseIntermediateOutputPath)frontend.stamp</FrontendStamp>
+    <NpmCommand Condition="'$(OS)' == 'Windows_NT'">npm.cmd</NpmCommand>
+    <NpmCommand Condition="'$(OS)' != 'Windows_NT'">npm</NpmCommand>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrontendSource Include="Scripts\**\*" Exclude="Scripts\**\*.spec.ts" />
+    <FrontendSource Include="package.json;package-lock.json;vite.config.ts;tsconfig.json" />
+  </ItemGroup>
+
+  <Target Name="BuildFrontend"
+          BeforeTargets="BeforeBuild"
+          Condition="'$(SkipFrontendBuild)' != 'true'"
+          Inputs="@(FrontendSource)"
+          Outputs="$(FrontendStamp)">
+
+    <Message Importance="high" Text="ProofFlow: building the front end (Vite)…" />
+
+    <Exec Command="$(NpmCommand) install --no-audit --no-fund"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          Condition="!Exists('$(MSBuildProjectDirectory)/node_modules')" />
+
+    <!-- build:fast, because vue-tsc is a separate gate the test run already enforces. -->
+    <Exec Command="$(NpmCommand) run build:fast" WorkingDirectory="$(MSBuildProjectDirectory)" />
+
+    <Touch Files="$(FrontendStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <!--
+    Re-listed after Vite has run.
+
+    The glob above is evaluated when the project is read, which is before this build wrote anything:
+    with a changed bundle the copy step went looking for the hashed name from the previous build and
+    failed with «could not copy, it was not found». Collecting them again inside a target — after the
+    files exist and before the copy is planned — is the only ordering that holds.
+  -->
+  <Target Name="CollectFrontendOutput" AfterTargets="BuildFrontend" BeforeTargets="AssignTargetPaths">
+    <ItemGroup>
+      <None Remove="wwwroot/build/**" />
+      <None Include="wwwroot/build/**" CopyToOutputDirectory="PreserveNewest" Watch="false" />
+    </ItemGroup>
+  </Target>
+
 </Project>

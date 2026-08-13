@@ -26,6 +26,8 @@ import {
   mountCountdowns,
   mountDemoFill,
   mountNavGroups,
+  mountBusyForms,
+  mountUploadProgress,
   mountRenames,
 } from './lib/shell';
 
@@ -50,6 +52,8 @@ mountCountdowns();
 mountRenames();
 mountDemoFill();
 mountNavGroups();
+mountUploadProgress();
+mountBusyForms();
 // Registered before mounting, which is the only ordering that matters here.
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);

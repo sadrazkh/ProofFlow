@@ -277,6 +277,17 @@ public sealed class BundleImporter(
             await graphs.SaveAsync(scenario, incoming.Graph, cancellation);
 
             added++;
+
+            // Forgotten as soon as it is written.
+            //
+            // Every scenario brings a version, a dozen nodes and their edges, and the change
+            // tracker was keeping all of them: by the two thousandth, each save was walking tens of
+            // thousands of entities to work out what had changed. A real thirty-megabyte collection
+            // took six minutes, all of it here, with nothing on the screen to say so.
+            //
+            // Nothing after this loop reads a tracked entity — the project is used for its id and
+            // its name, both values — so letting go costs nothing and makes the work linear.
+            db.ChangeTracker.Clear();
         }
 
         return added;

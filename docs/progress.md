@@ -925,6 +925,7 @@ Nothing new. That is the honest result rather than a shortage of looking.
 | Writing one with a model | A workspace holds a base URL, a model and a key; the key is sealed with the same cipher as every secret and shown as four characters. OpenRouter by default. The button only exists once a key is in place |
 | What the model is told | The node catalogue, generated from the catalogue rather than written out, and the rules a graph is rejected for breaking. What comes back is put through the canvas's own validator and refused if it would not run |
 | Nothing is saved | A drawn graph lands as unsaved changes, through the undo history, so the first thing somebody can do is press Ctrl+Z and get their canvas back |
+| The front end is built by the build | Pressing F5 in Visual Studio used to serve whatever Vite last wrote, which is how a feature added that morning could simply not be there with no error to explain it. The .NET build runs Vite when the sources are newer than the output, and skips it in about two seconds when they are not |
 | F5 and it works | A development copy seeds itself, prints its account on the sign-in page, and has a **Quick start** with a button that makes a project pointed at the API in the box. No user-secrets, no environment variables, no first-run configuration |
 | The account, stated rather than looked up | `demo@proofflow.local` with a password that has a default in Development and nowhere else. The page prints it only when all three hold: development, seeding on, and nobody chose one — so a page can never show a password the seeder did not use |
 | Two braces, and the list appears | Typing `{{` in any field that takes a reference opens the same list, filtered as the letters arrive, arrows and Enter to take one — the thing an editor does. The button is still there for somebody who does not know what they are looking for |
@@ -962,6 +963,23 @@ writes the size back onto the node, and the canvas counted that as an edit — s
 asked to confirm work nobody had done. Meanwhile dragging a connection changed only the edges, which
 nothing was watching, so a real edit went unmarked. Both are one bug: «unsaved» now means the shape
 that would be sent differs from the shape that was agreed.
+
+**A thirty-megabyte export took six minutes and said nothing while it did.** All six were in the
+write: the change tracker kept every scenario, every version and every node it had ever seen, so by
+the two-thousandth each save was walking tens of thousands of entities to work out what had changed.
+Letting go of each scenario once it is written makes the work linear — the same file now lands in
+about eleven seconds. The upload has a real percentage in front of it, because that is the half with
+something to measure, and the write says what it is doing rather than claiming a number it does not
+have.
+
+**And most of a Postman collection was not coming across.** Authentication declared once at the top
+of a collection — which is how nearly all of them are written — reached nothing, because only the
+per-request block was read; `noauth` on a folder was indistinguishable from silence and inherited
+the credential it exists to refuse; a collection's `baseUrl` stayed a variable, so an import arrived
+with no environment and a first run that failed on an address nothing defined; and a Postman
+environment export, the other file people hand over, was refused as «not Postman». All four are
+fixed, and the ceiling on how many requests one import takes went from three hundred to two
+thousand — a real API does not fit in three hundred.
 
 **The reference list worked on one screen and not on the one that mattered.** It attached its
 listeners to the field on mount — and in the inspector the picker sits inside the label, above the

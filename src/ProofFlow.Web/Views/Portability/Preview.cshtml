@@ -108,18 +108,33 @@
                 </section>
             }
 
-            <form method="post" action="/projects/@Model.ProjectId/import/apply" class="row">
+@*
+    Writing two thousand scenarios takes about ten seconds, which is long enough that a button which
+    simply stops responding reads as a page that has died. It says what it is doing instead — and
+    without a percentage, because there is nothing here to measure honestly.
+*@
+            <form method="post" action="/projects/@Model.ProjectId/import/apply"
+                  class="stack-2" data-busy-text="@T["portability.preview.writing", Model.Preview.Total]">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="ticket" value="@Model.Ticket" />
                 <input type="hidden" name="asNewProject" value="@Model.AsNewProject.ToString().ToLowerInvariant()" />
 
-                <button type="submit" class="btn btn-primary" disabled="@(Model.Preview.Total == 0)">
-                    <i data-lucide="check" aria-hidden="true"></i>@T["portability.preview.confirm", Model.Preview.Total]
-                </button>
+                <div class="row">
+                    <button type="submit" class="btn btn-primary" disabled="@(Model.Preview.Total == 0)">
+                        <i data-lucide="check" aria-hidden="true"></i>@T["portability.preview.confirm", Model.Preview.Total]
+                    </button>
 
-                <a class="btn btn-ghost" href="/projects/@Model.ProjectId/import?source=@Model.Source">
-                    @T["action.back"]
-                </a>
+                    <a class="btn btn-ghost" href="/projects/@Model.ProjectId/import?source=@Model.Source">
+                        @T["action.back"]
+                    </a>
+                </div>
+
+                <div class="upload-progress" hidden>
+                    <div class="upload-progress-track">
+                        <div class="upload-progress-fill is-working" role="progressbar"></div>
+                    </div>
+                    <p class="upload-progress-text" role="status" aria-live="polite"></p>
+                </div>
             </form>
         }
     </div>

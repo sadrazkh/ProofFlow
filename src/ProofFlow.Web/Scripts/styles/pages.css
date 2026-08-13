@@ -569,3 +569,48 @@ html[dir='rtl'] .stat-value { letter-spacing: 0; }
 }
 
 .demo-card-list li { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; }
+
+
+/* ---- how much of the file has gone up -------------------------------------------------------- */
+
+.upload-progress { display: flex; flex-direction: column; gap: var(--space-2); }
+
+.upload-progress-track {
+  block-size: 6px;
+  border-radius: 999px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.upload-progress-fill {
+  block-size: 100%;
+  inline-size: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: inline-size var(--motion-fast) linear;
+}
+
+/*
+  The part with nothing to measure: reading a document server-side takes as long as it takes.
+  A stripe that moves says «still working» without claiming a percentage it does not have.
+*/
+.upload-progress-fill.is-working {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--accent) 0 10px,
+    var(--accent-soft-hover) 10px 20px);
+  animation: upload-working 1s linear infinite;
+}
+
+@keyframes upload-working {
+  to { background-position: 28px 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-progress-fill.is-working { animation: none; }
+}
+
+.upload-progress.is-failed .upload-progress-fill { background: var(--danger); }
+
+.upload-progress-text { margin: 0; font-size: var(--text-xs); color: var(--ink-muted); }
+.upload-progress.is-failed .upload-progress-text { color: var(--danger); }
