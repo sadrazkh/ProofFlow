@@ -6,6 +6,7 @@ import { mountThemeControls } from './lib/theme';
 import { watchForNewContent } from './lib/icons';
 import { flushServerToasts, mountToastDemos } from './lib/toast';
 import { island, mountIslands } from './lib/islands';
+import ConnectApi from './islands/ConnectApi.vue';
 import RequestLab from './islands/RequestLab.vue';
 import BaselineWorkbench from './islands/BaselineWorkbench.vue';
 import DataSetEditor from './islands/DataSetEditor.vue';
@@ -54,6 +55,7 @@ mountNavGroups();
 mountUploadProgress();
 mountBusyForms();
 // Registered before mounting, which is the only ordering that matters here.
+island('connect-api', ConnectApi);
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);
 island('dataset-editor', DataSetEditor);

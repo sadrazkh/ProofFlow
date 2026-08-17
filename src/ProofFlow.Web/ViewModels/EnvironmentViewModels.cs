@@ -105,6 +105,18 @@ public sealed class EnvironmentFormViewModel
     public Guid? RunnerId { get; set; }
 
     /// <summary>
+    /// How this environment authenticates, in one word: None, Header, SignIn or OAuth2.
+    ///
+    /// Shown rather than edited here. The four fields it takes to describe a sign-in are the same
+    /// four the connect flow asks for, and that flow will not save one it has not just watched
+    /// work — which is the property this form would quietly lose by offering the fields again.
+    /// </summary>
+    public string AuthMode { get; set; } = "None";
+
+    /// <summary>The address it signs in at, or the header it sends. Never a credential.</summary>
+    public string? AuthDetail { get; set; }
+
+    /// <summary>
     /// The kinds, ordered the way a deployment pipeline runs rather than alphabetically — the list
     /// reads as a progression, which is how people think about where a change is.
     /// </summary>

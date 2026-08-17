@@ -50,6 +50,46 @@
             <partial name="Pieces/_FieldError" model="@("BaseUrl")" />
         </div>
 
+        @*
+            How this environment signs in.
+
+            Described here and changed elsewhere. Editing a sign-in means the same four questions
+            the connect flow asks, and that flow will not save one it has not just watched work —
+            a property this form would quietly lose by offering the fields a second time. So the
+            line says what is configured and the button goes to the place that can prove a change.
+        *@
+        <section class="field">
+            <h3 class="text-sm semibold" style="margin-block-start: var(--space-2);">@T["environment.auth"]</h3>
+
+            <div class="row wrap" style="gap: var(--space-3);">
+                @if (Model.AuthMode == "None")
+                {
+                    <p class="field-hint" style="margin: 0;">@T["environment.auth.none"]</p>
+                }
+                else
+                {
+                    <p class="field-hint" style="margin: 0;">
+                        @T[$"environment.auth.{Model.AuthMode.ToLowerInvariant()}"]
+                        @if (!string.IsNullOrWhiteSpace(Model.AuthDetail))
+                        {
+                            <span class="mono" dir="ltr">@Model.AuthDetail</span>
+                        }
+                    </p>
+                }
+
+                <span class="grow"></span>
+
+                @if (canManage)
+                {
+                    <a class="btn btn-secondary btn-sm"
+                       href="/projects/@projectId/connect?environment=@Model.Id">
+                        <i data-lucide="key-round" aria-hidden="true"></i>
+                        @(Model.AuthMode == "None" ? T["environment.auth.setUp"] : T["environment.auth.change"])
+                    </a>
+                }
+            </div>
+        </section>
+
         <h3 class="text-sm semibold" style="margin-block-start: var(--space-2);">@T["environment.limits"]</h3>
         <div class="design-two-up">
             <div class="field">

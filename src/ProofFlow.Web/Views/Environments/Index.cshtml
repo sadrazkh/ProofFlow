@@ -12,7 +12,13 @@
     @if (Model.CanManage)
     {
         <div class="page-actions">
-            <a class="btn btn-primary" href="#new-environment">
+            @* Connecting is the primary because an environment nobody can authenticate to is the
+               state this page used to leave people in. The form below is still there for anyone
+               who only wants an address. *@
+            <a class="btn btn-primary" href="/projects/@Model.ProjectId/connect">
+                <i data-lucide="key-round" aria-hidden="true"></i>@T["connect.title"]
+            </a>
+            <a class="btn btn-secondary" href="#new-environment">
                 <i data-lucide="plus" aria-hidden="true"></i>@T["environment.new"]
             </a>
         </div>
@@ -26,6 +32,14 @@
             <div class="empty-art"><i data-lucide="globe" aria-hidden="true"></i></div>
             <h2 class="empty-title">@T["environment.empty.title"]</h2>
             <p class="empty-body">@T["environment.empty.body"]</p>
+            @if (Model.CanManage)
+            {
+                <div class="empty-actions">
+                    <a class="btn btn-primary" href="/projects/@Model.ProjectId/connect">
+                        <i data-lucide="key-round" aria-hidden="true"></i>@T["connect.title"]
+                    </a>
+                </div>
+            }
         </div>
     </div>
 }

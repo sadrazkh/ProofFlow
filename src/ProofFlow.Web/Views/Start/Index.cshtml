@@ -42,9 +42,11 @@
             <p class="section-help">@T["demo.own.body"]</p>
         </div>
 
+        @* The connect flow rather than the environment list: this door is for somebody who has an
+           API and does not yet know what this application calls the four things it needs. *@
         @if (Model.HasProject)
         {
-            <a class="btn btn-secondary btn-block" href="/projects/@Model.FirstProjectId/environments">
+            <a class="btn btn-secondary btn-block" href="/projects/@Model.FirstProjectId/connect">
                 <i data-lucide="plus" aria-hidden="true"></i>@T["demo.own.action"]
             </a>
         }

@@ -36,8 +36,13 @@
             <p class="empty-body">@T["endpoint.empty.body"]</p>
             @if (Model.CanRecord)
             {
+                @* Connecting first, because an API that needs a token answers the request lab with
+                   a 401 — and that is the wall this empty state used to walk people into. *@
                 <div class="empty-actions">
-                    <a class="btn btn-primary" href="/projects/@Model.ProjectId/request">
+                    <a class="btn btn-primary" href="/projects/@Model.ProjectId/connect">
+                        <i data-lucide="key-round" aria-hidden="true"></i>@T["connect.title"]
+                    </a>
+                    <a class="btn btn-secondary" href="/projects/@Model.ProjectId/request">
                         <i data-lucide="send" aria-hidden="true"></i>@T["endpoint.empty.action"]
                     </a>
                     <a class="btn btn-secondary" href="/projects/@Model.ProjectId/import?source=postman">

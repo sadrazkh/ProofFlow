@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Application.Common;
+using ProofFlow.Contracts.Requests;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Infrastructure.Persistence;
@@ -443,22 +444,37 @@ public sealed class EnvironmentsController(
         environment.IsProduction = form.IsProduction || form.Kind == EnvironmentKind.Production;
     }
 
-    private static EnvironmentFormViewModel ToForm(ProjectEnvironment e) => new()
+    private static EnvironmentFormViewModel ToForm(ProjectEnvironment e)
     {
-        Id = e.Id,
-        Name = e.Name,
-        BaseUrl = e.BaseUrl,
-        Kind = e.Kind,
-        TimeoutSeconds = e.TimeoutSeconds,
-        MaxRedirects = e.MaxRedirects,
-        MaxResponseKilobytes = e.MaxResponseKilobytes,
-        AllowedHosts = e.AllowedHosts,
-        AllowPrivateNetwork = e.AllowPrivateNetwork,
-        AllowInvalidCertificate = e.AllowInvalidCertificate,
-        IsProduction = e.IsProduction,
-        ProxyUrl = e.ProxyUrl,
-        RunnerId = e.RunnerId,
-    };
+        var auth = EnvironmentAuth.Read(e.AuthenticationJson);
+
+        return new EnvironmentFormViewModel
+        {
+            Id = e.Id,
+            Name = e.Name,
+            BaseUrl = e.BaseUrl,
+            Kind = e.Kind,
+            TimeoutSeconds = e.TimeoutSeconds,
+            MaxRedirects = e.MaxRedirects,
+            MaxResponseKilobytes = e.MaxResponseKilobytes,
+            AllowedHosts = e.AllowedHosts,
+            AllowPrivateNetwork = e.AllowPrivateNetwork,
+            AllowInvalidCertificate = e.AllowInvalidCertificate,
+            IsProduction = e.IsProduction,
+            ProxyUrl = e.ProxyUrl,
+            RunnerId = e.RunnerId,
+            AuthMode = auth.Mode.ToString(),
+
+            // The address or the header name, never the credential — this line is on a page more
+            // people can open than can reveal a secret.
+            AuthDetail = auth.Mode switch
+            {
+                AuthMode.Header => auth.HeaderName,
+                AuthMode.SignIn or AuthMode.OAuth2 => auth.TokenUrl,
+                _ => null,
+            },
+        };
+    }
 
     /// <summary>The settings worth having in the audit trail, as strings.</summary>
     private static Dictionary<string, string?> Details(ProjectEnvironment e) => new()

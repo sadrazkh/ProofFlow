@@ -1,0 +1,226 @@
+/*
+  Connecting an API: four questions, one at a time.
+
+  The rail came from the nine-step capture wizard, which was folded into the endpoint page in the
+  rework that made a simple job a simple page. The pattern was right and the length was wrong, so it
+  moved here rather than being deleted — four steps is what it was always the right shape for.
+*/
+
+.wizard {
+  display: grid;
+  gap: var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .wizard { grid-template-columns: 220px minmax(0, 1fr); align-items: start; }
+}
+
+.wizard-rail ol { display: flex; gap: var(--space-1); overflow-x: auto; }
+
+@media (min-width: 900px) {
+  /* Vertical where there is room for the step names, horizontal where there is not — the same four
+     steps either way, because a wizard that hides how many are left is one nobody trusts to end. */
+  .wizard-rail ol { flex-direction: column; overflow: visible; }
+}
+
+.wizard-rail button {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  inline-size: 100%;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.wizard-rail button:hover:not(:disabled) { background: var(--surface-sunken); color: var(--ink); }
+.wizard-rail button:disabled { cursor: not-allowed; color: var(--ink-faint); }
+
+.wizard-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 22px;
+  block-size: 22px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-full);
+  font-size: 11px;
+}
+
+.wizard-rail .is-current button { color: var(--ink); font-weight: var(--weight-medium); }
+.wizard-rail .is-current .wizard-mark {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.wizard-rail .is-done .wizard-mark {
+  border-color: var(--pass-border);
+  background: var(--pass-soft);
+  color: var(--pass-ink);
+}
+
+/* On a phone the names would wrap the rail into four lines; the numbers still say where you are. */
+@media (max-width: 899px) {
+  .wizard-name { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); }
+  .wizard-rail button { inline-size: auto; }
+}
+
+/*
+  Tall enough that the panel does not change height between steps.
+
+  Step two with «no authentication» chosen is four lines and step two with OAuth2 chosen is fifteen;
+  without a floor the Next button walks up and down the screen as somebody reads the choices.
+*/
+.wizard-panel { min-block-size: 340px; }
+
+/* ---- the four kinds -------------------------------------------------------------------------- */
+
+/*
+  Cards rather than a select, because the four are not interchangeable values of one setting — they
+  are four different things to know about your own API, and the sentence under each is how somebody
+  works out which one they have.
+*/
+.connect-kinds {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 720px) {
+  .connect-kinds { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.connect-kind {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--motion-fast) var(--ease-out);
+}
+.connect-kind:hover { border-color: var(--line-strong); }
+
+/*
+  Chosen is a ring, not a wash — the same conclusion the import source cards reached, for the same
+  reason. Each of these carries a line of --ink-subtle help text, and --ink-subtle on --accent-soft
+  is where this project's contrast bugs have historically lived.
+*/
+.connect-kind.is-chosen {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* The card carries the ring, not the radio inside it: the whole card is the target. */
+.connect-kind:has(.radio:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+.connect-kind .radio { margin-block-start: 2px; }
+
+/* ---- the fields ------------------------------------------------------------------------------ */
+
+/*
+  A short field and a long one on one line — the header name and its value, the field name and what
+  goes in it. The pair is the unit: splitting them across two rows makes the reader hold the left
+  half in their head while they read the right.
+*/
+.connect-pair {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.connect-pair > .field { flex: 0 1 180px; }
+.connect-pair > .field.grow { flex: 1 1 260px; }
+
+@media (max-width: 600px) {
+  .connect-pair > .field, .connect-pair > .field.grow { flex-basis: 100%; }
+}
+
+/* The settings almost nobody changes: the response path, the header the token goes on. */
+.connect-more > summary {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  cursor: pointer;
+  padding-block: var(--space-2);
+}
+.connect-more > summary:hover { color: var(--ink); }
+.connect-more[open] > summary { margin-block-end: var(--space-2); }
+
+/* ---- what happened --------------------------------------------------------------------------- */
+
+/*
+  One line per half of the attempt: the sign-in, then the call.
+
+  Two lines rather than one verdict because they fail for unrelated reasons and the fix differs —
+  a green sign-in above a red call says the credentials are right and the path is wrong, which is
+  the sentence a single «failed» withholds.
+*/
+.connect-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+.connect-line > svg { flex: none; margin-block-start: 1px; }
+.connect-line > div { min-inline-size: 0; }
+
+.connect-line.is-ok { border-color: var(--pass-border); background: var(--pass-soft); }
+.connect-line.is-ok > svg { color: var(--pass-ink); }
+.connect-line.is-bad { border-color: var(--fail-border); background: var(--fail-soft); }
+.connect-line.is-bad > svg { color: var(--fail-ink); }
+
+.connect-line-title { margin: 0; font-size: var(--text-sm); color: var(--ink); }
+.connect-line-detail {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  overflow-wrap: anywhere;
+}
+
+/* The server's own answer, wrapped rather than scrolled: it is read, not pasted. */
+.connect-body {
+  margin: 0;
+  max-block-size: 200px;
+  overflow: auto;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  border: 1px solid var(--line-subtle);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: var(--leading-normal);
+  color: var(--ink-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ---- what the last button will make ---------------------------------------------------------- */
+
+.connect-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+}
+.connect-summary li {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+.connect-summary svg { flex: none; color: var(--ink-subtle); }

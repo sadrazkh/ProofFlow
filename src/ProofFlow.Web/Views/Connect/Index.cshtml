@@ -1,0 +1,49 @@
+@using System.Text.Json
+@model ConnectViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        sampleBaseUrl = Model.SampleBaseUrl,
+        existing = Model.Existing,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title">@(Model.Existing is null ? T["connect.title"] : T["connect.editTitle"])</h1>
+        <p class="page-subtitle">@(Model.Existing is null ? T["connect.subtitle"] : T["connect.editSubtitle"])</p>
+    </div>
+
+    <div class="page-actions">
+        @* For somebody who already knows what an environment is and does not want to be walked. *@
+        <a class="btn btn-ghost btn-sm" href="/projects/@Model.ProjectId/environments">
+            <i data-lucide="settings" aria-hidden="true"></i>@T["connect.manual"]
+        </a>
+    </div>
+</div>
+
+@*
+    The island carries a skeleton in the shape it becomes — a rail beside a panel — so the page does
+    not collapse and rebuild between the first paint and Vue taking over.
+*@
+<div data-island="connect-api" data-props="@props">
+    <div class="wizard">
+        <div class="wizard-rail">
+            <div class="stack-2">
+                <div class="skeleton" style="block-size: 32px;"></div>
+                <div class="skeleton" style="block-size: 32px;"></div>
+                <div class="skeleton" style="block-size: 32px;"></div>
+                <div class="skeleton" style="block-size: 32px;"></div>
+            </div>
+        </div>
+
+        <div class="card wizard-panel">
+            <div class="card-body stack">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="inline-size: 70%;"></div>
+                <div class="skeleton" style="block-size: 36px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
