@@ -69,6 +69,18 @@ public sealed record CompareResponseDto
 {
     public required DiffResultDto Diff { get; init; }
     public IReadOnlyList<SuggestionDto> Suggestions { get; init; } = [];
+
+    /// <summary>
+    /// What came back, but only when there is nothing yet to compare it against.
+    ///
+    /// The diff is the answer in every other case, and shipping the whole body beside it would send
+    /// the same bytes twice. For an endpoint with no approved version there is no diff to be the
+    /// answer — the reader has to look at the response itself before agreeing that it is correct,
+    /// and this is what they look at.
+    /// </summary>
+    public string? Body { get; init; }
+
+    public string? ContentType { get; init; }
 }
 
 /// <summary>A rule as the builder edits it.</summary>

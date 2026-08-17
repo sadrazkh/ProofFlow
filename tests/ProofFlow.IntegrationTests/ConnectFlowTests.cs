@@ -239,6 +239,94 @@ public sealed class ConnectFlowTests(ProofFlowApplication app)
     }
 
     [Fact]
+    public async Task An_endpoint_with_nothing_recorded_can_be_sent_once_and_the_answer_kept()
+    {
+        // The state a new endpoint is in, whatever made it. Until this worked, the page it lands on
+        // had two disabled buttons — comparing needs an approved answer, sweeping needs inputs —
+        // and the only way to record a first answer was the request lab, which makes a different
+        // endpoint entirely.
+        var (client, projectId) = await SignedInAsync();
+
+        var attempt = Attempt();
+        (await TryAsync(client, projectId, attempt)).Call!.Ok.Should().BeTrue();
+
+        var saved = await SaveAsync(client, projectId, attempt);
+        var endpoint = $"/projects/{projectId}/endpoints/{saved.EndpointId}";
+
+        // Wind it back to the state anything other than the connect flow leaves an endpoint in.
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+
+            db.BaselineVersions.RemoveRange(
+                await db.BaselineVersions.IgnoreQueryFilters()
+                    .Where(v => v.BaselineId == saved.EndpointId).ToListAsync());
+
+            await db.SaveChangesAsync();
+        }
+
+        // One press: it sends, and hands back what came back rather than a diff against nothing.
+        var sent = await client.PostAsJsonAsync($"{endpoint}/compare", new { });
+        sent.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var answer = await sent.Content.ReadFromJsonAsync<JsonElement>();
+
+        answer.GetProperty("body").GetString().Should().Contain("\"items\"",
+            "there is no diff to be the answer, so the response has to be");
+        answer.GetProperty("diff").GetProperty("statusCode").GetInt32().Should().Be(200);
+
+        // Second press: keep it. What is recorded is the response held from the first press — not a
+        // fresh call, which on anything with a counter in it is a different body.
+        var kept = await client.PostAsJsonAsync($"{endpoint}/record", new { });
+        kept.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var version = await Db(scope.ServiceProvider).BaselineVersions.IgnoreQueryFilters()
+                .SingleAsync(v => v.BaselineId == saved.EndpointId);
+
+            version.Number.Should().Be(1);
+            version.Status.Should().Be(BaselineStatus.Approved);
+            version.Body.Should().Be(answer.GetProperty("body").GetString(),
+                "the bytes recorded should be the bytes that were shown");
+        }
+
+        // And now the page is in its ordinary state: comparing has something to compare against,
+        // and the response is no longer sent back beside the diff.
+        var again = await client.PostAsJsonAsync($"{endpoint}/compare", new { });
+        var second = await again.Content.ReadFromJsonAsync<JsonElement>();
+
+        second.GetProperty("diff").GetProperty("failureMessage").GetString().Should().BeNull();
+        second.GetProperty("body").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task A_second_answer_cannot_be_recorded_without_review()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        var attempt = Attempt();
+        (await TryAsync(client, projectId, attempt)).Call!.Ok.Should().BeTrue();
+
+        var saved = await SaveAsync(client, projectId, attempt);
+        var endpoint = $"/projects/{projectId}/endpoints/{saved.EndpointId}";
+
+        await client.PostAsJsonAsync($"{endpoint}/compare", new { });
+
+        // The flow already recorded one. Recording approves what it writes, so letting it run twice
+        // would be a way to approve a change to a test without anybody reviewing it — which is the
+        // separation of duties this product is built around, gone.
+        var second = await client.PostAsJsonAsync($"{endpoint}/record", new { });
+
+        second.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        using var scope = app.Services.CreateScope();
+
+        (await Db(scope.ServiceProvider).BaselineVersions.IgnoreQueryFilters()
+            .CountAsync(v => v.BaselineId == saved.EndpointId)).Should().Be(1);
+    }
+
+    [Fact]
     public async Task The_answer_it_keeps_is_approved_so_the_next_run_has_something_to_check()
     {
         var (client, projectId) = await SignedInAsync();

@@ -19,6 +19,11 @@ import type { BaselineEnvironment, DiffResult, Rule, Suggestion } from './baseli
  *
  * Neither happens without an explicit press. Comparing is read-only; nothing here writes until
  * somebody saves rules or proposes a version, and a proposed version still needs an approver.
+ *
+ * Before any of that there is one more state: an endpoint with nothing recorded. The same button
+ * sends it once and shows what came back, and the only decision on offer is whether that is
+ * correct. Until this existed, a new endpoint met two disabled buttons and a sentence explaining
+ * why — true, and a dead end.
  */
 
 const props = defineProps<{
@@ -39,6 +44,10 @@ const diff = ref<DiffResult | null>(null);
 const suggestions = ref<Suggestion[]>([]);
 const pending = ref(false);
 
+/** The response itself, sent back only when there is nothing yet to compare it against. */
+const answer = ref<{ body: string; contentType: string | null; statusCode: number } | null>(null);
+const keeping = ref(false);
+
 const rules = ref<Rule[]>(props.initialRules.map((rule) => ({ ...rule })));
 const savedRules = ref(JSON.stringify(props.initialRules));
 const acceptedSuggestions = ref<string[]>([]);
@@ -56,7 +65,12 @@ async function compare(): Promise<void> {
   pending.value = true;
 
   try {
-    const response = await api.post<{ diff: DiffResult; suggestions: Suggestion[] }>(
+    const response = await api.post<{
+      diff: DiffResult;
+      suggestions: Suggestion[];
+      body: string | null;
+      contentType: string | null;
+    }>(
       `/projects/${props.projectId}/endpoints/${props.baselineId}/compare`,
       { environmentId: environmentId.value || null },
     );
@@ -66,11 +80,43 @@ async function compare(): Promise<void> {
     // A suggestion ticked against the previous response means nothing against this one.
     acceptedSuggestions.value = [];
 
-    if (response.diff.matches) toast(t('baseline.identical'), 'success');
+    answer.value = response.body === null || response.body === undefined
+      ? null
+      : {
+          body: response.body,
+          contentType: response.contentType,
+          statusCode: response.diff.statusCode ?? 0,
+        };
+
+    if (answer.value === null && response.diff.matches) toast(t('baseline.identical'), 'success');
   } catch (error) {
     toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
   } finally {
     pending.value = false;
+  }
+}
+
+/**
+ * Keeps what just came back as the first answer.
+ *
+ * The response the reader is looking at, taken from where the server held it — not a fresh call.
+ * On anything with a clock or a counter in it those are two different bodies, and the one worth
+ * recording is the one somebody agreed to.
+ */
+async function keep(): Promise<void> {
+  if (keeping.value) return;
+  keeping.value = true;
+
+  try {
+    await api.post(`/projects/${props.projectId}/endpoints/${props.baselineId}/record`);
+
+    toast(t('baseline.captured'), 'success');
+    // Reloaded rather than patched: the timeline, the status badge and this panel's whole reason
+    // for being in this state are all server-rendered.
+    location.reload();
+  } catch (error) {
+    toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+    keeping.value = false;
   }
 }
 
@@ -206,25 +252,61 @@ async function propose(paths: string[]): Promise<void> {
 
         <span class="grow"></span>
 
-        <button
-          type="button"
-          class="btn btn-primary"
-          :disabled="!canRun || pending || !hasApprovedVersion"
-          @click="compare"
-        >
+        <button type="button" class="btn btn-primary" :disabled="!canRun || pending" @click="compare">
           <Icon name="play" />
-          {{ pending ? t('baseline.comparing') : t('baseline.compareNow') }}
+          {{ pending
+            ? (hasApprovedVersion ? t('baseline.comparing') : t('baseline.sending'))
+            : (hasApprovedVersion ? t('baseline.compareNow') : t('baseline.sendOnce')) }}
         </button>
       </div>
 
       <p v-if="!hasApprovedVersion" class="response-notice">
-        <Icon name="info" />{{ t('baseline.needsApproved') }}
+        <Icon name="info" />{{ t('baseline.noAnswerYet') }}
       </p>
       <p v-else-if="!canRun" class="response-notice">
         <Icon name="lock" />{{ t('error.403body') }}
       </p>
 
+      <!--
+        Nothing recorded yet: what came back, and one decision about it. The diff viewer is not
+        shown at all here — it would say «nothing to compare against», which is the sentence above
+        it and not a finding.
+      -->
+      <section v-if="answer" class="first-answer">
+        <header class="first-answer-head">
+          <span class="status" :class="answer.statusCode < 400 ? 'status-pass' : 'status-fail'">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="tabular">{{ answer.statusCode }}</span>
+          </span>
+
+          <div class="section-head grow">
+            <h3 class="text-sm semibold">{{ t('baseline.firstAnswer') }}</h3>
+            <p class="text-xs subtle">{{ t('baseline.firstAnswerHelp') }}</p>
+          </div>
+
+          <button
+            v-if="canRecord"
+            type="button"
+            class="btn btn-primary"
+            :disabled="keeping"
+            @click="keep"
+          >
+            <Icon name="check" />
+            {{ keeping ? t('common.saving') : t('baseline.saveAs') }}
+          </button>
+        </header>
+
+        <pre class="first-answer-body" dir="ltr">{{ answer.body }}</pre>
+      </section>
+
+      <!--
+        Only once there is something to compare against. Before that its empty state says «press
+        Compare to see what moved», which is the wrong verb for a button labelled «send it once»
+        and a second sentence about the same panel — and two sentences is how one of them goes
+        stale.
+      -->
       <DiffViewer
+        v-if="hasApprovedVersion"
         :result="diff"
         :pending="pending"
         :can-accept="canRecord && !proposing"
@@ -237,6 +319,7 @@ async function propose(paths: string[]): Promise<void> {
         to see them.
       -->
       <SuggestionList
+        v-if="hasApprovedVersion"
         v-model:accepted="acceptedSuggestions"
         :suggestions="suggestions"
         :readonly="!canRecord"

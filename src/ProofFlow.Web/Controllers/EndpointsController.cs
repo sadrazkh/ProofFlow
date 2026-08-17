@@ -645,6 +645,14 @@ public sealed class EndpointsController(
         scratch.Hold(me.UserId ?? Guid.Empty, endpointId,
             new HeldResponse(body, response.ContentType, response.StatusCode));
 
+        // Nothing recorded yet, so there is no diff to be the answer and the response itself has to
+        // be. Sent back only in that case, and it is what «keep this answer» then records — the
+        // bytes the reader actually looked at, rather than a second call that may say something
+        // else.
+        var first = !await db.BaselineVersions
+            .AnyAsync(v => v.BaselineId == endpointId && v.Status == BaselineStatus.Approved,
+                cancellationToken);
+
         return Json(new CompareResponseDto
         {
             Diff = diff,
@@ -653,7 +661,63 @@ public sealed class EndpointsController(
             Suggestions = diff.Matches
                 ? []
                 : await baselines.SuggestAsync(endpointId, body, cancellationToken),
+
+            Body = first ? body : null,
+            ContentType = first ? response.ContentType : null,
         });
+    }
+
+    /// <summary>
+    /// Keeps the response just sent as this endpoint's first answer.
+    ///
+    /// The first version only. Every one after it is a change to something, and a change goes
+    /// through <see cref="Accept"/> — field by field, and past somebody who did not write it.
+    ///
+    /// Approved on capture, which is the same rule <see cref="Capture"/> follows when the request
+    /// lab records one, and for the same reason: a first version is not a change to anything, so
+    /// there is nothing for a reviewer to compare it against, and requiring an approval would make
+    /// the first run of every new test fail for administrative reasons.
+    ///
+    /// This door exists because without it a new endpoint was a dead end. Comparing needed an
+    /// approved answer, sweeping needed inputs, and the only way to record a first answer at all
+    /// was the request lab — which makes a *different* endpoint.
+    /// </summary>
+    [HttpPost("{endpointId:guid}/record")]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    public async Task<IActionResult> Record(
+        Guid projectId, Guid endpointId, CancellationToken cancellationToken)
+    {
+        var endpoint = await db.Baselines
+            .FirstOrDefaultAsync(b => b.Id == endpointId && b.ProjectId == projectId, cancellationToken);
+        if (endpoint is null) return NotFound();
+
+        if (await db.BaselineVersions.AnyAsync(v => v.BaselineId == endpointId, cancellationToken))
+        {
+            // Not a race guard — the button is not offered. It is here because this action approves
+            // what it writes, and the one thing that must never reach it is a change somebody could
+            // have used it to approve without review.
+            return ValidationProblem(localizer["baseline.alreadyRecorded"].Value);
+        }
+
+        var userId = me.UserId ?? Guid.Empty;
+
+        if (scratch.Take(userId, endpointId) is not { } held)
+        {
+            return ValidationProblem(localizer["baseline.compareExpired"].Value);
+        }
+
+        var version = await baselines.CaptureAsync(
+            endpoint, held.Body, held.ContentType, held.StatusCode, headers: null, cancellationToken);
+
+        await baselines.ApproveAsync(version, cancellationToken);
+
+        scratch.Release(userId, endpointId);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.captured", projectId, nameof(BaselineVersion), version.Id,
+            $"{endpoint.Name} v{version.Number}"), cancellationToken);
+
+        return Json(new { versionId = version.Id, number = version.Number });
     }
 
     [HttpPost("{endpointId:guid}/suggestions")]

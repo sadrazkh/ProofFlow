@@ -1149,7 +1149,9 @@ shape, a username and password posted as JSON, came back 400.
 | Nothing stored until it is proved | The third step signs in and makes one real call and reports both halves separately, because «it didn't work» is four different problems. A 401 on the call is not a success. Nothing is written before it is green |
 | The same four questions to change it | The environment form describes what is configured and sends changes back through the flow, so an edited password is proved before it is stored. Stored credentials arrive as the `{{secrets.…}}` reference they are — a password never crosses back to a browser |
 | The demo demonstrates it | Local and Staging sign themselves in against the fake API, and the seeded endpoint is on a path that answers 401 to anybody. It carries no `Authorization` header |
-| Tests | 708 passing — 513 unit, 195 integration, 43 component; 133 accessibility checks. Acceptance: 20 of 20. `e2e/connect-check.ts` walks all four steps in a browser and gets a 200 out of a protected path with no token typed anywhere |
+| Tests | 710 passing — 513 unit, 197 integration, 43 component; 133 accessibility checks. Acceptance: 20 of 20. `e2e/connect-check.ts` walks all four steps in a browser and gets a 200 out of a protected path with no token typed anywhere |
+
+| A new endpoint is not a dead end | Nothing recorded yet is now a state with something to do in it: **Send it once** shows what came back, **Keep this answer** records it as version 1, approved on capture. The first version only — every one after it is a change, and a change goes past somebody who did not write it |
 
 ### What building it found
 
@@ -1160,6 +1162,23 @@ once more and keeps what came back as the first approved answer, which is the ru
 already follows for the same reason: a first version is not a change to anything, so there is nothing
 for a reviewer to compare it against. A second call rather than the body the browser held, because a
 body that arrived from a browser is not evidence of what an API says.
+
+**And every other new endpoint was in the same dead end.** The connect flow could be fixed by
+recording as it saved; an endpoint made by an import, by moving a one-call scenario, or by the
+Define form could not. The workbench's own button now sends it once when there is nothing to compare
+against, shows the response, and offers to keep it — which is what the demo seeder's comment had
+been describing as if it already existed, and what the section is titled after. The diff viewer is
+not rendered in that state at all: its empty text says «press Compare to see what moved», which is
+the wrong verb beside a button labelled «send it once» and a second sentence about the same panel.
+
+**Recording refuses to run twice**, and that is the point rather than a race guard. It approves what
+it writes, so a second answer through the same door would be a way to approve a change to a test
+without review — which is the separation of duties this product is built around, gone. The sentence
+it refuses with says where a change does go.
+
+**The sentence describing the dead end was deleted rather than kept.** «Nothing has been approved
+for this endpoint yet, so there is nothing to compare against» was true and led nowhere; two
+sentences about one panel is how one of them goes stale.
 
 **The endpoint it kept stored a bare path.** Nothing resolves a relative URL against the
 environment's base, so it was written as `{{environment.baseUrl}}/categories` — which is also what

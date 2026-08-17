@@ -53,6 +53,49 @@
 }
 .workbench-foot { border-block-start: 1px solid var(--line); padding-block-start: var(--space-4); }
 
+/*
+  What came back, the first time, with one decision beside it.
+
+  Its own thing rather than the diff viewer, because there is no diff: nothing has been recorded, so
+  the response is not a change from anything. Showing it inside a viewer built to answer «what
+  moved» would put an empty comparison and a sentence about having nothing to compare where the
+  answer should be.
+*/
+.first-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.first-answer-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+/* Wraps rather than scrolls: this is read before it is agreed to, not pasted somewhere. */
+.first-answer-body {
+  margin: 0;
+  max-block-size: 420px;
+  overflow: auto;
+  padding: var(--space-3);
+  border: 1px solid var(--line-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  line-height: var(--leading-normal);
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .segment-count {
   margin-inline-start: var(--space-2);
   padding-inline: 5px;

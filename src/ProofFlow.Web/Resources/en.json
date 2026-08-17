@@ -593,6 +593,12 @@
     }
   },
   "baseline": {
+    "sending": "Sending…",
+    "sendOnce": "Send it once",
+    "noAnswerYet": "Nothing recorded yet. Send it once, read what comes back, and keep it if that is what correct looks like.",
+    "firstAnswer": "What came back",
+    "firstAnswerHelp": "Keeping this makes it the answer every later run is checked against. Nothing else has to be right first.",
+    "alreadyRecorded": "This endpoint already has an answer. A change to it goes through review.",
     "subtitle": "What correct looked like, and what has moved since.",
     "empty": {
       "title": "Nothing recorded yet",
@@ -630,7 +636,6 @@
     "workbench": "What to show",
     "identical": "Identical to the approved answer",
     "against": "Against {0}",
-    "needsApproved": "Nothing has been approved for this endpoint yet, so there is nothing to compare against.",
     "versionProposed": "Version {0} proposed. It needs approval before it becomes the answer.",
     "saveAs": "Keep this answer",
     "saveAsHelp": "Stores this response as what correct looks like. The request is stored with it, so the same call can be checked again later.",
