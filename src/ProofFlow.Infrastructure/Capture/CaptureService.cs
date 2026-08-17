@@ -30,6 +30,7 @@ public sealed class CaptureService(
     ProofFlowDbContext db,
     EnvironmentContextBuilder environments,
     IHttpExecutor executor,
+    EnvironmentAuthenticator authenticator,
     ICurrentUser me,
     IClock clock)
 {
@@ -113,6 +114,30 @@ public sealed class CaptureService(
 
         var policy = context?.Policy ?? new UrlPolicy();
 
+        // Signed in once for the whole sweep, before the first row rather than during it. Two
+        // thousand rows must not be two thousand logins — and a failure here stops the sweep with
+        // the reason, because two thousand 401s reported as «the answer changed» is the least
+        // useful true statement this product could make.
+        var inherited = Array.Empty<KeyValueEntry>() as IReadOnlyList<KeyValueEntry>;
+
+        if (context is not null)
+        {
+            var outcome = await authenticator.HeadersAsync(
+                context.Auth, context.Environment.BaseUrl, context.Resolver(), policy,
+                context.TokenKey, cancellationToken);
+
+            if (!outcome.Ok)
+            {
+                session.Status = CaptureSessionStatus.Failed;
+                session.StoppedReason = outcome.Problem;
+                session.FinishedAt = clock.UtcNow;
+                await db.SaveChangesAsync(cancellationToken);
+                return session;
+            }
+
+            inherited = outcome.Headers;
+        }
+
         try
         {
             foreach (var chunk in rows.Chunk(Concurrency))
@@ -120,7 +145,7 @@ public sealed class CaptureService(
                 cancellationToken.ThrowIfCancellationRequested();
 
                 var results = await Task.WhenAll(chunk.Select(row =>
-                    SendAsync(row, request, context, policy, cancellationToken)));
+                    SendAsync(row, request, context, policy, inherited, cancellationToken)));
 
                 foreach (var (row, result) in chunk.Zip(results))
                 {
@@ -150,7 +175,8 @@ public sealed class CaptureService(
     /// <summary>One row: resolve, send, redact. No judgement, no database.</summary>
     private async Task<SampleResult> SendAsync(
         DataSetRow row, HttpRequestDefinition request, EnvironmentContext? context,
-        UrlPolicy policy, CancellationToken cancellationToken)
+        UrlPolicy policy, IReadOnlyList<KeyValueEntry> inherited,
+        CancellationToken cancellationToken)
     {
         var scopes = context?.Scopes ?? new VariableScopes();
 
@@ -184,6 +210,9 @@ public sealed class CaptureService(
         {
             return new SampleResult(null, null, 0, null, 0, ex.Message);
         }
+
+        resolved = InheritedHeaders.Apply(
+            resolved, inherited, context?.Environment.DefaultHeadersJson);
 
         var response = await executor.SendAsync(resolved, policy, cancellationToken);
 

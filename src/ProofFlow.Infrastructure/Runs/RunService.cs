@@ -36,6 +36,7 @@ public sealed class RunService(
     EnvironmentContextBuilder environments,
     BaselineService baselines,
     IHttpExecutor executor,
+    EnvironmentAuthenticator authenticator,
     IRunWatchers watchers,
     ICurrentUser me,
     IClock clock,
@@ -204,9 +205,30 @@ public sealed class RunService(
                 scopes.Inputs[name] = System.Text.Json.Nodes.JsonValue.Create(value);
             }
 
+            // Signed in once, before the first step. A failure here ends the run with the reason
+            // rather than letting every step fail with a 401 that reads as a regression.
+            var inherited = Array.Empty<KeyValueEntry>() as IReadOnlyList<KeyValueEntry>;
+
+            if (context is not null)
+            {
+                var outcome = await authenticator.HeadersAsync(
+                    context.Auth, context.Environment.BaseUrl, context.Resolver(), context.Policy,
+                    context.TokenKey, cancellation);
+
+                if (!outcome.Ok)
+                {
+                    await FinishAsync(run, recorder, RunStatus.Errored,
+                        new RunTotals(0, 0, 0, 0, 0, outcome.Problem));
+                    return;
+                }
+
+                inherited = outcome.Headers;
+            }
+
             var services = new EngineRunServices(
                 db, executor, baselines, clock,
-                context?.Policy ?? new UrlPolicy(), redaction, run.ProjectId);
+                context?.Policy ?? new UrlPolicy(), redaction, run.ProjectId,
+                inherited, context?.Environment.DefaultHeadersJson);
 
             var runner = new ScenarioRunner(new NodeExecutors(services), recorder);
             var running = runner.RunAsync(graph, new RunScopes(scopes, redaction), run.StartNodeId, cancellation);

@@ -68,6 +68,18 @@ public sealed record JobEnvironment
     public bool AllowPrivateNetwork { get; init; }
     public bool AllowInvalidCertificate { get; init; }
     public string? DefaultHeadersJson { get; init; }
+
+    /// <summary>
+    /// How this environment authenticates, so the agent signs in itself.
+    ///
+    /// The configuration rather than a token: a token fetched when the job was queued may be dead
+    /// by the time an agent picks the job up, and a run that fails with 401 on a network nobody can
+    /// see from here is the worst kind of failure to explain.
+    ///
+    /// It carries references — <c>{{secrets.apiPassword}}</c> — resolved against the secrets that
+    /// already travel in this package, so nothing crosses the wire that did not cross it before.
+    /// </summary>
+    public string? AuthenticationJson { get; init; }
 }
 
 public sealed record JobDataSet

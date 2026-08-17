@@ -71,6 +71,11 @@ public sealed class JobPackaging(
                     AllowPrivateNetwork = row.AllowPrivateNetwork,
                     AllowInvalidCertificate = row.AllowInvalidCertificate,
                     DefaultHeadersJson = row.DefaultHeadersJson,
+
+                    // How to sign in, not a token. The agent does it itself, for the same reason
+                    // it validates the graph itself: what travels is the instruction, and the
+                    // machine that carries it out is the one that will be blamed if it fails.
+                    AuthenticationJson = row.AuthenticationJson,
                 };
 
                 // Resolved here because this is where the cipher's master key is. The agent gets

@@ -33,6 +33,7 @@ public sealed class RequestLabController(
     ProofFlowDbContext db,
     EnvironmentContextBuilder environments,
     IHttpExecutor executor,
+    EnvironmentAuthenticator authenticator,
     IAuditLog audit,
     IClock clock,
     ICurrentUser me,
@@ -166,6 +167,33 @@ public sealed class RequestLabController(
             Headers = [.. headers.Select(h => new KeyValueEntry(h.Name, h.Value, h.Enabled))],
             Body = ToBody(command.BodyKind, body),
         };
+
+        // The environment's own authentication, applied here as it is everywhere else. Somebody
+        // sending a request by hand against an API that needs a token should not have to configure
+        // the token by hand — that was the whole complaint.
+        if (context is not null)
+        {
+            var outcome = await authenticator.HeadersAsync(
+                context.Auth, environment?.BaseUrl, resolver, policy, context.TokenKey,
+                cancellationToken);
+
+            if (!outcome.Ok)
+            {
+                // Refused before the socket opens, like an unresolved reference above and for the
+                // same reason: sending it anyway produces a 401 that looks like the API's fault.
+                return Json(new SendRequestResult
+                {
+                    Succeeded = false,
+                    Method = command.Method,
+                    ResolvedUrl = url,
+                    FailureKind = "Authentication",
+                    FailureMessage = outcome.Problem,
+                });
+            }
+
+            definition = InheritedHeaders.Apply(
+                definition, outcome.Headers, environment?.DefaultHeadersJson);
+        }
 
         var result = await executor.SendAsync(definition, policy, cancellationToken);
 

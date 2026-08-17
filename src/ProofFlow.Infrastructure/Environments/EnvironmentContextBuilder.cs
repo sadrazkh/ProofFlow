@@ -3,6 +3,7 @@ using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Contracts.Requests;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.TestEngine.Http;
@@ -46,7 +47,12 @@ public sealed class EnvironmentContextBuilder(
             Secrets = await SecretsAsync(environment, redaction, cancellationToken),
         };
 
-        return new EnvironmentContext(environment, Policy(environment), scopes, redaction);
+        return new EnvironmentContext(
+            environment,
+            Policy(environment),
+            scopes,
+            redaction,
+            EnvironmentAuth.Read(environment.AuthenticationJson));
     }
 
     /// <summary>
@@ -174,7 +180,16 @@ public sealed record EnvironmentContext(
     ProjectEnvironment Environment,
     UrlPolicy Policy,
     VariableScopes Scopes,
-    RedactionScope Redaction)
+    RedactionScope Redaction,
+    EnvironmentAuth Auth)
 {
     public VariableResolver Resolver() => new(Scopes, Redaction);
+
+    /// <summary>
+    /// What identifies this environment's tokens in the cache.
+    ///
+    /// The id rather than the slug: a slug can be edited, and a token cached under the old one would
+    /// go on being used by an environment somebody has since pointed somewhere else.
+    /// </summary>
+    public string TokenKey => Environment.Id.ToString();
 }

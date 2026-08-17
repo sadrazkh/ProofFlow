@@ -24,7 +24,8 @@ public sealed class PackagedRunServices(
     JobPackage package,
     IHttpExecutor executor,
     UrlPolicy policy,
-    RedactionScope redaction) : IRunServices
+    RedactionScope redaction,
+    IReadOnlyList<KeyValueEntry> inherited) : IRunServices
 {
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -48,6 +49,11 @@ public sealed class PackagedRunServices(
             },
             TimeoutSeconds = request.Timeout is { } timeout ? (int)timeout.TotalSeconds : null,
         };
+
+        // The same inheritance the server applies, from the same helper. A remote run and a local
+        // run differ in transport and in nothing else.
+        definition = InheritedHeaders.Apply(
+            definition, inherited, package.Environment?.DefaultHeadersJson);
 
         var result = await executor.SendAsync(definition, policy, cancellation);
 

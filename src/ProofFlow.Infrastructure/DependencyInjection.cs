@@ -63,6 +63,12 @@ public static class DependencyInjection
         services.AddProofFlowHttpClients();
         services.AddScoped<IHttpExecutor, GuardedHttpExecutor>();
         services.AddScoped<EnvironmentContextBuilder>();
+
+        // A singleton, because the whole point of caching a token is that a sweep across two
+        // thousand inputs signs in once rather than two thousand times. The authenticator that
+        // reads it is scoped, because the executor it sends through is.
+        services.AddSingleton<TokenCache>();
+        services.AddScoped<EnvironmentAuthenticator>();
         services.AddScoped<Baselines.BaselineService>();
         services.AddScoped<Baselines.Separation>();
         services.AddScoped<Baselines.ApprovalInbox>();

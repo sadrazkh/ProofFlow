@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using ProofFlow.Contracts.Requests;
 using ProofFlow.Contracts.Runners;
 using ProofFlow.Contracts.Scenarios;
 using ProofFlow.TestEngine.Http;
@@ -78,13 +79,26 @@ internal static class JobRunner
 
             using var provider = HttpProvider();
 
+            var executor = new GuardedHttpExecutor(
+                provider.GetRequiredService<IHttpClientFactory>(),
+                NullLogger<GuardedHttpExecutor>.Instance);
+
+            // Signed in here, on this machine, through the same guard as every other address. The
+            // package carries how rather than a token, because a token minted when the job was
+            // queued can be dead by the time an agent picks it up — and a 401 on a network nobody
+            // outside this building can reach is the worst kind of failure to explain.
+            var auth = EnvironmentAuth.Read(package.Environment?.AuthenticationJson);
+
+            var outcome = await new EnvironmentAuthenticator(executor, new TokenCache())
+                .HeadersAsync(
+                    auth, package.Environment?.BaseUrl,
+                    new VariableResolver(scopes, redaction), policy,
+                    package.RunId.ToString(), cancellation);
+
+            if (!outcome.Ok) return Failed(job, started, sink, outcome.Problem!);
+
             var services = new PackagedRunServices(
-                package,
-                new GuardedHttpExecutor(
-                    provider.GetRequiredService<IHttpClientFactory>(),
-                    NullLogger<GuardedHttpExecutor>.Instance),
-                policy,
-                redaction);
+                package, executor, policy, redaction, outcome.Headers);
 
             var runner = new ScenarioRunner(new NodeExecutors(services), sink);
 

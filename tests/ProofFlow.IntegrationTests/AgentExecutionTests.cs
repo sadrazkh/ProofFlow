@@ -284,7 +284,9 @@ public sealed class AgentExecutionTests : IAsyncLifetime
             scopes.Secrets[name] = System.Text.Json.Nodes.JsonValue.Create(value);
         }
 
-        var services = new PackagedRunServices(package, Executor(), policy, redaction);
+        // No inherited headers: these tests are about the engine on the far side, and a package
+        // with authentication has its own test that asserts the agent signs in.
+        var services = new PackagedRunServices(package, Executor(), policy, redaction, []);
         var sink = new CollectingSink(redaction);
 
         var graph = Read(package.Definition);

@@ -29,7 +29,9 @@ public sealed class EngineRunServices(
     IClock clock,
     UrlPolicy policy,
     RedactionScope redaction,
-    Guid projectId) : IRunServices
+    Guid projectId,
+    IReadOnlyList<KeyValueEntry> inherited,
+    string? defaultHeadersJson) : IRunServices
 {
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -53,6 +55,11 @@ public sealed class EngineRunServices(
             },
             TimeoutSeconds = request.Timeout is { } timeout ? (int)timeout.TotalSeconds : null,
         };
+
+        // What the environment contributes — its authentication and its default headers — added
+        // here rather than at each node, and never over a header the step set for itself. A step
+        // that signs in as somebody else is how a test about permissions is written.
+        definition = InheritedHeaders.Apply(definition, inherited, defaultHeadersJson);
 
         var result = await executor.SendAsync(definition, policy, cancellation);
 

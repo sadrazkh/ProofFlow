@@ -49,6 +49,7 @@ public sealed class EndpointsController(
     ApprovalInbox inbox,
     EnvironmentContextBuilder environments,
     IHttpExecutor executor,
+    EnvironmentAuthenticator authenticator,
     ICurrentUser me,
     IAuditLog audit,
     ComparisonScratch scratch,
@@ -606,6 +607,21 @@ public sealed class EndpointsController(
         catch (VariableResolutionException ex)
         {
             return Json(Failed(ex.Message));
+        }
+
+        // The environment's authentication, the same as everywhere else. Without it an endpoint
+        // against an API that needs a token could only be compared by somebody pasting one into a
+        // header that then expired.
+        if (context is not null)
+        {
+            var outcome = await authenticator.HeadersAsync(
+                context.Auth, environment?.BaseUrl, resolver, policy, context.TokenKey,
+                cancellationToken);
+
+            if (!outcome.Ok) return Json(Failed(outcome.Problem!));
+
+            resolved = InheritedHeaders.Apply(
+                resolved, outcome.Headers, environment?.DefaultHeadersJson);
         }
 
         var response = await executor.SendAsync(resolved, policy, cancellationToken);

@@ -344,6 +344,10 @@ public sealed class CaptureSweepTests : IAsyncLifetime
             NullLogger<EnvironmentContextBuilder>.Instance),
         new GuardedHttpExecutor(_http.GetRequiredService<IHttpClientFactory>(),
             NullLogger<GuardedHttpExecutor>.Instance),
+        new EnvironmentAuthenticator(
+            new GuardedHttpExecutor(_http.GetRequiredService<IHttpClientFactory>(),
+                NullLogger<GuardedHttpExecutor>.Instance),
+            new TokenCache()),
         new FixedUser(_workspaceId, _userId),
         new SystemClock());
 

@@ -544,6 +544,10 @@ public sealed class ScheduleAndCiTests : IAsyncLifetime
         new BaselineService(context, new FixedUser(_workspaceId, _userId), new SystemClock()),
         new GuardedHttpExecutor(_http.GetRequiredService<IHttpClientFactory>(),
             NullLogger<GuardedHttpExecutor>.Instance),
+        new EnvironmentAuthenticator(
+            new GuardedHttpExecutor(_http.GetRequiredService<IHttpClientFactory>(),
+                NullLogger<GuardedHttpExecutor>.Instance),
+            new TokenCache()),
         new NoWatchers(),
         new FixedUser(_workspaceId, _userId),
         new SystemClock(),
