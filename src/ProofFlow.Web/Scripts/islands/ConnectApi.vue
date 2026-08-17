@@ -370,7 +370,7 @@ function hostOf(url: string): string {
             </div>
           </div>
 
-          <p class="field-hint"><Icon name="lock" :size="13" />&nbsp;{{ t('connect.sealed') }}</p>
+          <p class="field-hint connect-note"><Icon name="lock" :size="14" />{{ t('connect.sealed') }}</p>
 
           <details class="connect-more">
             <summary>{{ t('connect.more') }}</summary>
@@ -423,7 +423,7 @@ function hostOf(url: string): string {
             </div>
           </div>
 
-          <p class="field-hint"><Icon name="lock" :size="13" />&nbsp;{{ t('connect.sealed') }}</p>
+          <p class="field-hint connect-note"><Icon name="lock" :size="14" />{{ t('connect.sealed') }}</p>
         </div>
 
         <div v-else-if="kind === 'oauth2'" class="stack">

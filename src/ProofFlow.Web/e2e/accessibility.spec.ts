@@ -41,6 +41,7 @@ const AUTHENTICATED = [
  * and shared — a hard-coded id would pass by auditing a 404 page.
  */
 const PROJECT_PAGES = [
+  { name: 'connect an API', path: (id: string) => `/projects/${id}/connect` },
   { name: 'environments', path: (id: string) => `/projects/${id}/environments` },
   { name: 'request lab', path: (id: string) => `/projects/${id}/request` },
   { name: 'endpoints', path: (id: string) => `/projects/${id}/endpoints` },

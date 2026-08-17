@@ -10,6 +10,7 @@ using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
+using ProofFlow.Infrastructure.Baselines;
 using ProofFlow.Infrastructure.Environments;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.TestEngine.Http;
@@ -45,6 +46,7 @@ public sealed class ConnectController(
     ProofFlowDbContext db,
     IHttpExecutor executor,
     EnvironmentContextBuilder contexts,
+    BaselineService baselines,
     ISecretCipher cipher,
     ICurrentUser me,
     IAuditLog audit,
@@ -499,7 +501,64 @@ public sealed class ConnectController(
             "baseline.created", project.Id, nameof(Baseline), endpoint.Id, endpoint.Name,
             new Dictionary<string, string?> { ["from"] = "connect" }), cancellationToken);
 
+        await FirstAnswerAsync(endpoint, environment, method, path, cancellationToken);
+
         return endpoint.Id;
+    }
+
+    /// <summary>
+    /// Sends the proved call once more and keeps what came back as the first approved answer.
+    ///
+    /// Without this the flow ends on a page where nothing can be pressed: comparing needs an
+    /// approved answer to compare against, and sweeping needs inputs to sweep, so a brand-new
+    /// endpoint has two disabled buttons and a sentence explaining why. That is a true page and a
+    /// dead end, and «connect an API» that ends in a dead end has not finished the job.
+    ///
+    /// Approved on capture, which is the rule the request lab already follows for the same reason:
+    /// a first version is not a change to anything, so there is nothing for a reviewer to compare
+    /// it against.
+    ///
+    /// A second call rather than the body the browser held, because a body that arrived from a
+    /// browser is not evidence of what the API says. And best-effort: if this one does not come
+    /// back, the endpoint simply has no answer yet and the page says so. Writing a failure down as
+    /// the correct answer is the one outcome that would be worse than a dead end.
+    /// </summary>
+    private async Task FirstAnswerAsync(
+        Baseline endpoint, ProjectEnvironment environment, string method, string path,
+        CancellationToken cancellationToken)
+    {
+        var context = await contexts.BuildAsync(environment, cancellationToken);
+
+        var outcome = await new EnvironmentAuthenticator(executor, new TokenCache()).HeadersAsync(
+            context.Auth, environment.BaseUrl, context.Resolver(), context.Policy,
+            context.TokenKey, cancellationToken);
+
+        if (!outcome.Ok) return;
+
+        var request = InheritedHeaders.Apply(
+            new HttpRequestDefinition
+            {
+                Method = method,
+                Url = EnvironmentAuthenticator.Combine(environment.BaseUrl, path),
+            },
+            outcome.Headers,
+            environment.DefaultHeadersJson);
+
+        var response = await executor.SendAsync(request, context.Policy, cancellationToken);
+
+        if (!response.Succeeded || response.StatusCode is < 200 or >= 300) return;
+
+        // Redacted first, as everywhere else: a token that came back in the response must not
+        // become part of what this endpoint calls correct.
+        var version = await baselines.CaptureAsync(
+            endpoint, context.Redaction.Apply(response.Body), response.ContentType,
+            response.StatusCode, null, cancellationToken);
+
+        await baselines.ApproveAsync(version, cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.captured", endpoint.ProjectId, nameof(Baseline), endpoint.Id, endpoint.Name,
+            new Dictionary<string, string?> { ["from"] = "connect" }), cancellationToken);
     }
 
     /// <summary>

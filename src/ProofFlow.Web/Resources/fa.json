@@ -303,6 +303,7 @@
       "secret.deleted": "یک Secret را حذف کرد",
       "secret.revealed": "یک Secret را دید",
       "request.sent": "یک درخواست فرستاد",
+      "baseline.captured": "پاسخ یک اندپوینت را ثبت کرد",
       "baseline.created": "یک اندپوینت ثبت کرد",
       "baseline.compared": "یک اندپوینت را با پاسخش مقایسه کرد",
       "baseline.rulesChanged": "قاعده‌های مقایسهٔ یک اندپوینت را عوض کرد",

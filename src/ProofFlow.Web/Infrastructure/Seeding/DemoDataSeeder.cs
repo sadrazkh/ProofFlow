@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Application.Common;
+using ProofFlow.Contracts.Requests;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Environments;
@@ -257,6 +258,7 @@ public sealed class DemoDataSeeder(
             Kind = EnvironmentKind.Local,
             AllowPrivateNetwork = true,
             SortOrder = 0,
+            AuthenticationJson = DemoAuth().Write(),
         };
 
         db.Environments.Add(local);
@@ -271,6 +273,7 @@ public sealed class DemoDataSeeder(
             Kind = EnvironmentKind.Staging,
             AllowPrivateNetwork = true,
             SortOrder = 1,
+            AuthenticationJson = DemoAuth().Write(),
         };
 
         db.Environments.Add(staging);
@@ -289,6 +292,31 @@ public sealed class DemoDataSeeder(
 
         return (local, staging);
     }
+
+    /// <summary>
+    /// How the two reachable environments sign themselves in.
+    ///
+    /// The demo's whole subject is an API that refuses without a token, and the fake API in this
+    /// repository is one. Configuring this here is what makes the endpoint below a demonstration
+    /// rather than a description: it points at a path that answers 401 to anybody, and it passes,
+    /// and there is no <c>Authorization</c> header anywhere for somebody to find and copy.
+    ///
+    /// The password is named, not repeated — the same <c>{{secrets.apiPassword}}</c> the scenario's
+    /// sign-in step uses, so both halves of the demo refer to one secret.
+    /// </summary>
+    private static EnvironmentAuth DemoAuth() => new()
+    {
+        Mode = AuthMode.SignIn,
+        TokenUrl = "/auth/login",
+        Method = "POST",
+        BodyKind = "json",
+        Credentials = new Dictionary<string, string>
+        {
+            ["username"] = "demo",
+            ["password"] = "{{secrets.apiPassword}}",
+        },
+        ExpiresInPath = "expiresIn",
+    };
 
 
     /// <summary>
@@ -404,6 +432,11 @@ public sealed class DemoDataSeeder(
     /// No approved answer, deliberately. Recording one here would mean the seeder deciding what
     /// correct looks like, and the whole point of the page is the moment somebody sends it once,
     /// reads what came back, and agrees. The endpoint page says so where the answer would be.
+    ///
+    /// On a path that refuses anybody without a token, also deliberately. The environment signs
+    /// itself in, so pressing Test answers 200 — and there is no <c>Authorization</c> header on
+    /// this endpoint for anybody to find, which is the sentence the whole authentication feature
+    /// is trying to say.
     /// </summary>
     private async Task EndpointAsync(
         Guid workspaceId, Guid userId, Project project, ProjectEnvironment local,
@@ -412,7 +445,7 @@ public sealed class DemoDataSeeder(
         var request = new HttpRequestDefinition
         {
             Method = "GET",
-            Url = "{{environment.baseUrl}}/records/1",
+            Url = "{{environment.baseUrl}}/categories",
         };
 
         db.Baselines.Add(new Baseline
@@ -420,10 +453,11 @@ public sealed class DemoDataSeeder(
             WorkspaceId = workspaceId,
             ProjectId = project.Id,
             EnvironmentId = local.Id,
-            Name = "One record",
+            Name = "The categories",
             Description =
-                "A single call, kept. Press Test to send it again and find out whether the answer "
-                + "moved. Give it a set of inputs and the same button sweeps every row.",
+                "A single call, kept. This path answers 401 to anybody without a token, and there "
+                + "is no Authorization header on it — the environment signs in. Press Test to send "
+                + "it again and find out whether the answer moved.",
             RequestJson = JsonSerializer.Serialize(
                 request, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
             CreatedByUserId = userId,
@@ -431,7 +465,7 @@ public sealed class DemoDataSeeder(
 
         await db.SaveChangesAsync(cancellation);
 
-        logger.LogInformation("Seeded an endpoint: One record.");
+        logger.LogInformation("Seeded an endpoint: The categories.");
     }
 
     /// <summary>

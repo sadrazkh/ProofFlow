@@ -69,12 +69,21 @@
 }
 
 /*
-  Tall enough that the panel does not change height between steps.
+  Tall enough that the panel does not change height between the shortest steps.
 
-  Step two with «no authentication» chosen is four lines and step two with OAuth2 chosen is fifteen;
-  without a floor the Next button walks up and down the screen as somebody reads the choices.
+  Step one is three controls and step three with a response on screen is thirty lines; without a
+  floor, Next walks up and down the page as somebody moves between them.
+
+  A column, so the floor lifts the body and not the space under the footer — the first attempt at
+  this put the extra height below the footer, which drew a card with its buttons stranded in the
+  middle and a band of empty surface beneath them.
 */
-.wizard-panel { min-block-size: 340px; }
+.wizard-panel {
+  display: flex;
+  flex-direction: column;
+  min-block-size: 340px;
+}
+.wizard-panel > .card-body { flex: 1 1 auto; }
 
 /* ---- the four kinds -------------------------------------------------------------------------- */
 
@@ -141,6 +150,18 @@
 @media (max-width: 600px) {
   .connect-pair > .field, .connect-pair > .field.grow { flex-basis: 100%; }
 }
+
+/*
+  A hint with a glyph in front of it — what happens to the password, which is worth a mark in the
+  margin. Its own rule because .field-hint is a plain block: an svg inside one sits on a line of its
+  own, and a padlock hovering above the sentence it belongs to reads as a broken image.
+*/
+.connect-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.connect-note svg { flex: none; }
 
 /* The settings almost nobody changes: the response path, the header the token goes on. */
 .connect-more > summary {

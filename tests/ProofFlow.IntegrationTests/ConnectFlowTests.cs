@@ -13,6 +13,7 @@ using Microsoft.Extensions.Hosting;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Contracts.Requests;
 using ProofFlow.Domain.Authorization;
+using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.FakeApi;
@@ -226,13 +227,39 @@ public sealed class ConnectFlowTests(ProofFlowApplication app)
         diff.GetProperty("statusCode").GetInt32().Should().Be(200,
             "the environment's own sign-in should have authorised this");
 
-        // There is nothing to compare against yet, which is the honest state of a brand-new
-        // endpoint: the page shows the answer and offers to keep it as the first version. What
-        // matters is that the reason is that and not a refusal.
-        var failure = diff.GetProperty("failureMessage").GetString();
+        // There is something to compare against, because the flow kept the answer its own call
+        // produced. Without that the page it lands on has two disabled buttons and a sentence
+        // explaining why — a true page, and a dead end.
+        diff.GetProperty("failureMessage").GetString().Should().BeNull();
 
-        failure.Should().NotContain("401");
-        failure.Should().NotContain("token");
+        // Not asserting that it matches. The fake API stamps a fresh requestId on every response,
+        // so the honest result is one changed field and a suggestion to stop checking it — which
+        // is the product working, on the reader's own API, within a minute of connecting it.
+        diff.GetProperty("rows").GetArrayLength().Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public async Task The_answer_it_keeps_is_approved_so_the_next_run_has_something_to_check()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        var attempt = Attempt();
+        (await TryAsync(client, projectId, attempt)).Call!.Ok.Should().BeTrue();
+
+        var saved = await SaveAsync(client, projectId, attempt);
+
+        using var scope = app.Services.CreateScope();
+        var db = Db(scope.ServiceProvider);
+
+        var version = await db.BaselineVersions.IgnoreQueryFilters()
+            .SingleAsync(v => v.BaselineId == saved.EndpointId);
+
+        // Approved on capture, the same rule the request lab follows: a first version is not a
+        // change to anything, so there is nothing for a reviewer to compare it against, and
+        // requiring an approval would make the first run of every new test fail administratively.
+        version.Status.Should().Be(BaselineStatus.Approved);
+        version.Number.Should().Be(1);
+        version.Body.Should().Contain("\"items\"", "it should be what the API actually answered");
     }
 
     [Fact]

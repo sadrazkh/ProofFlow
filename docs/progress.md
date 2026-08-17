@@ -1125,6 +1125,68 @@ problem is the point at which a warning stops being a warning.
 
 ---
 
+## An API that needs a token · **done**
+
+The complaint was four words long: our APIs have auth. The product could not express it.
+
+`ProjectEnvironment.AuthenticationJson` had been in the schema since the first migration, carrying a
+doc comment promising *authentication applied to every request unless a step overrides it*. A grep
+for the name found one hit: its own declaration. Nothing wrote it and nothing read it. So every
+endpoint and every scenario step had to carry its own `Authorization` header by hand, with a token
+that expires — and the only token fetch in the product spoke OAuth2 form grants, so the ordinary
+shape, a username and password posted as JSON, came back 400.
+
+| | |
+|---|---|
+| Said once, per environment | `EnvironmentAuth` in the existing column, so no migration. Four kinds: nothing, a fixed header, a sign-in that trades credentials for a token, and OAuth2. Sign-in is the default because it is what most APIs do |
+| Applied by every sender | One `EnvironmentAuthenticator`, one `InheritedHeaders.Apply`, called from all five places a request leaves this product: scenario runs, endpoint sweeps, a single compare, the request lab, and the agent |
+| Inherited, not imposed | A step that sets its own `Authorization` keeps it. A test that signs in as somebody else on purpose is a test worth being able to write |
+| Fetched, not pasted | Cached in memory until two thirds of its stated lifetime. The cache key includes a fingerprint of the *resolved* credentials, so changing a password invalidates the token it bought rather than being papered over by it |
+| A failure is a failure | A sweep whose sign-in is refused stops and says *401 invalid_credentials* in the server's own words. Sending the rows anyway would report a wall of 401s as a change in the API |
+| The agent signs in itself | `JobEnvironment` carries the configuration beside the default headers it already had. No new secret crosses the wire that did not cross it before |
+| Default headers, while there | `DefaultHeadersJson` had the same disease — reachable as a variable, applied by nothing. The same helper applies both |
+| Four questions instead of seven screens | **Connect an API**: where it is, how you sign in, does that work, what to call it. It writes the environment, seals the password as a secret, records the authentication, keeps the proved call as an endpoint, and keeps that endpoint's first answer |
+| Nothing stored until it is proved | The third step signs in and makes one real call and reports both halves separately, because «it didn't work» is four different problems. A 401 on the call is not a success. Nothing is written before it is green |
+| The same four questions to change it | The environment form describes what is configured and sends changes back through the flow, so an edited password is proved before it is stored. Stored credentials arrive as the `{{secrets.…}}` reference they are — a password never crosses back to a browser |
+| The demo demonstrates it | Local and Staging sign themselves in against the fake API, and the seeded endpoint is on a path that answers 401 to anybody. It carries no `Authorization` header |
+| Tests | 708 passing — 513 unit, 195 integration, 43 component; 133 accessibility checks. Acceptance: 20 of 20. `e2e/connect-check.ts` walks all four steps in a browser and gets a 200 out of a protected path with no token typed anywhere |
+
+### What building it found
+
+**The flow's own ending was a dead end.** It landed on the endpoint it had just made, whose Compare
+button is disabled until something has been approved and whose sweep button is disabled until there
+are inputs — two disabled buttons and a sentence explaining why. So saving now sends the proved call
+once more and keeps what came back as the first approved answer, which is the rule the request lab
+already follows for the same reason: a first version is not a change to anything, so there is nothing
+for a reviewer to compare it against. A second call rather than the body the browser held, because a
+body that arrived from a browser is not evidence of what an API says.
+
+**The endpoint it kept stored a bare path.** Nothing resolves a relative URL against the
+environment's base, so it was written as `{{environment.baseUrl}}/categories` — which is also what
+makes the same endpoint runnable against staging tomorrow. Found by the test that presses the button
+rather than by the one that reads the row.
+
+**The import source cards named a `--focus` token that does not exist.** An unknown variable makes
+the whole declaration invalid at computed-value time, so `outline` fell back to none: the ring the
+comment describes had never been drawn. One character.
+
+**`loader-circle` was never registered**, so the endpoint page's Test button rendered an empty gap
+where its spinner should have been for as long as that button has existed. The icon registry is
+deliberately not the barrel — the cost is remembering to add one, and this is what forgetting looks
+like.
+
+**The chosen card wanted a tint and could not have one.** The import source cards had already met
+this: `--ink-subtle` help text on `--accent-soft` fails contrast in dark mode, and axe caught it
+then. The ring says the same thing and leaves the text on the surface it was designed for.
+
+**The wizard rail was still in the stylesheet with nothing using it.** The nine-step capture wizard
+was folded into the endpoint page two phases ago and its styles outlived it. Four steps is what that
+pattern was always the right shape for, so it moved rather than being deleted, and `capture.css`
+now only describes capture.
+
+
+---
+
 ## Backlog
 
 Everything found and deliberately not done. None of it blocks using the product; each entry says why

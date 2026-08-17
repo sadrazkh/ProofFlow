@@ -19,6 +19,14 @@ it runs. The same values go in the body of the API call that starts a run, so a 
 them the way curl would. And if a workspace supplies a model key, describing a test in a sentence
 gets a first draft drawn on the canvas, unsaved, for somebody to read and change.
 
+**If your API needs a token**, say so once. **Connect an API** asks four questions — where it is,
+how you sign in, does that work, and what to call it — and writes the environment, seals the
+password as a secret, and keeps the call it just proved as your first endpoint. Nothing is stored
+until the third question has gone green against the real server. After that every request to that
+environment signs itself in: no `Authorization` header typed into anything, and nothing that expires
+overnight. Username and password to an address that answers with a token is the common case and the
+default; a fixed API key and OAuth2 client credentials are the other two.
+
 > **Status: in development.** [docs/progress.md](docs/progress.md) states plainly what works today
 > and what does not. Nothing in this README describes a feature that is not implemented.
 
@@ -119,6 +127,10 @@ It arrives with three projects and one scenario that runs: **Add a product, read
 up** — sign in, keep the token, add a product, read a page of them, take an id out of the list, read
 that one, and delete what it added. Twelve steps and five checks, against the fake API this
 repository serves, so it passes as often as you press Run.
+
+Beside it is one endpoint, **The categories**, on a path the fake API refuses to anybody without a
+token. It carries no `Authorization` header — its environment signs itself in — so it is the whole
+authentication feature in a form you can read in ten seconds.
 
 ### Against PostgreSQL
 

@@ -303,6 +303,7 @@
       "secret.deleted": "deleted a secret",
       "secret.revealed": "revealed a secret",
       "request.sent": "sent a request",
+      "baseline.captured": "recorded what an endpoint answered",
       "baseline.created": "recorded an endpoint",
       "baseline.compared": "compared an endpoint with its answer",
       "baseline.rulesChanged": "changed an endpoint's comparison rules",
