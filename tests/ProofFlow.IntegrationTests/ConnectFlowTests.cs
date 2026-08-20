@@ -494,6 +494,68 @@ public sealed class ConnectFlowTests(ProofFlowApplication app)
         });
 
     [Fact]
+    public async Task One_press_makes_the_negative_test_and_records_the_refusal()
+    {
+        // «Without a token, this should refuse» — the check almost every API needs and almost
+        // nobody writes, because writing it meant stopping the environment from helpfully signing
+        // the request in.
+        var (client, projectId) = await SignedInAsync();
+
+        var attempt = Attempt();
+        (await TryAsync(client, projectId, attempt)).Call!.Ok.Should().BeTrue();
+        var saved = await SaveAsync(client, projectId, attempt);
+
+        var (token, _) = await EndpointsPageAsync(client, projectId);
+
+        var expect = await client.PostAsync(
+            $"/projects/{projectId}/endpoints/{saved.EndpointId}/expect",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["kind"] = "bare",
+                ["__RequestVerificationToken"] = token,
+            }));
+
+        expect.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        var madeId = Guid.Parse(Regex.Match(
+            expect.Headers.Location!.ToString(), "endpoints/([0-9a-f-]{36})$").Groups[1].Value);
+
+        madeId.Should().NotBe(saved.EndpointId!.Value, "the expectation is its own endpoint");
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+
+            var made = await db.Baselines.IgnoreQueryFilters().SingleAsync(b => b.Id == madeId);
+
+            // The suffix is localized to whoever pressed the button, so the assertion is on the
+            // shape rather than the words: the original name, a dash, and something after it.
+            made.Name.Should().StartWith("GET /categories —");
+            made.Name.Length.Should().BeGreaterThan("GET /categories — ".Length);
+            made.RequestJson.Should().Contain("\"bare\":true",
+                "the request must opt out of the environment's sign-in");
+
+            var version = await db.BaselineVersions.IgnoreQueryFilters()
+                .SingleAsync(v => v.BaselineId == madeId);
+
+            version.Status.Should().Be(BaselineStatus.Approved);
+            version.StatusCode.Should().Be(401, "the recorded answer is the refusal itself");
+            version.Body.Should().Contain("missing_token");
+        }
+
+        // And the ordinary Test path agrees with itself: the API still refuses the same way, and
+        // with status codes now compared, a guard that vanished would turn this red.
+        var compare = await client.PostAsJsonAsync(
+            $"/projects/{projectId}/endpoints/{madeId}/compare", new { });
+
+        var diff = (await compare.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("diff");
+
+        diff.GetProperty("statusCode").GetInt32().Should().Be(401);
+        diff.GetProperty("matches").GetBoolean().Should().BeTrue(
+            "the refusal is stable, so the negative test should be green");
+    }
+
+    [Fact]
     public async Task The_page_offers_the_practice_api_this_application_serves()
     {
         var (client, projectId) = await SignedInAsync();

@@ -72,6 +72,15 @@ public class CaptureSession : Entity, IWorkspaceOwned
     /// </summary>
     public int Unmatched { get; set; }
 
+    /// <summary>
+    /// Samples that answered correctly but over the endpoint's time budget.
+    ///
+    /// Only the ones that were otherwise fine: a sample that also differs is counted under
+    /// <see cref="Differing"/>, because the five counters partition the total and «passed» is
+    /// derived from what is left. Its <c>TooSlow</c> flag still says so on the row.
+    /// </summary>
+    public int Slow { get; set; }
+
     public DateTimeOffset StartedAt { get; set; }
 
     public DateTimeOffset? FinishedAt { get; set; }
@@ -156,6 +165,9 @@ public class CaptureSample : Entity, IWorkspaceOwned
     /// this answer was given under, and they change.
     /// </summary>
     public bool Differs { get; set; }
+
+    /// <summary>Over the endpoint's time budget, whatever else the answer was.</summary>
+    public bool TooSlow { get; set; }
 
     /// <summary>Counts per diff category as JSON, so the queue can show a shape without a re-diff.</summary>
     public string? DiffSummaryJson { get; set; }

@@ -47,6 +47,16 @@
             </span>
         }
 
+        @if (Model.Slow > 0)
+        {
+            @* Correct, but over the endpoint's time budget. Its own number because «the content
+               is fine» and «it is fine» are different claims when the answer took nine seconds. *@
+            <span class="status status-warn">
+                <span class="status-dot" aria-hidden="true"></span>
+                <span class="tabular">@Model.Slow</span>&nbsp;@T["endpoint.result.slow"]
+            </span>
+        }
+
         @if (Model.Unmatched > 0)
         {
             <span class="status status-idle">

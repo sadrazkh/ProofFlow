@@ -149,7 +149,8 @@ public sealed class CaptureService(
 
                 foreach (var (row, result) in chunk.Zip(results))
                 {
-                    db.CaptureSamples.Add(Judge(session, row, result, rules, approved));
+                    db.CaptureSamples.Add(
+                        Judge(session, row, result, rules, approved, baseline.MaxDurationMs));
                 }
 
                 session.Completed += chunk.Length;
@@ -240,7 +241,8 @@ public sealed class CaptureService(
     /// </summary>
     private CaptureSample Judge(
         CaptureSession session, DataSetRow row, SampleResult result,
-        ComparisonRuleSet rules, IReadOnlyDictionary<string, BaselineSample> approved)
+        ComparisonRuleSet rules, IReadOnlyDictionary<string, BaselineSample> approved,
+        int? maxDurationMs)
     {
         var sample = new CaptureSample
         {
@@ -263,6 +265,10 @@ public sealed class CaptureService(
             return sample;
         }
 
+        // The budget check happens even for rows with nothing to compare against — «too slow» is a
+        // fact about this answer, not about the previous one.
+        sample.TooSlow = maxDurationMs is { } budget && result.DurationMs > budget;
+
         sample.NormalizedHash = BaselineService.Hash(result.Body, rules);
 
         if (!approved.TryGetValue(row.Key, out var baseline))
@@ -275,14 +281,37 @@ public sealed class CaptureService(
             return sample;
         }
 
-        if (baseline.NormalizedHash == sample.NormalizedHash) return sample;
+        // The status code is part of the answer. It used to be recorded and never compared, so a
+        // 500 whose error body happened to hash-match the approved body counted as a pass — and a
+        // 200 with a 401's body did too, which is why negative tests only half-worked.
+        var statusDiffers = baseline.StatusCode != 0 && result.StatusCode != baseline.StatusCode;
 
-        var diff = SemanticDiff.CompareText(baseline.Body, result.Body, rules);
-        if (diff.Matches) return sample;
+        var bodyMatches = baseline.NormalizedHash == sample.NormalizedHash;
+        DiffResult? diff = null;
+
+        if (!bodyMatches)
+        {
+            diff = SemanticDiff.CompareText(baseline.Body, result.Body, rules);
+            bodyMatches = diff.Matches;
+        }
+
+        if (bodyMatches && !statusDiffers)
+        {
+            // A correct answer that took too long is its own category — not a pass, because
+            // «passed» is derived from what none of the counters claimed.
+            if (sample.TooSlow) session.Slow++;
+            return sample;
+        }
 
         sample.Differs = true;
-        sample.DiffSummaryJson = JsonSerializer.Serialize(
-            diff.Counts.ToDictionary(pair => pair.Key.ToString(), pair => pair.Value), Json);
+
+        var counts = diff is null || diff.Matches
+            ? new Dictionary<string, int>()
+            : diff.Counts.ToDictionary(pair => pair.Key.ToString(), pair => pair.Value);
+
+        if (statusDiffers) counts["Status"] = 1;
+
+        sample.DiffSummaryJson = JsonSerializer.Serialize(counts, Json);
 
         session.Differing++;
         return sample;

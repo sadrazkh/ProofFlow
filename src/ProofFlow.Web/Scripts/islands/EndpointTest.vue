@@ -47,6 +47,9 @@ type TestResult = {
   /** Rows with no approved answer. Compared against nothing, so not a pass. */
   unmatched: number;
 
+  /** Correct answers that took longer than the endpoint's budget. */
+  slow: number;
+
   status: string;
   stoppedReason: string | null;
 };
@@ -68,15 +71,16 @@ const limit = ref<string>('');
 
 const passed = computed(() => {
   if (!result.value) return 0;
-  const { completed, differing, failed, unmatched } = result.value;
-  return Math.max(0, completed - differing - failed - unmatched);
+  const { completed, differing, failed, unmatched, slow } = result.value;
+  return Math.max(0, completed - differing - failed - unmatched - slow);
 });
 
 const clean = computed(() =>
   result.value !== null
   && result.value.differing === 0
   && result.value.failed === 0
-  && result.value.unmatched === 0);
+  && result.value.unmatched === 0
+  && result.value.slow === 0);
 
 const base = computed(() =>
   sessionId.value
@@ -107,12 +111,13 @@ async function run(): Promise<void> {
     // component would show the previous test's rows under this test's numbers.
     sessionId.value = answer.sessionId;
 
-    const matched = answer.differing === 0 && answer.failed === 0 && answer.unmatched === 0;
+    const matched = answer.differing === 0 && answer.failed === 0 && answer.unmatched === 0
+      && answer.slow === 0;
 
     toast(
       matched
         ? t('endpoint.test.allMatched', answer.completed)
-        : t('endpoint.test.found', answer.differing + answer.failed + answer.unmatched),
+        : t('endpoint.test.found', answer.differing + answer.failed + answer.unmatched + answer.slow),
       matched ? 'success' : 'warn');
   } catch (error) {
     toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
@@ -192,6 +197,12 @@ async function run(): Promise<void> {
           <span v-if="result.failed > 0" class="status status-fail">
             <span class="status-dot" aria-hidden="true"></span>
             <span class="tabular">{{ result.failed }}</span>&nbsp;{{ t('endpoint.result.failed') }}
+          </span>
+
+          <!-- Correct, but over the endpoint's time budget. Not folded into «passed» either. -->
+          <span v-if="result.slow > 0" class="status status-warn">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="tabular">{{ result.slow }}</span>&nbsp;{{ t('endpoint.result.slow') }}
           </span>
 
           <!-- Never folded into «passed». These rows were compared against nothing: there is no

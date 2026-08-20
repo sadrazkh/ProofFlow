@@ -34,6 +34,10 @@ public static class InheritedHeaders
         IReadOnlyList<KeyValueEntry> authHeaders,
         string? defaultHeadersJson)
     {
+        // A bare request inherits nothing — that is its entire meaning, and this is the one gate
+        // all five senders pass through, so «without a token» is the same fact everywhere.
+        if (request.Bare) return request;
+
         var inherited = new List<KeyValueEntry>();
 
         inherited.AddRange(Defaults(defaultHeadersJson));

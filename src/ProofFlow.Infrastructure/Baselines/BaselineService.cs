@@ -92,7 +92,65 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
 
         var diff = SemanticDiff.CompareText(approved.Body, body, ruleSet);
 
-        return Flatten(diff, $"v{approved.Number}", statusCode, durationMs);
+        var result = Flatten(diff, $"v{approved.Number}", statusCode, durationMs);
+
+        // Two findings the body diff cannot see, put where the reader is already looking — the
+        // first rows of the diff. A comparison rule cannot silence either: rules say «this field
+        // changes», and neither the status line nor the clock is a field.
+        var synthetic = new List<DiffRowDto>();
+
+        if (approved.StatusCode != 0 && statusCode != approved.StatusCode)
+        {
+            synthetic.Add(new DiffRowDto
+            {
+                Index = 0,
+                Depth = 0,
+                Path = "status",
+                Leaf = "status",
+                Kind = nameof(DiffKind.Changed),
+                Expected = approved.StatusCode.ToString(),
+                Actual = statusCode.ToString(),
+                Reason = "The status code is part of the answer.",
+            });
+        }
+
+        if (baseline.MaxDurationMs is { } budget && durationMs > budget)
+        {
+            synthetic.Add(new DiffRowDto
+            {
+                Index = 0,
+                Depth = 0,
+                Path = "duration",
+                Leaf = "duration",
+                Kind = nameof(DiffKind.Changed),
+                Expected = $"<= {budget}ms",
+                Actual = $"{durationMs:0}ms",
+                Reason = "Slower than the budget this endpoint carries.",
+            });
+        }
+
+        if (synthetic.Count == 0) return result;
+
+        return result with
+        {
+            Matches = false,
+            Rows =
+            [
+                .. synthetic.Select((row, index) => row with { Index = index }),
+                .. result.Rows.Select(row => row with { Index = row.Index + synthetic.Count }),
+            ],
+            FindingIndexes =
+            [
+                .. Enumerable.Range(0, synthetic.Count),
+                .. result.FindingIndexes.Select(index => index + synthetic.Count),
+            ],
+            // Folded into Changed rather than a category of their own: the chips over the diff
+            // are a fixed set, and «2 changed» counting the status line is the truthful reading.
+            Counts = result.Counts
+                .Concat([new KeyValuePair<string, int>(nameof(DiffKind.Changed), synthetic.Count)])
+                .GroupBy(pair => pair.Key)
+                .ToDictionary(group => group.Key, group => group.Sum(pair => pair.Value)),
+        };
     }
 
     /// <summary>

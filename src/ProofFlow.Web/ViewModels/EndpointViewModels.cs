@@ -53,11 +53,11 @@ public sealed record EndpointSummary(
 /// the other three.
 /// </summary>
 public sealed record EndpointLastResult(
-    int Total, int Differing, int Failed, int Unmatched, DateTimeOffset When)
+    int Total, int Differing, int Failed, int Unmatched, int Slow, DateTimeOffset When)
 {
-    public int Passed => Math.Max(0, Total - Differing - Failed - Unmatched);
+    public int Passed => Math.Max(0, Total - Differing - Failed - Unmatched - Slow);
 
-    public bool Clean => Differing == 0 && Failed == 0 && Unmatched == 0 && Total > 0;
+    public bool Clean => Differing == 0 && Failed == 0 && Unmatched == 0 && Slow == 0 && Total > 0;
 }
 
 public sealed record EndpointDetailViewModel
@@ -79,6 +79,11 @@ public sealed record EndpointDetailViewModel
     public bool CanRecord { get; init; }
     public bool CanApprove { get; init; }
     public bool CanRun { get; init; }
+
+    /// <summary>The one-click negative tests this endpoint's shape allows.</summary>
+    public bool OffersBareExpectation { get; init; }
+
+    public bool OffersMissingExpectation { get; init; }
 
     public BaselineVersionRow? Approved =>
         Versions.FirstOrDefault(v => v.Status == BaselineStatus.Approved);
@@ -157,9 +162,10 @@ public sealed record EndpointTestSummary(
     int Differing,
     int Failed,
     int Unmatched,
+    int Slow,
     DateTimeOffset When)
 {
-    public int Passed => Math.Max(0, Completed - Differing - Failed - Unmatched);
+    public int Passed => Math.Max(0, Completed - Differing - Failed - Unmatched - Slow);
 }
 
 /// <summary>

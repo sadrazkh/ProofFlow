@@ -177,6 +177,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<Guid?>("EnvironmentId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("MaxDurationMs")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -463,6 +466,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<int>("StatusCode")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("TooSlow")
+                        .HasColumnType("boolean");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -516,6 +522,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("Slow")
+                        .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("StartedAt")
                         .HasColumnType("timestamp with time zone");

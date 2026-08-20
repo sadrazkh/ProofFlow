@@ -114,7 +114,7 @@ public sealed class EndpointsController(
                 Last = db.CaptureSessions
                     .Where(s => s.BaselineId == b.Id)
                     .OrderByDescending(s => s.StartedAt)
-                    .Select(s => new { s.TotalRows, s.Differing, s.Failed, s.Unmatched, s.StartedAt })
+                    .Select(s => new { s.TotalRows, s.Differing, s.Failed, s.Unmatched, s.Slow, s.StartedAt })
                     .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
@@ -157,7 +157,7 @@ public sealed class EndpointsController(
                         ? null
                         : new EndpointLastResult(
                             row.Last.TotalRows, row.Last.Differing, row.Last.Failed, row.Last.Unmatched,
-                            row.Last.StartedAt),
+                            row.Last.Slow, row.Last.StartedAt),
                     row.UpdatedAt);
             })],
             Page = new Paging
@@ -355,7 +355,7 @@ public sealed class EndpointsController(
             .Where(s => s.BaselineId == endpointId)
             .OrderByDescending(s => s.StartedAt)
             .Select(s => new EndpointTestSummary(
-                s.Id, s.Status, s.TotalRows, s.Completed, s.Differing, s.Failed, s.Unmatched,
+                s.Id, s.Status, s.TotalRows, s.Completed, s.Differing, s.Failed, s.Unmatched, s.Slow,
                 s.StartedAt))
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -378,6 +378,20 @@ public sealed class EndpointsController(
             CanRecord = me.Can(Capability.RecordBaseline),
             CanApprove = me.Can(Capability.ApproveBaseline),
             CanRun = me.Can(Capability.RunTest),
+
+            // The one-click negative tests: «without a token» needs an environment that signs in
+            // (there is nothing to leave off otherwise), «wrong id» needs an id in the address —
+            // and neither is offered on an endpoint whose recorded answer already IS a refusal,
+            // because an expectation of an expectation is a button that multiplies silliness.
+            OffersBareExpectation = request?.Bare != true
+                && versions.FirstOrDefault(v => v.Status == BaselineStatus.Approved) is not { StatusCode: >= 400 }
+                && endpoint.EnvironmentId is { } authEnv
+                && await db.Environments.AnyAsync(
+                    e => e.Id == authEnv && e.AuthenticationJson != null, cancellationToken),
+            OffersMissingExpectation = request?.Bare != true
+                && versions.FirstOrDefault(v => v.Status == BaselineStatus.Approved) is not { StatusCode: >= 400 }
+                && endpoint.EnvironmentId is not null
+                && request?.Url is { } address && WrongIdUrl(address) is not null,
         });
     }
 
@@ -577,7 +591,7 @@ public sealed class EndpointsController(
     [Authorize(Policy = Policies.RecordBaseline)]
     public async Task<IActionResult> SaveRequest(
         Guid projectId, Guid endpointId, string method, string url, Guid? environmentId,
-        CancellationToken cancellationToken)
+        int? maxDurationMs, CancellationToken cancellationToken)
     {
         var endpoint = await db.Baselines
             .FirstOrDefaultAsync(b => b.Id == endpointId && b.ProjectId == projectId, cancellationToken);
@@ -598,6 +612,9 @@ public sealed class EndpointsController(
 
         endpoint.EnvironmentId = environmentId;
 
+        // Empty or zero means «time is not part of this test», which is a real answer.
+        endpoint.MaxDurationMs = maxDurationMs is > 0 ? maxDurationMs : null;
+
         await db.SaveChangesAsync(cancellationToken);
 
         await audit.RecordAsync(new AuditEntry(
@@ -605,6 +622,177 @@ public sealed class EndpointsController(
 
         TempData.Success(localizer["endpoint.requestSaved"]);
         return Redirect($"/projects/{projectId}/endpoints/{endpointId}");
+    }
+
+    /// <summary>
+    /// One press, one negative test.
+    ///
+    /// «Without a token, this should refuse» and «a wrong id should come back 404» are the two
+    /// checks almost every API needs and almost nobody writes, because writing one meant knowing
+    /// how to stop the environment from helpfully signing the request in. Now that status codes
+    /// are compared, each is just an ordinary endpoint whose recorded answer is the refusal —
+    /// listed, tested and deleted like everything else. This makes one, proves it refuses, and
+    /// keeps that refusal as version 1.
+    ///
+    /// If the API lets the call through, nothing is written and the toast says what came back —
+    /// an expectation the API does not actually hold is worse than none.
+    /// </summary>
+    [HttpPost("{endpointId:guid}/expect")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    public async Task<IActionResult> Expect(
+        Guid projectId, Guid endpointId, string kind, CancellationToken cancellationToken)
+    {
+        var endpoint = await db.Baselines
+            .FirstOrDefaultAsync(b => b.Id == endpointId && b.ProjectId == projectId, cancellationToken);
+        if (endpoint is null) return NotFound();
+
+        var stored = Stored(endpoint.RequestJson);
+        if (stored is null || endpoint.EnvironmentId is not { } environmentId) return NotFound();
+
+        var environment = await db.Environments
+            .FirstOrDefaultAsync(e => e.Id == environmentId && e.ProjectId == projectId, cancellationToken);
+        if (environment is null) return NotFound();
+
+        var back = Redirect($"/projects/{projectId}/endpoints/{endpointId}");
+
+        HttpRequestDefinition request;
+        string suffix;
+
+        switch (kind)
+        {
+            case "bare":
+                if (environment.AuthenticationJson is null) return NotFound();
+
+                // Input references become a plausible literal: a sweep resolves them per row, but
+                // this is one call with no row — and a guard worth testing refuses whatever the id
+                // is, so «1» asks the right question where «{{dataset.current.id}}» only errors.
+                request = stored with { Bare = true, Url = NeutralInputs(stored.Url) };
+                suffix = localizer["endpoint.expect.bareSuffix"].Value;
+                break;
+
+            case "missing":
+                if (WrongIdUrl(stored.Url) is not { } wrongUrl) return NotFound();
+                request = stored with { Url = wrongUrl };
+                suffix = localizer["endpoint.expect.missingSuffix"].Value;
+                break;
+
+            default:
+                return NotFound();
+        }
+
+        var context = await environments.BuildAsync(environment, cancellationToken);
+        var resolver = context.Resolver();
+
+        HttpRequestDefinition resolved;
+        try
+        {
+            resolved = request with
+            {
+                Url = resolver.Resolve(request.Url),
+                Headers = [.. request.Headers.Select(h => h with { Value = resolver.Resolve(h.Value) })],
+            };
+        }
+        catch (VariableResolutionException ex)
+        {
+            TempData.Error(ex.Message);
+            return back;
+        }
+
+        if (!request.Bare)
+        {
+            var outcome = await authenticator.HeadersAsync(
+                context.Auth, environment.BaseUrl, resolver, context.Policy, context.TokenKey,
+                cancellationToken);
+
+            if (!outcome.Ok)
+            {
+                TempData.Error(outcome.Problem!);
+                return back;
+            }
+
+            resolved = InheritedHeaders.Apply(resolved, outcome.Headers, environment.DefaultHeadersJson);
+        }
+
+        var response = await executor.SendAsync(resolved, context.Policy, cancellationToken);
+
+        if (!response.Succeeded)
+        {
+            TempData.Error(response.Failure!.Message);
+            return back;
+        }
+
+        if (response.StatusCode < 400)
+        {
+            // The API let it through. Recording a 200 as «what refusal looks like» would be a
+            // green test standing guard over nothing.
+            TempData.Error(localizer["endpoint.expect.letThrough", response.StatusCode].Value);
+            return back;
+        }
+
+        var wanted = $"{endpoint.Name} — {suffix}";
+        var name = wanted;
+        var index = 2;
+
+        while (await db.Baselines.AnyAsync(
+                   b => b.ProjectId == projectId && b.Name == name, cancellationToken))
+        {
+            name = $"{wanted} ({index++})";
+        }
+
+        var expectation = new Baseline
+        {
+            WorkspaceId = endpoint.WorkspaceId,
+            ProjectId = projectId,
+            EnvironmentId = environment.Id,
+            Name = name,
+            Description = localizer["endpoint.expect.made"].Value,
+            RequestJson = JsonSerializer.Serialize(request,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+            CreatedByUserId = me.UserId ?? Guid.Empty,
+        };
+
+        db.Baselines.Add(expectation);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var body = context.Redaction.Apply(response.Body ?? string.Empty);
+
+        var version = await baselines.CaptureAsync(
+            expectation, body, response.ContentType, response.StatusCode, headers: null, cancellationToken);
+
+        await baselines.ApproveAsync(version, cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.created", projectId, nameof(Baseline), expectation.Id, expectation.Name,
+            new Dictionary<string, string?> { ["from"] = $"expect-{kind}" }), cancellationToken);
+
+        TempData.Success(localizer["endpoint.expect.kept", name, response.StatusCode]);
+        return Redirect($"/projects/{projectId}/endpoints/{expectation.Id}");
+    }
+
+    /// <summary>
+    /// The same address with an id that cannot exist, or null when the address has no id in it.
+    ///
+    /// Two shapes are recognised: a trailing numeric segment, and a non-environment
+    /// <c>{{…}}</c> reference (an input or a data-set column). The base-URL reference is left
+    /// alone — it is the address's beginning, not its id.
+    /// </summary>
+    /// <summary>Non-environment references replaced with a plausible id, for a one-off call.</summary>
+    internal static string NeutralInputs(string url) =>
+        System.Text.RegularExpressions.Regex.Replace(
+            url, @"\{\{(?!environment\.)[^}]+\}\}", "1");
+
+    internal static string? WrongIdUrl(string url)
+    {
+        if (System.Text.RegularExpressions.Regex.IsMatch(url, @"/\d+/?$"))
+        {
+            return System.Text.RegularExpressions.Regex.Replace(url, @"/\d+(/?)$", "/999999999$1");
+        }
+
+        var replaced = System.Text.RegularExpressions.Regex.Replace(
+            url, @"\{\{(?!environment\.)[^}]+\}\}", "does-not-exist");
+
+        return replaced == url ? null : replaced;
     }
 
     /// <summary>The inputs: which set of rows the Test button sweeps across, or none.</summary>
@@ -697,6 +885,7 @@ public sealed class EndpointsController(
             differing = session.Differing,
             failed = session.Failed,
             unmatched = session.Unmatched,
+            slow = session.Slow,
             status = session.Status.ToString(),
             stoppedReason = session.StoppedReason,
         });

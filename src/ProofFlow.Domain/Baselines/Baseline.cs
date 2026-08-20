@@ -56,6 +56,16 @@ public class Baseline : Entity, IWorkspaceOwned
     /// <summary>The request this baseline is of, as JSON. Kept so a replay is reproducible.</summary>
     public string? RequestJson { get; set; }
 
+    /// <summary>
+    /// The slowest acceptable answer, in milliseconds. Null means time is not part of the test.
+    ///
+    /// A budget rather than a measurement: the endpoint's content can be identical while the
+    /// answer quietly goes from 80ms to 8 seconds, and nothing on this page would have said so.
+    /// Scenarios already carry this as an assertion node; an endpoint carries it as a column
+    /// because an endpoint is one request and deserves one field, not a canvas.
+    /// </summary>
+    public int? MaxDurationMs { get; set; }
+
     /// <summary>The version currently in force. Null while the first one is still a draft.</summary>
     public Guid? ApprovedVersionId { get; set; }
 

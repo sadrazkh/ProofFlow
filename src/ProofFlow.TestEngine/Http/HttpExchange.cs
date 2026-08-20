@@ -26,6 +26,15 @@ public sealed record HttpRequestDefinition
     public int? TimeoutSeconds { get; init; }
 
     public RetryPolicy Retry { get; init; } = RetryPolicy.None;
+
+    /// <summary>
+    /// Sent exactly as written: no environment authentication, no default headers.
+    ///
+    /// What a negative test is made of. «Without a token, this refuses» cannot be expressed while
+    /// the environment helpfully signs every request in — and it is inheritance that steps aside
+    /// here, not a header trick, so the agent behaves identically because it runs the same code.
+    /// </summary>
+    public bool Bare { get; init; }
 }
 
 /// <summary>
