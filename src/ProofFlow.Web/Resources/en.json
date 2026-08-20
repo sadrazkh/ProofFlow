@@ -266,6 +266,8 @@
       "project.updated": "changed a project",
       "project.archived": "archived a project",
       "project.restored": "restored a project",
+      "badge.issued": "made a status badge",
+      "badge.revoked": "revoked the status badge",
       "apikey.issued": "issued an API key",
       "apikey.revoked": "revoked an API key",
       "matrix.started": "started an environment matrix",
@@ -366,6 +368,10 @@
     "body": "Point it at a base URL, then run an endpoint and save what came back. Environments, scenarios and endpoints all live inside a project."
   },
   "environment": {
+    "duplicate": "Duplicate",
+    "copyName": "{0} (copy)",
+    "duplicated": "«{0}» is ready — same settings, same sign-in, its own secrets.",
+    "duplicateFailed": "The secret «{0}» could not be read back, so nothing was copied.",
     "auth.change": "Change it",
     "auth.setUp": "Set up sign-in",
     "auth.oauth2": "Exchanges an OAuth2 grant for a token at",
@@ -534,6 +540,8 @@
     }
   },
   "request": {
+    "copyCurl": "Copy as cURL",
+    "curlCopied": "Copied — the same headers included, token and all.",
     "title": "Request",
     "subtitle": "Build one request, send it, and look at what came back. Nothing here is saved to the project.",
     "method": "Method",
@@ -1321,6 +1329,7 @@
     "cycle": "The connections come back round to «{0}», so the run would never finish. Use a Repeat or a Keep checking step to go round on purpose."
   },
   "run": {
+    "again": "Run again",
     "title": "Run",
     "start": "Run this test",
     "view": "View",
@@ -1453,6 +1462,18 @@
     "release": "Release",
     "quarantined": "Quarantined",
     "reason": "Too unreliable to fail a build on."
+  },
+  "badge": {
+    "title": "Status badge",
+    "subtitle": "One word about the newest run — passing, failing, errored — as an image for a README. Anyone holding the URL can read that word, and nothing else.",
+    "issue": "Make a badge",
+    "reissue": "Replace the badge",
+    "issued.body": "Copy it now — the address is shown once, like a key. Pasting this into a README publishes the word.",
+    "exists": "A badge exists. Its address starts with",
+    "revoked": "The badge is gone. The old address now answers nothing.",
+    "revoke": "Revoke",
+    "revoke.title": "Revoke the badge?",
+    "revoke.body": "Every README embedding it will show a broken image until a new one is made and pasted."
   },
   "apikey": {
     "title": "Keys",

@@ -346,6 +346,62 @@ async function send(): Promise<void> {
 }
 
 /**
+ * The request as a shell command, for the terminal or the bug report.
+ *
+ * Built from the same pieces send() posts — the enabled rows, and the auth-derived header with
+ * whatever token it currently holds. The address is the template as typed, `{{…}}` and all, which
+ * is honest about what has not been resolved; after a send, the resolved address the server
+ * actually called is used instead.
+ */
+function asCurl(): string {
+  const resolved = result.value?.resolvedUrl ?? null;
+  const target = resolved ?? url.value;
+
+  const pairs = query.value.filter((row) => row.name && row.enabled !== false);
+  const full = resolved === null && pairs.length > 0
+    ? target
+      + (target.includes('?') ? '&' : '?')
+      + pairs
+        .map((row) => `${encodeURIComponent(row.name)}=${encodeURIComponent(row.value ?? '')}`)
+        .join('&')
+    : target;
+
+  const lines = [`curl -X ${method.value} ${shellQuote(full)}`];
+
+  for (const header of [
+    ...(authHeader.value ? [authHeader.value] : []),
+    ...headers.value.filter((row) => row.name && row.enabled !== false),
+  ]) {
+    lines.push(`-H ${shellQuote(`${header.name}: ${header.value ?? ''}`)}`);
+  }
+
+  if (supportsBody.value && body.value) {
+    if (bodyKind.value === 'Json'
+        && !headers.value.some((row) => row.name.toLowerCase() === 'content-type')) {
+      lines.push(`-H ${shellQuote('Content-Type: application/json')}`);
+    }
+
+    lines.push(`--data ${shellQuote(body.value)}`);
+  }
+
+  return lines.join(' \\\n  ');
+}
+
+/** Single quotes, with embedded ones closed-escaped-reopened — the one POSIX-safe quoting. */
+function shellQuote(text: string): string {
+  return `'${text.replace(/'/g, `'\\''`)}'`;
+}
+
+async function copyCurl(): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(asCurl());
+    toast(t('request.curlCopied'), 'success');
+  } catch {
+    toast(t('response.copyRefused'), 'warn');
+  }
+}
+
+/**
  * Recording this response as a baseline.
  *
  * The request definition travels with it, not just the body — a baseline that remembers what
@@ -446,6 +502,17 @@ function useValue(path: string, value: unknown): void {
         <button type="button" class="btn btn-primary" :disabled="pending || !canRun || !url" @click="send">
           <Icon :name="pending ? 'loader' : 'send'" />
           {{ pending ? t('request.sending') : t('request.send') }}
+        </button>
+
+        <button
+          type="button"
+          class="btn btn-ghost has-tip"
+          :disabled="!url"
+          :aria-label="t('request.copyCurl')"
+          :data-tip="t('request.copyCurl')"
+          @click="copyCurl"
+        >
+          <Icon name="clipboard-paste" />
         </button>
       </div>
 

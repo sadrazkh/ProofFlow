@@ -38,6 +38,10 @@ else
                     <th>@T["run.column.took"]</th>
                     <th class="run-column-wide">@T["run.column.trigger"]</th>
                     <th>@T["run.column.started"]</th>
+                    @if (Model.CanRun)
+                    {
+                        <th><span class="sr-only">@T["common.actions"]</span></th>
+                    }
                 </tr>
                 </thead>
                 <tbody>
@@ -83,6 +87,24 @@ else
                         </td>
                         <td class="run-column-wide">@T[$"run.trigger.{run.Trigger.ToString().ToLowerInvariant()}"]</td>
                         <td><partial name="Pieces/_Timestamp" model="@(new TimestampView(run.StartedAt))" /></td>
+                        @if (Model.CanRun)
+                        {
+                            <td>
+                                @* Only once it is over: pressing «again» on a run still going is a
+                                   second copy racing the first against the same API. *@
+                                @if (run.Status is not (RunStatus.Queued or RunStatus.Running))
+                                {
+                                    <form method="post" action="/projects/@Model.ProjectId/runs/@run.Id/again"
+                                          style="display: inline;">
+                                        @Html.AntiForgeryToken()
+                                        <button type="submit" class="btn btn-ghost btn-sm has-tip"
+                                                aria-label="@T["run.again"]" data-tip="@T["run.again"]">
+                                            <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        }
                     </tr>
                 }
                 </tbody>

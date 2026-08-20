@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -149,6 +151,8 @@ public sealed class ProjectsController(
             // Carried once, from the request that created it. There is no other way to see a key —
             // not this page, not the database, not a support engineer.
             IssuedSecret = TempData["IssuedKey"] as string,
+            IssuedBadge = TempData["IssuedBadge"] as string,
+            BadgePreview = project.BadgePreview,
             Keys = await db.ApiKeys
                 .Where(key => key.ProjectId == projectId || key.ProjectId == null)
                 .OrderByDescending(key => key.CreatedAt)
@@ -193,6 +197,62 @@ public sealed class ProjectsController(
 
         TempData["IssuedKey"] = secret;
 
+        return RedirectToAction(nameof(Settings), new { projectId });
+    }
+
+    /// <summary>
+    /// Mints the status-badge token and shows it once, inside the markdown snippet.
+    ///
+    /// Minting again replaces the old token — one badge per project, so revoking is never a hunt.
+    /// The badge answers with a single word about the newest run; even so it is a deliberate act,
+    /// because that word becomes readable by anyone holding the URL.
+    /// </summary>
+    [HttpPost("{projectId:guid}/settings/badge")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageProject)]
+    public async Task<IActionResult> IssueBadge(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects
+            .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
+
+        if (project is null) return NotFound();
+
+        // The API-key recipe: 256 random bits, base64url for a value that lives in a URL, plain
+        // SHA-256 because there is nothing to brute-force, shown exactly once.
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+        project.BadgeHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+        project.BadgePreview = token[..8];
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(
+            new AuditEntry("badge.issued", projectId, nameof(Project), projectId, project.Name),
+            cancellationToken);
+
+        TempData["IssuedBadge"] = token;
+        return RedirectToAction(nameof(Settings), new { projectId });
+    }
+
+    [HttpPost("{projectId:guid}/settings/badge/revoke")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageProject)]
+    public async Task<IActionResult> RevokeBadge(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects
+            .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
+
+        if (project is null) return NotFound();
+
+        project.BadgeHash = null;
+        project.BadgePreview = null;
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(
+            new AuditEntry("badge.revoked", projectId, nameof(Project), projectId, project.Name),
+            cancellationToken);
+
+        TempData.Success(localizer["badge.revoked"]);
         return RedirectToAction(nameof(Settings), new { projectId });
     }
 

@@ -124,4 +124,10 @@ public sealed class ProjectFormViewModel
     /// to say out loud so nobody closes the tab expecting to come back for it.
     /// </summary>
     public string? IssuedSecret { get; set; }
+
+    /// <summary>The recognisable start of the badge token, when one exists. Never the token.</summary>
+    public string? BadgePreview { get; set; }
+
+    /// <summary>A badge token just minted — the same shown-once rule as <see cref="IssuedSecret"/>.</summary>
+    public string? IssuedBadge { get; set; }
 }

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
 using ProofFlow.Application.Abstractions;
+using ProofFlow.Contracts.Scenarios;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Runs;
 using ProofFlow.Infrastructure.Persistence;
@@ -243,6 +244,69 @@ public sealed class RunsController(
             assertions,
             events,
         });
+    }
+
+    /// <summary>
+    /// Runs it again, now.
+    ///
+    /// Same scenario, same environment, same inputs, same starting step — but the scenario as it
+    /// is today, which is what «again» means to the person pressing it. Reproducing the historical
+    /// bytes is a different promise, one an edited scenario cannot keep; the console's own
+    /// snapshot is where that history lives.
+    ///
+    /// Answers JSON to the console island and a redirect to the plain form on the list — the same
+    /// action, because they are the same press.
+    /// </summary>
+    [HttpPost("{id:guid}/again")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RunTest)]
+    public async Task<IActionResult> Again(Guid projectId, Guid id, CancellationToken cancellationToken)
+    {
+        var run = await db.Runs
+            .FirstOrDefaultAsync(candidate =>
+                candidate.Id == id && candidate.ProjectId == projectId, cancellationToken);
+
+        if (run is null) return NotFound();
+
+        var wantsJson = Request.Headers.Accept.Any(
+            accept => accept?.Contains("application/json", StringComparison.OrdinalIgnoreCase) == true);
+
+        TestRun next;
+        try
+        {
+            next = await runs.QueueAsync(
+                run.ScenarioId, run.EnvironmentId, RunTrigger.Rerun, run.StartNodeId,
+                ScenarioInputs.ReadValues(run.InputsJson)
+                    .ToDictionary(pair => pair.Key, pair => (string?)pair.Value),
+                cancellationToken);
+        }
+        catch (InvalidOperationException ex)
+        {
+            // The scenario has been deleted, or never saved, or grew a required input this run
+            // never had. The message already says which.
+            if (wantsJson)
+            {
+                return Problem(title: ex.Message, statusCode: StatusCodes.Status409Conflict);
+            }
+
+            TempData.Error(ex.Message);
+            return RedirectToAction(nameof(Index), new { projectId });
+        }
+
+        await queue.EnqueueAsync(new QueuedRun(next.Id, next.WorkspaceId), cancellationToken);
+
+        var name = await db.Scenarios
+            .Where(scenario => scenario.Id == run.ScenarioId)
+            .Select(scenario => scenario.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        await audit.RecordAsync(
+            new AuditEntry("run.started", projectId, "TestRun", next.Id, name,
+                new Dictionary<string, string?> { ["again"] = id.ToString() }),
+            cancellationToken);
+
+        var url = $"/projects/{projectId}/runs/{next.Id}";
+        return wantsJson ? Json(new { url }) : Redirect(url);
     }
 
     /// <summary>

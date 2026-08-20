@@ -126,6 +126,126 @@ public sealed class EnvironmentsController(
         return Redirect($"/projects/{projectId}/environments?selected={environment.Id}");
     }
 
+    /// <summary>
+    /// The same environment again, to point somewhere else.
+    ///
+    /// «Same but staging» used to mean re-typing a dozen settings and re-entering every secret.
+    /// This copies the settings, the default headers, the sign-in configuration — which holds
+    /// <c>{{secrets.*}}</c> references, so it stays correct as written — and this environment's own
+    /// variables and secrets. Project-wide rows are shared already and are deliberately not copied.
+    ///
+    /// Secrets are decrypted and sealed afresh rather than row-copied: reusing an AES-GCM nonce is
+    /// the one thing the cipher must never do, and the Secret entity says so on the column. If any
+    /// secret cannot be opened — a rotated key — the whole copy refuses and names it, because a
+    /// duplicate missing the password its sign-in references would fail somewhere less readable.
+    /// </summary>
+    [HttpPost("{environmentId:guid}/duplicate")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageEnvironment)]
+    public async Task<IActionResult> Duplicate(Guid projectId, Guid environmentId, CancellationToken cancellationToken)
+    {
+        var source = await db.Environments
+            .FirstOrDefaultAsync(e => e.Id == environmentId && e.ProjectId == projectId, cancellationToken);
+        if (source is null) return NotFound();
+
+        var taken = await db.Environments
+            .Where(e => e.ProjectId == projectId).Select(e => e.Slug).ToListAsync(cancellationToken);
+
+        var name = localizer["environment.copyName", source.Name].Value;
+
+        var copy = new ProjectEnvironment
+        {
+            WorkspaceId = source.WorkspaceId,
+            ProjectId = projectId,
+            Name = name,
+            Slug = Slug.Unique(Slug.From(name, "environment"), taken),
+            SortOrder = taken.Count,
+
+            BaseUrl = source.BaseUrl,
+            Kind = source.Kind,
+            TimeoutSeconds = source.TimeoutSeconds,
+            MaxRedirects = source.MaxRedirects,
+            MaxResponseKilobytes = source.MaxResponseKilobytes,
+            AllowedHosts = source.AllowedHosts,
+            AllowPrivateNetwork = source.AllowPrivateNetwork,
+            AllowInvalidCertificate = source.AllowInvalidCertificate,
+            IsProduction = source.IsProduction,
+            ProxyUrl = source.ProxyUrl,
+            RunnerId = source.RunnerId,
+            DefaultHeadersJson = source.DefaultHeadersJson,
+            AuthenticationJson = source.AuthenticationJson,
+        };
+
+        db.Environments.Add(copy);
+
+        var variables = await db.Variables
+            .Where(v => v.ProjectId == projectId && v.EnvironmentId == environmentId)
+            .ToListAsync(cancellationToken);
+
+        foreach (var variable in variables)
+        {
+            db.Variables.Add(new EnvironmentVariable
+            {
+                WorkspaceId = source.WorkspaceId,
+                ProjectId = projectId,
+                EnvironmentId = copy.Id,
+                Name = variable.Name,
+                Value = variable.Value,
+                Description = variable.Description,
+            });
+        }
+
+        var secrets = await db.Secrets
+            .Where(s => s.ProjectId == projectId && s.EnvironmentId == environmentId)
+            .ToListAsync(cancellationToken);
+
+        foreach (var secret in secrets)
+        {
+            string value;
+            try
+            {
+                value = cipher.Open(new SealedSecret(
+                    secret.Ciphertext, secret.Nonce, secret.Tag, secret.KeyVersion));
+            }
+            catch (InvalidOperationException)
+            {
+                TempData.Error(localizer["environment.duplicateFailed", secret.Name].Value);
+                return Redirect(Back(projectId, environmentId));
+            }
+
+            var boxed = cipher.Seal(value);
+
+            db.Secrets.Add(new Secret
+            {
+                WorkspaceId = source.WorkspaceId,
+                ProjectId = projectId,
+                EnvironmentId = copy.Id,
+                Name = secret.Name,
+                Description = secret.Description,
+                Ciphertext = boxed.Ciphertext,
+                Nonce = boxed.Nonce,
+                Tag = boxed.Tag,
+                KeyVersion = boxed.KeyVersion,
+                Preview = secret.Preview,
+                CreatedByUserId = me.UserId,
+            });
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "environment.created", projectId, nameof(ProjectEnvironment), copy.Id, copy.Name,
+            new Dictionary<string, string?>
+            {
+                ["duplicatedFrom"] = source.Name,
+                ["secrets"] = secrets.Count.ToString(),
+                ["variables"] = variables.Count.ToString(),
+            }), cancellationToken);
+
+        TempData.Success(localizer["environment.duplicated", copy.Name]);
+        return Redirect(Back(projectId, copy.Id));
+    }
+
     [HttpPost("{environmentId:guid}/delete")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.ManageEnvironment)]

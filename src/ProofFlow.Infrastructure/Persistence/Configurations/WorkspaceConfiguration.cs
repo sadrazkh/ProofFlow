@@ -42,9 +42,14 @@ public sealed class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.Slug).HasMaxLength(80).IsRequired();
         builder.Property(p => p.Accent).HasMaxLength(24).IsRequired();
         builder.Property(p => p.Description).HasMaxLength(2000);
+        builder.Property(p => p.BadgeHash).HasMaxLength(64);
+        builder.Property(p => p.BadgePreview).HasMaxLength(16);
         builder.Ignore(p => p.IsArchived);
 
         builder.HasIndex(p => new { p.WorkspaceId, p.Slug }).IsUnique();
+
+        // The anonymous badge endpoint looks a project up by nothing else.
+        builder.HasIndex(p => p.BadgeHash);
 
         builder.HasOne(p => p.Workspace)
             .WithMany()

@@ -52,6 +52,7 @@ const lines = ref<RunEventRow[]>([]);
 const connected = ref(false);
 const loading = ref(true);
 const cancelling = ref(false);
+const rerunning = ref(false);
 const tab = ref<'graph' | 'timeline'>('graph');
 
 const log = ref<InstanceType<typeof RunLog> | null>(null);
@@ -281,6 +282,27 @@ async function cancel(): Promise<void> {
     cancelling.value = false;
   }
 }
+
+/**
+ * The same run, started again — same environment, same inputs, the scenario as it is today.
+ *
+ * No confirmation, deliberately: it does exactly what the button that started this run did, and
+ * that one does not ask either.
+ */
+async function again(): Promise<void> {
+  if (rerunning.value) return;
+  rerunning.value = true;
+
+  try {
+    const started = await api.post<{ url: string }>(
+      `/projects/${props.projectId}/runs/${props.runId}/again`, {});
+
+    location.assign(started.url);
+  } catch (error) {
+    toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+    rerunning.value = false;
+  }
+}
 </script>
 
 <template>
@@ -338,6 +360,19 @@ async function cancel(): Promise<void> {
         @click="cancel"
       >
         <Icon name="square" />{{ t('run.cancel') }}
+      </button>
+
+      <!-- The same capability as starting one: canCancel is «may run tests», not «may stop». -->
+      <button
+        v-if="canCancel && !running"
+        type="button"
+        class="btn btn-secondary btn-sm"
+        :disabled="rerunning"
+        @click="again"
+      >
+        <Icon :name="rerunning ? 'loader-circle' : 'rotate-ccw'"
+              :class="rerunning ? 'is-spinning' : ''" />
+        {{ t('run.again') }}
       </button>
     </header>
 

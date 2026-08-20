@@ -243,6 +243,59 @@
           @(Context.Request.Scheme)://@(Context.Request.Host)/api/v1/runs/RUN_ID/junit -o junit.xml</code></pre>
                 </details>
             </div>
+
+            @*
+                The one word a README may carry. Minting is a decision — the newest run's verdict
+                becomes readable by anyone holding the URL — so the card says exactly that instead
+                of pretending an image is harmless.
+            *@
+            <div class="card card-pad stack">
+                <h2 class="card-title">@T["badge.title"]</h2>
+                <p class="muted">@T["badge.subtitle"]</p>
+
+                @if (Model.IssuedBadge is { Length: > 0 } badge)
+                {
+                    var badgeUrl = $"{Context.Request.Scheme}://{Context.Request.Host}/badge/{badge}.svg";
+                    var markdown = $"![{Model.Name}]({badgeUrl})";
+
+                    <div class="card card-pad stack key-issued" role="status">
+                        <p class="muted">@T["badge.issued.body"]</p>
+                        <div class="key-value">
+                            <code dir="ltr">@markdown</code>
+                            <button type="button" class="btn btn-secondary btn-sm" data-copy="@markdown">
+                                <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                            </button>
+                        </div>
+                    </div>
+                }
+                else if (Model.BadgePreview is { Length: > 0 } preview)
+                {
+                    <p class="muted">
+                        @T["badge.exists"] <code class="schedule-cron" dir="ltr">@preview…</code>
+                    </p>
+                }
+
+                <div class="row wrap">
+                    <form method="post" action="/projects/@projectId/settings/badge">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-secondary btn-sm">
+                            <i data-lucide="shield-check" aria-hidden="true"></i>
+                            @(Model.BadgePreview is null ? T["badge.issue"] : T["badge.reissue"])
+                        </button>
+                    </form>
+
+                    @if (Model.BadgePreview is not null)
+                    {
+                        <form method="post" action="/projects/@projectId/settings/badge/revoke"
+                              data-confirm="@T["badge.revoke.body"]"
+                              data-confirm-title="@T["badge.revoke.title"]"
+                              data-confirm-action="@T["badge.revoke"]">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-ghost btn-sm">@T["badge.revoke"]</button>
+                        </form>
+                    }
+                </div>
+            </div>
         }
     </div>
 </div>

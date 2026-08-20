@@ -192,7 +192,13 @@
     @if (canManage)
     {
         <div class="card-footer" style="justify-content: space-between;">
-            <span></span>
+            @* Posts the same form to a different action; the copy only reads the route. Same
+               settings, same sign-in, its own freshly-sealed secrets. *@
+            <button type="submit" class="btn btn-ghost"
+                    formaction="/projects/@projectId/environments/@Model.Id/duplicate"
+                    formnovalidate>
+                <i data-lucide="copy" aria-hidden="true"></i>@T["environment.duplicate"]
+            </button>
             <button type="submit" class="btn btn-primary">@T["action.save"]</button>
         </div>
     }

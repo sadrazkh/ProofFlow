@@ -898,6 +898,14 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<DateTimeOffset?>("ArchivedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("BadgeHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("BadgePreview")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -928,6 +936,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BadgeHash");
 
                     b.HasIndex("WorkspaceId", "Slug")
                         .IsUnique();

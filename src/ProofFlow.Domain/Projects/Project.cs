@@ -57,4 +57,17 @@ public class Project : Entity, IWorkspaceOwned
     public DateTimeOffset? ArchivedAt { get; set; }
 
     public bool IsArchived => ArchivedAt is not null;
+
+    /// <summary>
+    /// SHA-256 of the status-badge token, when one has been issued. Null means no badge.
+    ///
+    /// The token itself is shown once and never stored — the <see cref="Domain.Scheduling.ApiKey"/>
+    /// rule, for the same reason: a value that lets an anonymous request read this project's
+    /// verdict must not be readable out of the database. Plain SHA-256 rather than a slow hash
+    /// because the token is 256 random bits, not a password.
+    /// </summary>
+    public string? BadgeHash { get; set; }
+
+    /// <summary>The first characters of the badge token — enough to recognise, never enough to use.</summary>
+    public string? BadgePreview { get; set; }
 }
