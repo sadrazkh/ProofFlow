@@ -24,6 +24,55 @@
     }
 </div>
 
+@if (Model.QuickAdd.Count > 0)
+{
+    @*
+        The fast door. The first endpoint came through the connect flow, which proved the sign-in
+        works; from then on «add /orders too» is one field. The environment signs in, the path is
+        called once, and the answer is recorded — or nothing is written and the refusal says why.
+    *@
+    <form method="post" action="/projects/@Model.ProjectId/endpoints/quick" class="card"
+          data-busy-text="@T["endpoint.quickAdd.working"]">
+        @Html.AntiForgeryToken()
+        <div class="card-body row wrap" style="gap: var(--space-3); align-items: flex-end;">
+            <div class="field" style="min-inline-size: 110px;">
+                <label class="field-label" for="quick-method">@T["request.method"]</label>
+                <select class="select" id="quick-method" name="method">
+                    @foreach (var verb in new[] { "GET", "POST", "PUT", "PATCH", "DELETE" })
+                    {
+                        <option value="@verb">@verb</option>
+                    }
+                </select>
+            </div>
+            <div class="field grow" style="min-inline-size: 220px;">
+                <label class="field-label" for="quick-path">@T["endpoint.quickAdd.title"]</label>
+                <input class="input input-mono" id="quick-path" name="path" dir="ltr"
+                       placeholder="/orders" spellcheck="false" required />
+            </div>
+            @if (Model.QuickAdd.Count > 1)
+            {
+                <div class="field" style="min-inline-size: 170px;">
+                    <label class="field-label" for="quick-environment">@T["environment.title"]</label>
+                    <select class="select" id="quick-environment" name="environmentId">
+                        @foreach (var choice in Model.QuickAdd)
+                        {
+                            <option value="@choice.Id">@choice.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+            else
+            {
+                <input type="hidden" name="environmentId" value="@Model.QuickAdd[0].Id" />
+            }
+            <button type="submit" class="btn btn-primary">
+                <i data-lucide="plus" aria-hidden="true"></i>@T["endpoint.quickAdd.action"]
+            </button>
+            <p class="field-hint" style="flex-basis: 100%; margin: 0;">@T["endpoint.quickAdd.hint"]</p>
+        </div>
+    </form>
+}
+
 @if (Model.Endpoints.Count == 0)
 {
     @* An endpoint is recorded from a response, not typed into a form, so the empty state points at

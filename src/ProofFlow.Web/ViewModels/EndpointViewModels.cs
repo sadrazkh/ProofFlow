@@ -12,7 +12,17 @@ public sealed record EndpointListViewModel
     public required IReadOnlyList<EndpointSummary> Endpoints { get; init; }
     public required Paging Page { get; init; }
     public bool CanRecord { get; init; }
+
+    /// <summary>
+    /// Environments that can sign in by themselves — the ones quick-add can send through.
+    ///
+    /// Empty hides the quick-add form entirely: without a configured sign-in the form would be a
+    /// slower request lab, and with no permission to record it would end in a refusal.
+    /// </summary>
+    public IReadOnlyList<QuickAddEnvironment> QuickAdd { get; init; } = [];
 }
+
+public sealed record QuickAddEnvironment(Guid Id, string Name);
 
 /// <summary>
 /// One row of the list.

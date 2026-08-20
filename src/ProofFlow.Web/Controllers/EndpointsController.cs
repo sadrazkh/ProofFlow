@@ -122,10 +122,23 @@ public sealed class EndpointsController(
         Breadcrumbs(project.Name, projectId, null);
         ViewData["Title"] = localizer["nav.endpoints"].Value;
 
+        var canRecord = me.Can(Capability.RecordBaseline);
+
+        // The environments quick-add can send through: the ones that sign themselves in. Queried
+        // only when the reader could use the form, so a viewer costs nothing extra.
+        var connected = canRecord
+            ? await db.Environments
+                .Where(e => e.ProjectId == projectId && e.AuthenticationJson != null)
+                .OrderBy(e => e.SortOrder).ThenBy(e => e.Name)
+                .Select(e => new QuickAddEnvironment(e.Id, e.Name))
+                .ToListAsync(cancellationToken)
+            : [];
+
         return View(new EndpointListViewModel
         {
             ProjectId = projectId,
             ProjectName = project.Name,
+            QuickAdd = connected,
             Endpoints = [.. rows.Select(row =>
             {
                 var request = Stored(row.RequestJson);
@@ -154,8 +167,138 @@ public sealed class EndpointsController(
                 Total = total,
                 Path = $"/projects/{projectId}/endpoints",
             },
-            CanRecord = me.Can(Capability.RecordBaseline),
+            CanRecord = canRecord,
         });
+    }
+
+    /// <summary>
+    /// One path in, one recorded endpoint out.
+    ///
+    /// The fast door for the second endpoint and every one after it. The first came through the
+    /// connect flow, which proved the sign-in works; from then on «add /orders too» should not mean
+    /// a trip through the request lab. The environment signs in, the path is called once, and what
+    /// came back is kept as the first answer — the same rule the connect flow and the workbench
+    /// follow, because a first version is not a change to anything.
+    ///
+    /// On any refusal — transport, resolution, or a status of 400 and up — nothing is written and
+    /// the server's own words come back in the toast. A stored endpoint that has never worked is
+    /// the thing every door here refuses to make.
+    /// </summary>
+    [HttpPost("quick")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    public async Task<IActionResult> QuickAdd(
+        Guid projectId, Guid environmentId, string? method, string? path,
+        CancellationToken cancellationToken)
+    {
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null) return NotFound();
+
+        var environment = await db.Environments.FirstOrDefaultAsync(
+            e => e.Id == environmentId && e.ProjectId == projectId && e.AuthenticationJson != null,
+            cancellationToken);
+        if (environment is null) return NotFound();
+
+        var back = Redirect($"/projects/{projectId}/endpoints");
+
+        var where = (path ?? string.Empty).Trim();
+        if (where.Length == 0)
+        {
+            TempData.Error(localizer["endpoint.quickAdd.noPath"].Value);
+            return back;
+        }
+
+        if (!where.StartsWith('/')) where = "/" + where;
+
+        var verb = (method ?? "GET").ToUpperInvariant();
+        if (verb is not ("GET" or "POST" or "PUT" or "PATCH" or "DELETE")) verb = "GET";
+
+        // Through the variable rather than the address itself, so the endpoint follows the
+        // environment wherever it is pointed later.
+        var request = new HttpRequestDefinition
+        {
+            Method = verb,
+            Url = "{{environment.baseUrl}}" + where,
+        };
+
+        var context = await environments.BuildAsync(environment, cancellationToken);
+        var resolver = context.Resolver();
+
+        HttpRequestDefinition resolved;
+        try
+        {
+            resolved = request with { Url = resolver.Resolve(request.Url) };
+        }
+        catch (VariableResolutionException ex)
+        {
+            TempData.Error(localizer["endpoint.quickAdd.failed", ex.Message].Value);
+            return back;
+        }
+
+        var outcome = await authenticator.HeadersAsync(
+            context.Auth, environment.BaseUrl, resolver, context.Policy, context.TokenKey,
+            cancellationToken);
+
+        if (!outcome.Ok)
+        {
+            TempData.Error(localizer["endpoint.quickAdd.failed", outcome.Problem!].Value);
+            return back;
+        }
+
+        resolved = InheritedHeaders.Apply(resolved, outcome.Headers, environment.DefaultHeadersJson);
+
+        var response = await executor.SendAsync(resolved, context.Policy, cancellationToken);
+
+        if (!response.Succeeded)
+        {
+            TempData.Error(localizer["endpoint.quickAdd.failed", response.Failure!.Message].Value);
+            return back;
+        }
+
+        if (response.StatusCode >= 400)
+        {
+            TempData.Error(localizer["endpoint.quickAdd.refused", response.StatusCode].Value);
+            return back;
+        }
+
+        var body = context.Redaction.Apply(response.Body ?? string.Empty);
+
+        var wanted = $"{verb} {where}";
+        var name = wanted;
+        var index = 2;
+
+        while (await db.Baselines.AnyAsync(
+                   b => b.ProjectId == projectId && b.Name == name, cancellationToken))
+        {
+            name = $"{wanted} ({index++})";
+        }
+
+        var endpoint = new Baseline
+        {
+            WorkspaceId = environment.WorkspaceId,
+            ProjectId = projectId,
+            EnvironmentId = environment.Id,
+            Name = name,
+            RequestJson = JsonSerializer.Serialize(request,
+                new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase }),
+            CreatedByUserId = me.UserId ?? Guid.Empty,
+        };
+
+        db.Baselines.Add(endpoint);
+        await db.SaveChangesAsync(cancellationToken);
+
+        // The answer it just gave, kept as the first — approved on capture, the first-version rule.
+        var version = await baselines.CaptureAsync(
+            endpoint, body, response.ContentType, response.StatusCode, headers: null, cancellationToken);
+
+        await baselines.ApproveAsync(version, cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.created", projectId, nameof(Baseline), endpoint.Id, endpoint.Name,
+            new Dictionary<string, string?> { ["from"] = "quick-add" }), cancellationToken);
+
+        TempData.Success(localizer["endpoint.quickAdd.made", name].Value);
+        return Redirect($"/projects/{projectId}/endpoints/{endpoint.Id}");
     }
 
     // ---- one endpoint -----------------------------------------------------------------------

@@ -399,6 +399,101 @@ public sealed class ConnectFlowTests(ProofFlowApplication app)
     }
 
     [Fact]
+    public async Task A_second_path_is_one_field_and_comes_back_recorded()
+    {
+        // The first endpoint came through the four steps. The second should not need them again —
+        // the environment already knows how to sign in, so «add /products too» is one field.
+        var (client, projectId) = await SignedInAsync();
+
+        var attempt = Attempt();
+        (await TryAsync(client, projectId, attempt)).Call!.Ok.Should().BeTrue();
+        var saved = await SaveAsync(client, projectId, attempt);
+
+        var (token, page) = await EndpointsPageAsync(client, projectId);
+
+        // The door is offered: the page knows an environment that signs itself in exists.
+        page.Should().Contain("endpoints/quick");
+
+        var response = await client.PostAsync($"/projects/{projectId}/endpoints/quick",
+            QuickForm(token, saved.EnvironmentId, "GET", "/products"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.ToString().Should().MatchRegex(
+            $"^/projects/{projectId}/endpoints/[0-9a-f-]{{36}}$",
+            "success should land on the endpoint it made, not back on the list");
+
+        using var scope = app.Services.CreateScope();
+        var db = Db(scope.ServiceProvider);
+
+        var made = await db.Baselines.IgnoreQueryFilters()
+            .SingleAsync(b => b.ProjectId == projectId && b.Name == "GET /products");
+
+        var request = JsonDocument.Parse(made.RequestJson!).RootElement;
+        request.GetProperty("url").GetString().Should().Be("{{environment.baseUrl}}/products");
+        request.GetProperty("headers").GetArrayLength().Should().Be(0,
+            "the environment signs in; a stored token would expire overnight");
+
+        var version = await db.BaselineVersions.IgnoreQueryFilters()
+            .SingleAsync(v => v.BaselineId == made.Id);
+
+        version.Number.Should().Be(1);
+        version.Status.Should().Be(BaselineStatus.Approved);
+        version.StatusCode.Should().Be(200);
+        version.Body.Should().Contain("\"items\"",
+            "what was recorded should be the protected path's real answer");
+    }
+
+    [Fact]
+    public async Task A_path_the_api_refuses_adds_nothing()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        var attempt = Attempt();
+        (await TryAsync(client, projectId, attempt)).Call!.Ok.Should().BeTrue();
+        var saved = await SaveAsync(client, projectId, attempt);
+
+        var before = await CountAsync(projectId);
+        var (token, _) = await EndpointsPageAsync(client, projectId);
+
+        // The fake API's own 500. The point of the door is that a stored endpoint that has never
+        // worked cannot come through it.
+        var response = await client.PostAsync($"/projects/{projectId}/endpoints/quick",
+            QuickForm(token, saved.EnvironmentId, "GET", "/status/500"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location!.ToString().Should().Be($"/projects/{projectId}/endpoints");
+
+        (await CountAsync(projectId)).Should().Be(before, "a refusal must write nothing");
+
+        async Task<int> CountAsync(Guid project)
+        {
+            using var scope = app.Services.CreateScope();
+            return await Db(scope.ServiceProvider).Baselines.IgnoreQueryFilters()
+                .CountAsync(b => b.ProjectId == project);
+        }
+    }
+
+    private static async Task<(string Token, string Html)> EndpointsPageAsync(
+        HttpClient client, Guid projectId)
+    {
+        var html = await client.GetStringAsync($"/projects/{projectId}/endpoints");
+        var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
+
+        match.Success.Should().BeTrue("the endpoints page should render an antiforgery token");
+        return (match.Groups[1].Value, html);
+    }
+
+    private static FormUrlEncodedContent QuickForm(
+        string token, Guid environmentId, string method, string path) =>
+        new(new Dictionary<string, string>
+        {
+            ["environmentId"] = environmentId.ToString(),
+            ["method"] = method,
+            ["path"] = path,
+            ["__RequestVerificationToken"] = token,
+        });
+
+    [Fact]
     public async Task The_page_offers_the_practice_api_this_application_serves()
     {
         var (client, projectId) = await SignedInAsync();
@@ -475,65 +570,86 @@ public sealed class ConnectFlowTests(ProofFlowApplication app)
             services.GetRequiredService<DbContextOptions<SqliteProofFlowDbContext>>(),
             new SystemWorkspaceScope());
 
+    // One session for the whole class. The sign-in endpoint is rate limited — deliberately, and
+    // the tests must live with the same limits people do — so each test gets its own project
+    // inside one shared workspace rather than its own sign-in.
+    private static readonly SemaphoreSlim SessionLock = new(1, 1);
+    private static HttpClient? _sharedClient;
+    private static Guid _sharedWorkspaceId;
+
     private async Task<(HttpClient Client, Guid ProjectId)> SignedInAsync()
     {
-        var email = $"connect-{Guid.CreateVersion7():N}@proofflow.test";
-        Guid projectId;
-
-        using (var scope = app.Services.CreateScope())
+        await SessionLock.WaitAsync();
+        try
         {
-            var users = scope.ServiceProvider.GetRequiredService<UserManager<ProofFlowUser>>();
-
-            var user = new ProofFlowUser
+            if (_sharedClient is null)
             {
-                Id = Guid.CreateVersion7(),
-                UserName = email,
-                Email = email,
-                EmailConfirmed = true,
-                DisplayName = "Connector",
-            };
+                var email = $"connect-{Guid.CreateVersion7():N}@proofflow.test";
 
-            (await users.CreateAsync(user, Password)).Succeeded.Should().BeTrue();
+                using var scope = app.Services.CreateScope();
+                var users = scope.ServiceProvider.GetRequiredService<UserManager<ProofFlowUser>>();
 
-            var db = Db(scope.ServiceProvider);
+                var user = new ProofFlowUser
+                {
+                    Id = Guid.CreateVersion7(),
+                    UserName = email,
+                    Email = email,
+                    EmailConfirmed = true,
+                    DisplayName = "Connector",
+                };
 
-            var workspace = new Workspace
+                (await users.CreateAsync(user, Password)).Succeeded.Should().BeTrue();
+
+                var db = Db(scope.ServiceProvider);
+
+                var workspace = new Workspace
+                {
+                    Name = "Connect workspace",
+                    Slug = $"ws-{Guid.CreateVersion7():N}"[..20],
+                    CreatedByUserId = user.Id,
+                };
+                db.Workspaces.Add(workspace);
+                db.WorkspaceMembers.Add(new WorkspaceMember
+                {
+                    WorkspaceId = workspace.Id,
+                    UserId = user.Id,
+                    Role = WorkspaceRole.Owner,
+                    JoinedAt = DateTimeOffset.UtcNow,
+                });
+                await db.SaveChangesAsync();
+
+                user.LastWorkspaceId = workspace.Id;
+                await users.UpdateAsync(user);
+
+                var client = app.CreateClient(NoRedirect);
+                await SignInAsync(client, email);
+
+                _sharedClient = client;
+                _sharedWorkspaceId = workspace.Id;
+            }
+
+            // A fresh project every time: every environment, secret and endpoint a test asserts on
+            // has to have been made by the flow that test drove.
+            using (var scope = app.Services.CreateScope())
             {
-                Name = "Connect workspace",
-                Slug = $"ws-{Guid.CreateVersion7():N}"[..20],
-                CreatedByUserId = user.Id,
-            };
-            db.Workspaces.Add(workspace);
-            db.WorkspaceMembers.Add(new WorkspaceMember
-            {
-                WorkspaceId = workspace.Id,
-                UserId = user.Id,
-                Role = WorkspaceRole.Owner,
-                JoinedAt = DateTimeOffset.UtcNow,
-            });
+                var db = Db(scope.ServiceProvider);
 
-            // Empty on purpose: every environment, secret and endpoint these tests assert on has to
-            // have been made by the flow itself.
-            var project = new Project
-            {
-                WorkspaceId = workspace.Id,
-                Name = "Connect project",
-                Slug = $"p-{Guid.CreateVersion7():N}"[..20],
-            };
-            db.Projects.Add(project);
+                var project = new Project
+                {
+                    WorkspaceId = _sharedWorkspaceId,
+                    Name = $"Connect {Guid.CreateVersion7():N}"[..20],
+                    Slug = $"p-{Guid.CreateVersion7():N}"[..20],
+                };
+                db.Projects.Add(project);
+                await db.SaveChangesAsync();
 
-            await db.SaveChangesAsync();
-
-            user.LastWorkspaceId = workspace.Id;
-            await users.UpdateAsync(user);
-
-            projectId = project.Id;
+                return (_sharedClient, project.Id);
+            }
         }
-
-        var client = app.CreateClient(NoRedirect);
-        await SignInAsync(client, email);
-
-        return (client, projectId);
+        finally
+        {
+            SessionLock.Release();
+        }
     }
 
     private static async Task SignInAsync(HttpClient client, string email)

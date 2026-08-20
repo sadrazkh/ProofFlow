@@ -1817,6 +1817,14 @@
     "next": "The page after this one"
   },
   "endpoint": {
+    "quickAdd.title": "Add another path",
+    "quickAdd.hint": "The environment signs in by itself. The path is called once, and its answer is recorded as what correct looks like — or nothing is written, and the refusal says why.",
+    "quickAdd.action": "Add and record",
+    "quickAdd.working": "Calling it…",
+    "quickAdd.noPath": "A path first — /orders, /users/1, whatever it serves.",
+    "quickAdd.refused": "The API refused with {0}. Nothing was added.",
+    "quickAdd.failed": "{0} Nothing was added.",
+    "quickAdd.made": "«{0}» is recorded, with the answer it just gave as what correct looks like.",
     "subtitle": "One request, the inputs it is checked against, and what a correct answer looks like.",
     "new": "Send a request",
     "request": "Request",
