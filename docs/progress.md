@@ -1206,6 +1206,59 @@ now only describes capture.
 
 ---
 
+## Fourteen improvements, in seven passes
+
+The review asked what would make this better, and the answer was «all of it, and easy». That last
+word was the design rule: nothing here got a page of its own unless it genuinely is a new place.
+Everything else is a button where the need arises.
+
+| | What it is |
+|---|---|
+| The second path is one field | The endpoint list grows a quick-add form when an environment signs itself in: method, path, done. It sends once and keeps the answer, refusing to write anything the API would not answer |
+| Run it again | The trigger value and its label had existed, unassigned, since the enum was designed. A finished run's console and every list row now carry the press — same scenario, environment and inputs, the scenario as it is today |
+| Duplicate an environment | Settings, default headers and the sign-in configuration travel; the secrets are decrypted and **sealed afresh**, because a row copy would reuse an AES-GCM nonce, which the entity documents as forbidden |
+| Copy as cURL | The request lab's merged definition, auth-derived header included, quoted for a POSIX shell |
+| A status badge | One word about the newest run as an anonymous SVG. The token is 256 random bits stored hashed and shown once; the image carries the project's name and the word, and nothing else |
+| Status codes are compared | They were recorded and never checked, so a 500 whose body hash-matched the approved one **passed**. Now a changed status is a finding — which is also why negative tests only half-worked before |
+| Endpoints have a time budget | One optional field. A correct answer over it is «slow»: its own counter, never folded into passed |
+| Negative tests are one press | `Bare` on a request means «no environment sign-in, no default headers», gated in the one function all five senders share. Two offers on the endpoint page prove the refusal happens before recording it, and refuse to make one when the API lets the call through |
+| Failures find somebody | One table, three outlets: a bell that needs no new JavaScript, email to whoever is on the team, and a webhook signed with an HMAC the receiver can verify. Written at four seams, each riding the same save as the failure it describes |
+| The checklist is the journey the product has | Connect an API, keep an answer, see it run — the steps were written before the connect flow existed. Still no dismiss button; it still goes away on its own |
+| One hint, never a list | After the checklist: tests nobody schedules, then schedules nobody would hear about failing. Each vanishes when its state changes |
+| A health sparkline | The last twenty tests as twenty bars, in the same cell as the last result. Server-rendered SVG; flipped in Persian so the newest is at the end the eye finishes on |
+| A shareable result | A run's summary at a token-bearing address, for somebody without an account. Not the log, not the payloads, and **not** the graph or the typed inputs — both documented as unredacted |
+| Contracts ride along | The OpenAPI import keeps the success schema instead of discarding it, `$ref`s resolved inline. A comparison rule cannot silence a broken promise |
+| Tests | 729 passing — 515 unit, 214 integration, 43 component; 133 accessibility checks. Acceptance: 20 of 20. New `e2e/notify-check.ts` breaks a run in a browser and watches the bell fill and a signed payload reach a receiver |
+
+### What building it found
+
+**Every custom header on a request with a body went out twice.** `BuildMessage` added each header to
+the message and then, when there was content, to the content as well — so a receiver reading
+`X-Api-Key` saw `value,value`. Found because a webhook signature arrived doubled and would not
+verify; fixed at the seam, where content headers are now the fallback rather than a second copy.
+
+**`TestRun.Outcome` was the one failure sentence that skipped redaction.** The identical text written
+to `NodeRun.FailureMessage` was masked and the copy on the run row was not — while being served by
+the CI API and the JUnit report. It is now redacted at the source, with a test that fails when the
+fix is reverted.
+
+**An OpenAPI import produced endpoints that could not be tested.** The import stores `/records/{id}`
+verbatim, which is right — the path belongs to the endpoint and the host to the environment — but
+neither the compare nor the sweep joined the two. Both now use the same `Combine` the connect flow
+uses, which returns an absolute URL untouched.
+
+**`IViewLocalizer` formats when it is written, not when it is read.** `LocalizedHtmlString.Value`
+hands back the template with `{0}` still in it, so an `aria-label` built that way said «{0} of the
+last {1} tests passed» out loud. The sparkline partial takes `IStringLocalizer`, which formats
+eagerly, and says why.
+
+**Deleting the database did not delete the database.** Every «fresh seed» in this session removed a
+file that was not there: `App_Data` lives under `bin`. It surfaced as an import that had nothing to
+add and looked briefly like a regression — the lesson being that a verification which cannot fail is
+not a verification.
+
+---
+
 ## Backlog
 
 Everything found and deliberately not done. None of it blocks using the product; each entry says why
