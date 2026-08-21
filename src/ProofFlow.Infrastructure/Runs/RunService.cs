@@ -279,7 +279,10 @@ public sealed class RunService(
         run.StepsFailed = totals.StepsFailed;
         run.AssertionsPassed = totals.AssertionsPassed;
         run.AssertionsFailed = totals.AssertionsFailed;
-        run.Outcome = totals.Outcome;
+        // Through the same scope as every other recorded string. A failure sentence is built from
+        // what the step was doing — «expected 200 from https://api/x?key=hunter2, got 500» — and
+        // this row is read by the CI API, the JUnit report and anybody holding a share link.
+        run.Outcome = recorder.Redact(totals.Outcome);
 
         if (recorder.Dropped > 0)
         {

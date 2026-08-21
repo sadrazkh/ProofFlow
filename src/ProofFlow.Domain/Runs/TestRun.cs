@@ -94,6 +94,18 @@ public class TestRun : Entity, IWorkspaceOwned
     public bool PayloadsCleared { get; set; }
 
     /// <summary>
+    /// SHA-256 of this run's share token, when one has been minted. Null means not shared.
+    ///
+    /// The token itself is shown once and never stored — the <c>ApiKey</c> and badge rule. What the
+    /// link opens is the summary only: statuses, timings and the outcome sentence. Not the log, not
+    /// the payloads, and not the graph or the typed inputs, both of which are documented as
+    /// unredacted; that boundary is what makes the page safe to hand to somebody without an account.
+    /// </summary>
+    public string? ShareHash { get; set; }
+
+    public DateTimeOffset? SharedAt { get; set; }
+
+    /// <summary>
     /// The runner this run is waiting for, or null when it runs here.
     ///
     /// Copied from the environment when the run is queued rather than read through it later: an

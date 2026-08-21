@@ -328,7 +328,9 @@
       "scenario.published": "published a scenario",
       "request.token": "asked for an access token",
       "baseline.requestChanged": "changed what an endpoint sends",
-      "baseline.inputsChanged": "changed the inputs an endpoint is checked against"
+      "baseline.inputsChanged": "changed the inputs an endpoint is checked against",
+      "run.shared": "shared a run",
+      "run.unshared": "stopped sharing a run"
     },
     "filter.actor": "Person",
     "filter.action": "Kind",
@@ -1394,7 +1396,8 @@
     "column.took": "Took",
     "column.started": "Started",
     "column.trigger": "Started by",
-    "timeline.show": "Show {0} in the log"
+    "timeline.show": "Show {0} in the log",
+    "column.step": "Step"
   },
   "matrix": {
     "subtitle": "The same tests, at the same moment, in more than one place.",
@@ -1949,5 +1952,15 @@
     "result.unchecked": "not checked",
     "noAnswer": "no answer yet",
     "recent.summary": "{0} of the last {1} tests passed"
+  },
+  "share": {
+    "action": "Share",
+    "title": "Share this result?",
+    "body": "Anyone with the link can see this run’s verdict, its steps and how long they took — without an account. Not the log, not the responses, not the test itself. You can take the link back at any time.",
+    "confirm": "Make a link",
+    "made": "The link is copied. It is shown below until you leave this page.",
+    "revoke": "Stop sharing",
+    "revoked": "The link no longer opens anything.",
+    "what": "Verdict, steps and timings. No log, no responses."
   }
 }

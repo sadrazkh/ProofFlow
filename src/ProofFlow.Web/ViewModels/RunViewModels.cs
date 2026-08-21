@@ -110,3 +110,25 @@ public sealed record RunEventRow(
     string? NodeName,
     DateTimeOffset At,
     string? DataJson);
+
+/// <summary>
+/// A run's result as somebody without an account sees it.
+///
+/// Every field here has been through the redaction scope. What is not here is the point: no log,
+/// no payloads, no graph and no inputs.
+/// </summary>
+public sealed record SharedRunViewModel
+{
+    public required string ProjectName { get; init; }
+    public required string ScenarioName { get; init; }
+    public string? EnvironmentName { get; init; }
+    public required RunStatus Status { get; init; }
+    public string? Outcome { get; init; }
+    public DateTimeOffset? StartedAt { get; init; }
+    public double DurationMs { get; init; }
+    public int AssertionsPassed { get; init; }
+    public int AssertionsFailed { get; init; }
+    public required IReadOnlyList<SharedStep> Steps { get; init; }
+}
+
+public sealed record SharedStep(string? Name, string Status, double DurationMs, int Iteration);

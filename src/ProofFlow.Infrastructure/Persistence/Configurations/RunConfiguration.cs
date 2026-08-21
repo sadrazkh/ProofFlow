@@ -10,6 +10,10 @@ public sealed class TestRunConfiguration : IEntityTypeConfiguration<TestRun>
     {
         builder.ToTable("TestRuns");
         builder.Property(r => r.Outcome).HasMaxLength(2000);
+        builder.Property(r => r.ShareHash).HasMaxLength(64);
+
+        // The anonymous share page looks a run up by nothing else.
+        builder.HasIndex(r => r.ShareHash);
 
         // The list every project page opens with: this project's runs, newest first.
         builder.HasIndex(r => new { r.ProjectId, r.CreatedAt });

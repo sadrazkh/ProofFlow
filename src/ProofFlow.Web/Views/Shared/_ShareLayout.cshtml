@@ -1,0 +1,45 @@
+@using System.Globalization
+@inject ViteManifest Vite
+@{
+    var culture = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
+    var isRtl = culture == "fa";
+    var (_, styles) = Vite.Resolve("Scripts/main.ts");
+}
+@*
+    A page for somebody who was handed a link.
+
+    No sidebar, no search, no bell, and no script bundle — there is nothing on this page to make
+    interactive, and a reader without an account should not be asked to download an application to
+    look at one result. The theme still follows their system, because respecting that costs eight
+    lines and reading white-on-white at midnight does not.
+*@
+<!DOCTYPE html>
+<html lang="@culture" dir="@(isRtl ? "rtl" : "ltr")">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>@(ViewData["Title"] is string t && t.Length > 0 ? $"{t} · ProofFlow" : "ProofFlow")</title>
+    <link rel="icon" href="~/favicon.svg" type="image/svg+xml" />
+    @foreach (var href in styles)
+    {
+        <link rel="stylesheet" href="@href" />
+    }
+    <script>
+        (function () {
+            if (matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+</head>
+<body class="share-body">
+<main class="share-page">
+    @RenderBody()
+
+    <footer class="share-foot">
+        <a href="/">ProofFlow</a>
+    </footer>
+</main>
+</body>
+</html>

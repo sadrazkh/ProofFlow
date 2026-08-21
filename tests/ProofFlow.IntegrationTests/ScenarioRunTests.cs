@@ -370,6 +370,39 @@ public sealed class ScenarioRunTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_secret_in_a_failure_message_does_not_reach_the_runs_own_outcome()
+    {
+        // The one failure sentence that never passed through the redaction scope. The identical
+        // text written to NodeRun.FailureMessage was masked and the copy on the run row was not —
+        // while being served by the CI API, the JUnit report, and now a share link.
+        await using var context = Db();
+
+        var graph = new GraphDto
+        {
+            Nodes =
+            [
+                Node("start", "core.start"),
+
+                // A reason a person wrote, referencing a secret. Contrived on purpose: what
+                // matters is that whatever reaches the sentence goes through the same scope as
+                // everything else, and asking for a known value is the shortest way to check.
+                Node("stop", "core.abort", ("reason", "the gateway rejected {{secrets.apiToken}}")),
+            ],
+            Edges = [Edge("start", "stop")],
+        };
+
+        var scenario = await ScenarioAsync(context, "leaky failure", graph);
+        var run = await RunAsync(context, scenario);
+
+        run.Outcome.Should().NotBeNullOrEmpty("there should be a sentence to check");
+        run.Outcome.Should().Contain("the gateway rejected", "the reason still reaches the reader");
+
+        run.Outcome.Should().NotContain(TokenValue,
+            "the run's own outcome is read by the CI API, the JUnit report and any share link");
+        run.Outcome.Should().Contain(Redactor.Mask, "and it says plainly that something was hidden");
+    }
+
+    [Fact]
     public async Task A_graph_that_cannot_be_read_errors_rather_than_hanging()
     {
         await using var context = Db();

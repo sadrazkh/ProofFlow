@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -31,6 +33,8 @@ public sealed class RunsController(
     IRunQueue queue,
     ICurrentUser me,
     IAuditLog audit,
+    IClock clock,
+    PublicLinks links,
     IStringLocalizer localizer) : Controller
 {
     /// <summary>How many runs the history shows at once.</summary>
@@ -307,6 +311,52 @@ public sealed class RunsController(
 
         var url = $"/projects/{projectId}/runs/{next.Id}";
         return wantsJson ? Json(new { url }) : Redirect(url);
+    }
+
+    /// <summary>
+    /// Mints a link somebody without an account can open, or takes it back.
+    ///
+    /// What the link opens is the summary — statuses, timings, the outcome sentence — and not the
+    /// log, the payloads, the graph or the typed inputs. That boundary is the feature: a result
+    /// worth showing a manager should not require giving them a seat, and should not hand them the
+    /// response bodies either.
+    /// </summary>
+    [HttpPost("{id:guid}/share")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RunTest)]
+    public async Task<IActionResult> Share(
+        Guid projectId, Guid id, bool revoke, CancellationToken cancellationToken)
+    {
+        var run = await db.Runs
+            .FirstOrDefaultAsync(candidate =>
+                candidate.Id == id && candidate.ProjectId == projectId, cancellationToken);
+
+        if (run is null) return NotFound();
+
+        if (revoke)
+        {
+            run.ShareHash = null;
+            run.SharedAt = null;
+            await db.SaveChangesAsync(cancellationToken);
+
+            await audit.RecordAsync(
+                new AuditEntry("run.unshared", projectId, "TestRun", id), cancellationToken);
+
+            return Json(new { shared = false });
+        }
+
+        // 256 random bits, base64url because it lives in a URL, stored hashed and returned once.
+        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+        run.ShareHash = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
+        run.SharedAt = clock.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(
+            new AuditEntry("run.shared", projectId, "TestRun", id), cancellationToken);
+
+        return Json(new { shared = true, url = links.Absolute($"/share/runs/{token}") });
     }
 
     /// <summary>

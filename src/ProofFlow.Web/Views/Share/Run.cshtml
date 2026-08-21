@@ -1,0 +1,113 @@
+@using ProofFlow.Domain.Runs
+@model SharedRunViewModel
+@{
+    Layout = "_ShareLayout";
+    ViewData["Title"] = Model.ScenarioName;
+
+    var tone = Verdicts.Tone(Model.Status);
+}
+
+<header class="share-head">
+    <p class="share-project" dir="auto">@Model.ProjectName</p>
+    <h1 class="page-title" dir="auto">@Model.ScenarioName</h1>
+
+    <div class="row wrap" style="gap: var(--space-3);">
+        <span class="badge badge-@tone status-@tone">
+            <span class="status-dot" aria-hidden="true"></span>
+            @T[$"run.status.{Model.Status.ToString().ToLowerInvariant()}"]
+        </span>
+
+        @if (Model.EnvironmentName is { } environment)
+        {
+            <span class="text-sm subtle" dir="auto">@environment</span>
+        }
+
+        @if (Model.StartedAt is { } started)
+        {
+            <span class="text-sm subtle">
+                <partial name="Pieces/_Timestamp" model="@(new TimestampView(started))" />
+            </span>
+        }
+    </div>
+</header>
+
+@if (Model.Outcome is { Length: > 0 } outcome)
+{
+    <p class="run-outcome @(Model.Status is RunStatus.Failed or RunStatus.Errored ? "is-bad" : "")"
+       dir="auto">@outcome</p>
+}
+
+<dl class="run-figures share-figures">
+    <div>
+        <dt>@T["run.steps"]</dt>
+        <dd class="tabular" dir="ltr">@Model.Steps.Count</dd>
+    </div>
+    <div>
+        <dt>@T["run.checksPassed"]</dt>
+        <dd class="tabular" dir="ltr">@Model.AssertionsPassed</dd>
+    </div>
+    <div class="@(Model.AssertionsFailed > 0 ? "is-bad" : "")">
+        <dt>@T["run.checksFailed"]</dt>
+        <dd class="tabular" dir="ltr">@Model.AssertionsFailed</dd>
+    </div>
+    <div>
+        <dt>@T["run.elapsed"]</dt>
+        <dd class="tabular" dir="ltr">
+            @(Model.DurationMs >= 1000 ? $"{Model.DurationMs / 1000:0.0}s" : $"{Math.Round(Model.DurationMs)}ms")
+        </dd>
+    </div>
+</dl>
+
+@*
+    Each step's verdict and how long it took, and nothing else. Not what it sent, not what came
+    back — this page is handed to people, and a response body is the one thing on a run that is
+    somebody else's data.
+*@
+<div class="card">
+    <div class="table-wrap">
+        <table class="table">
+            <caption class="sr-only">@T["run.steps"]</caption>
+            <thead>
+            <tr>
+                <th>@T["run.column.step"]</th>
+                <th>@T["run.column.verdict"]</th>
+                <th>@T["run.column.took"]</th>
+            </tr>
+            </thead>
+            <tbody>
+            @foreach (var step in Model.Steps)
+            {
+                var stepTone = step.Status switch
+                {
+                    "Passed" => "pass",
+                    "Failed" => "fail",
+                    "Errored" => "fail",
+                    "Skipped" => "idle",
+                    _ => "idle",
+                };
+
+                <tr>
+                    <td dir="auto">
+                        @step.Name
+                        @if (step.Iteration > 0)
+                        {
+                            <span class="subtle text-xs">· @(step.Iteration + 1)</span>
+                        }
+                    </td>
+                    <td>
+                        @* The canvas's own vocabulary for a node's state — the same words the
+                           console shows, so a shared report and the page it came from agree. *@
+                        <span class="status status-@stepTone">
+                            <span class="status-dot" aria-hidden="true"></span>
+                            @T[$"canvas.state.{step.Status.ToLowerInvariant()}"]
+                        </span>
+                    </td>
+                    <td class="tabular" dir="ltr">
+                        @(step.DurationMs >= 1000 ? $"{step.DurationMs / 1000:0.0}s" : $"{Math.Round(step.DurationMs)}ms")
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1478,6 +1478,13 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<Guid>("ScenarioVersionId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ShareHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SharedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("StartNodeId")
                         .HasColumnType("TEXT");
 
@@ -1513,6 +1520,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.HasIndex("DataSetVersionId");
 
                     b.HasIndex("EnvironmentId");
+
+                    b.HasIndex("ShareHash");
 
                     b.HasIndex("ProjectId", "CreatedAt");
 

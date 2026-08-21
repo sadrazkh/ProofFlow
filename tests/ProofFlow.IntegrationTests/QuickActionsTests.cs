@@ -1,4 +1,6 @@
 using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using FluentAssertions;
 using Microsoft.AspNetCore.Identity;
@@ -13,6 +15,7 @@ using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Runs;
+using ProofFlow.Domain.Scenarios;
 using ProofFlow.Domain.Workspaces;
 using ProofFlow.Infrastructure.Identity;
 using ProofFlow.Infrastructure.Persistence;
@@ -344,6 +347,109 @@ public sealed class QuickActionsTests(ProofFlowApplication app) : IClassFixture<
         // Colour is never the only carrier. The sentence is what a screen reader is handed.
         page.Should().MatchRegex(@"aria-label=""[^""]*2[^""]*3[^""]*""",
             "the label should say two of the last three passed");
+    }
+
+    [Fact]
+    public async Task A_shared_run_shows_the_verdict_to_a_stranger_and_nothing_else()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        Guid runId;
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+            var workspaceId = await db.Projects.IgnoreQueryFilters()
+                .Where(p => p.Id == projectId).Select(p => p.WorkspaceId).FirstAsync();
+
+            var scenario = new TestScenario
+            {
+                WorkspaceId = workspaceId,
+                ProjectId = projectId,
+                Name = "Checkout end to end",
+                CreatedByUserId = Guid.CreateVersion7(),
+            };
+            db.Scenarios.Add(scenario);
+
+            var run = new TestRun
+            {
+                WorkspaceId = workspaceId,
+                ProjectId = projectId,
+                ScenarioId = scenario.Id,
+                Status = RunStatus.Failed,
+                Outcome = "The third step expected 200 and got 500.",
+                StartedAt = DateTimeOffset.UtcNow.AddMinutes(-2),
+                FinishedAt = DateTimeOffset.UtcNow,
+                DurationMs = 1234,
+                AssertionsPassed = 4,
+                AssertionsFailed = 1,
+
+                // The two things a share link must never expose, both documented as unredacted.
+                DefinitionJson = """{"nodes":[{"id":"a","name":"Sign in","key":"http.request"}]}""",
+                InputsJson = """{"apiPassword":"hunter2-in-the-inputs"}""",
+            };
+            db.Runs.Add(run);
+
+            db.NodeRuns.Add(new NodeRun
+            {
+                WorkspaceId = workspaceId,
+                TestRunId = run.Id,
+                NodeId = "a",
+                NodeName = "Sign in",
+                NodeKey = "http.request",
+                Status = NodeRunStatus.Passed,
+                DurationMs = 42,
+                SortOrder = 0,
+            });
+
+            await db.SaveChangesAsync();
+            runId = run.Id;
+        }
+
+        var token = await AntiforgeryAsync(client, $"/projects/{projectId}/runs");
+
+        var minted = await client.PostAsync($"/projects/{projectId}/runs/{runId}/share?revoke=false",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+            }));
+
+        minted.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var url = (await minted.Content.ReadFromJsonAsync<JsonElement>())
+            .GetProperty("url").GetString()!;
+
+        var share = Regex.Match(url, "/share/runs/([A-Za-z0-9_-]{40,50})").Groups[1].Value;
+        share.Should().NotBeEmpty("minting should hand back a usable address");
+
+        // A client with no cookies at all — the whole point of the feature.
+        var stranger = app.CreateClient(NoRedirect);
+        var response = await stranger.GetAsync($"/share/runs/{share}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var page = await response.Content.ReadAsStringAsync();
+
+        page.Should().Contain("Checkout end to end", "the scenario is what the reader came for");
+        page.Should().Contain("Sign in", "each step's name and verdict");
+        page.Should().Contain("The third step expected 200 and got 500.");
+
+        // The boundary. These are on the run row and must not travel with the link.
+        page.Should().NotContain("hunter2-in-the-inputs", "typed inputs are unredacted by design");
+        page.Should().NotContain("http.request", "the graph snapshot is not part of a result");
+
+        // And it is not something a crawler should file away.
+        response.Headers.GetValues("X-Robots-Tag").Should().Contain(value => value.Contains("noindex"));
+
+        var revoked = await client.PostAsync($"/projects/{projectId}/runs/{runId}/share?revoke=true",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+            }));
+
+        revoked.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        (await stranger.GetAsync($"/share/runs/{share}")).StatusCode
+            .Should().Be(HttpStatusCode.NotFound, "taking the link back has to actually take it back");
     }
 
     // ---- scaffolding ----------------------------------------------------------------------------

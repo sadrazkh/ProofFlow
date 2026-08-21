@@ -440,3 +440,52 @@
 */
 .run-partial { gap: var(--space-1); white-space: nowrap; }
 .run-partial svg { inline-size: 12px; block-size: 12px; }
+
+/* ---- a shared result --------------------------------------------------------------------------*/
+
+/*
+  The minted address, on the console.
+
+  It exists because minting shows the token exactly once: the clipboard write can fail silently in
+  a browser that has not granted permission, and a link nobody kept is a link that has to be
+  revoked and made again.
+*/
+.run-shared {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.run-shared code { font-size: var(--text-xs); overflow-wrap: anywhere; }
+.run-shared > svg { flex: none; color: var(--accent-ink); }
+
+/* ---- the page somebody without an account opens ---------------------------------------------- */
+
+.share-body { background: var(--canvas); }
+
+.share-page {
+  max-inline-size: 820px;
+  margin-inline: auto;
+  padding: var(--space-8) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.share-head { display: flex; flex-direction: column; gap: var(--space-3); }
+.share-project { margin: 0; font-size: var(--text-xs); color: var(--ink-subtle); }
+
+/* Wraps rather than scrolls: four figures on a phone is two rows, not a sideways drag. */
+.share-figures { flex-wrap: wrap; }
+
+.share-foot {
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--line);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}

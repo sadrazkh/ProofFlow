@@ -284,6 +284,56 @@ async function cancel(): Promise<void> {
 }
 
 /**
+ * A link somebody without an account can open.
+ *
+ * Minting is a deliberate act, so the first press asks — what the link shows is a summary, but it
+ * is still this project's name and this test's verdict leaving the building. A second press takes
+ * it back, and the old address then answers nothing.
+ */
+const shareUrl = ref<string | null>(null);
+const sharing = ref(false);
+
+async function share(): Promise<void> {
+  if (sharing.value) return;
+
+  if (shareUrl.value === null) {
+    const sure = await confirmAction({
+      title: t('share.title'),
+      body: t('share.body'),
+      confirm: t('share.confirm'),
+
+      // Making a link is not a destructive act. The red button is reserved for the presses that
+      // take something away — including, one press later, this one.
+      tone: 'primary',
+    });
+
+    if (!sure) return;
+  }
+
+  sharing.value = true;
+
+  try {
+    const revoke = shareUrl.value !== null;
+
+    const answer = await api.post<{ shared: boolean; url?: string }>(
+      `/projects/${props.projectId}/runs/${props.runId}/share?revoke=${revoke}`, {});
+
+    if (answer.shared && answer.url) {
+      shareUrl.value = answer.url;
+      await navigator.clipboard.writeText(answer.url).catch(() => undefined);
+      toast(t('share.made'), 'success');
+    } else {
+      shareUrl.value = null;
+      toast(t('share.revoked'), 'info');
+    }
+  } catch (error) {
+    toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+  } finally {
+    sharing.value = false;
+  }
+}
+
+/**
  * The same run, started again — same environment, same inputs, the scenario as it is today.
  *
  * No confirmation, deliberately: it does exactly what the button that started this run did, and
@@ -374,7 +424,26 @@ async function again(): Promise<void> {
               :class="rerunning ? 'is-spinning' : ''" />
         {{ t('run.again') }}
       </button>
+
+      <button
+        v-if="canCancel && !running"
+        type="button"
+        class="btn btn-ghost btn-sm"
+        :disabled="sharing"
+        @click="share"
+      >
+        <Icon :name="shareUrl ? 'circle-slash' : 'external-link'" />
+        {{ shareUrl ? t('share.revoke') : t('share.action') }}
+      </button>
     </header>
+
+    <!-- Shown until the page is left: the address is minted once and this is the only place it
+         appears, so a copy that silently failed must not be the only record of it. -->
+    <p v-if="shareUrl" class="run-shared" role="status">
+      <Icon name="external-link" :size="15" />
+      <code dir="ltr">{{ shareUrl }}</code>
+      <span class="text-xs subtle">{{ t('share.what') }}</span>
+    </p>
 
     <p v-if="outcome" class="run-outcome" :class="{ 'is-bad': status === 'Failed' || status === 'Errored' }"
        dir="auto" role="status">

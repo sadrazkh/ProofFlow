@@ -219,6 +219,15 @@ public sealed class RunRecorder(
     /// step that passed.
     /// </summary>
     private string? Hide(string? text) => text is null ? null : redaction.Apply(text);
+
+    /// <summary>
+    /// The same treatment every other recorded string gets, for callers outside this class.
+    ///
+    /// <see cref="TestRun.Outcome"/> was the one failure sentence that never passed through here:
+    /// the identical text written to <c>NodeRun.FailureMessage</c> was redacted, and the copy on
+    /// the run row was not — while being served by the CI API, the JUnit report and the console.
+    /// </summary>
+    public string? Redact(string? text) => Hide(text);
 }
 
 /// <summary>
