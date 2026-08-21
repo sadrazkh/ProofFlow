@@ -25,6 +25,15 @@ public sealed record EndpointListViewModel
 public sealed record QuickAddEnvironment(Guid Id, string Name);
 
 /// <summary>
+/// One endpoint's recent history: a tone per test, oldest first, and how many of them passed.
+///
+/// The partial turns the count into the sentence a screen reader is handed. The bars are the
+/// decoration over that sentence, never the other way round — «which one is misbehaving» has to be
+/// answerable without seeing colour.
+/// </summary>
+public sealed record SparklineView(IReadOnlyList<string> Bars, int Passing);
+
+/// <summary>
 /// One row of the list.
 ///
 /// Method and address are here rather than only the name because the name is whatever somebody
@@ -43,7 +52,11 @@ public sealed record EndpointSummary(
     int VersionCount,
     BaselineStatus LatestStatus,
     EndpointLastResult? Last,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt)
+{
+    /// <summary>The recent tests, oldest first. Empty when this endpoint has never been tested.</summary>
+    public IReadOnlyList<string> Recent { get; init; } = [];
+}
 
 /// <summary>
 /// How the last test went, as three numbers.

@@ -69,6 +69,9 @@ public sealed class EndpointsController(
         },
     };
 
+    /// <summary>How many recent tests a row's sparkline shows. Enough to see a pattern.</summary>
+    public const int SparkleLength = 20;
+
     // ---- the list ---------------------------------------------------------------------------
 
     [HttpGet("")]
@@ -120,6 +123,33 @@ public sealed class EndpointsController(
             })
             .ToListAsync(cancellationToken);
 
+        // The recent history behind each row's sparkline. One query for the whole page rather than
+        // a correlated Take per row — EF translates that badly across twenty-five rows, and this
+        // is a list that is thousands long after an import.
+        var onPage = rows.Select(row => row.Id).ToList();
+
+        var history = (await db.CaptureSessions
+                .Where(s => onPage.Contains(s.BaselineId))
+                .OrderByDescending(s => s.StartedAt)
+                .Select(s => new
+                {
+                    s.BaselineId, s.StartedAt, s.TotalRows,
+                    s.Differing, s.Failed, s.Unmatched, s.Slow,
+                })
+                .Take(onPage.Count * SparkleLength)
+                .ToListAsync(cancellationToken))
+            .GroupBy(s => s.BaselineId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Take(SparkleLength)
+                    .Reverse()
+                    .Select(s => s.Failed > 0 ? "fail"
+                        : s.Differing > 0 || s.Slow > 0 ? "warn"
+                        : s.Unmatched > 0 || s.TotalRows == 0 ? "idle"
+                        : "pass")
+                    .ToList() as IReadOnlyList<string>);
+
         Breadcrumbs(project.Name, projectId, null);
         ViewData["Title"] = localizer["nav.endpoints"].Value;
 
@@ -159,7 +189,10 @@ public sealed class EndpointsController(
                         : new EndpointLastResult(
                             row.Last.TotalRows, row.Last.Differing, row.Last.Failed, row.Last.Unmatched,
                             row.Last.Slow, row.Last.StartedAt),
-                    row.UpdatedAt);
+                    row.UpdatedAt)
+                {
+                    Recent = history.GetValueOrDefault(row.Id, []),
+                };
             })],
             Page = new Paging
             {

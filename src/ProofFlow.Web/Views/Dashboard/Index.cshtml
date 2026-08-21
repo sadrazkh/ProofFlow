@@ -49,10 +49,10 @@ else
             var steps = new (bool Done, string Key, string? Href)[]
                 {
                     (true, "project", null),
-                    (Model.HasEnvironment, "environment",
-                        Model.FirstProjectId is { } p1 ? $"/projects/{p1}/environments" : null),
-                    (Model.HasScenario, "scenario",
-                        Model.FirstProjectId is { } p2 ? $"/projects/{p2}/scenarios/new" : null),
+                    (Model.HasEnvironment, "connect",
+                        Model.FirstProjectId is { } p1 ? $"/projects/{p1}/connect" : null),
+                    (Model.HasEndpoint, "record",
+                        Model.FirstProjectId is { } p2 ? $"/projects/{p2}/endpoints" : null),
                     (Model.HasRun, "run",
                         Model.FirstProjectId is { } p3 ? $"/projects/{p3}/scenarios" : null),
                 };
@@ -85,6 +85,22 @@ else
                         </li>
                     }
                 </ol>
+            </section>
+        }
+        else if (Model.Hint is { } hint)
+        {
+            @*
+                One nudge, never two, and it disappears the moment its state changes. The checklist
+                is gone by now — this is not a second one, which is why only the first matching
+                hint is ever built.
+            *@
+            <section class="card card-pad row wrap dashboard-hint" style="gap: var(--space-3);">
+                <i data-lucide="lightbulb" aria-hidden="true"></i>
+                <span class="grow" dir="auto">@T[$"dashboard.hint.{hint}"]</span>
+                @if (Model.HintHref is { } href)
+                {
+                    <a class="btn btn-secondary btn-sm" href="@href">@T[$"dashboard.hint.{hint}.action"]</a>
+                }
             </section>
         }
 

@@ -7,6 +7,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Domain.Authorization;
+using ProofFlow.Domain.Baselines;
+using ProofFlow.Domain.Capture;
+using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
 using ProofFlow.Domain.Runs;
@@ -224,6 +227,123 @@ public sealed class QuickActionsTests(ProofFlowApplication app) : IClassFixture<
 
         (await anonymous.GetAsync($"/badge/{badge.Groups[1].Value}.svg"))
             .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task The_checklist_ticks_follow_what_the_workspace_actually_contains()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        // A fresh workspace would show all four steps, but this class shares one — so the
+        // assertion is on the step that this test itself changes.
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+
+            // Wind the shared workspace back to «nothing connected yet».
+            await db.Environments.IgnoreQueryFilters().ExecuteDeleteAsync();
+            await db.Runs.IgnoreQueryFilters().ExecuteDeleteAsync();
+        }
+
+        var before = await client.GetStringAsync("/");
+        before.Should().Contain("getting-started", "with no run yet, the card is shown");
+        before.Should().Contain("/connect", "the next step should point at the connect flow");
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+            var workspaceId = await db.Projects.IgnoreQueryFilters()
+                .Where(p => p.Id == projectId).Select(p => p.WorkspaceId).FirstAsync();
+
+            db.Environments.Add(new ProjectEnvironment
+            {
+                WorkspaceId = workspaceId,
+                ProjectId = projectId,
+                Name = "Connected",
+                Slug = "connected",
+                BaseUrl = "https://api.example.test",
+            });
+            await db.SaveChangesAsync();
+        }
+
+        // The tick is the data: no per-step state to write, so making the thing is the only way
+        // to complete the step.
+        var after = await client.GetStringAsync("/");
+        after.Should().Contain("getting-started");
+        after.Should().Contain("is-done", "the connect step should now be ticked");
+    }
+
+    [Fact]
+    public async Task The_sparkline_says_in_words_what_its_bars_say_in_colour()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+            var workspaceId = await db.Projects.IgnoreQueryFilters()
+                .Where(p => p.Id == projectId).Select(p => p.WorkspaceId).FirstAsync();
+
+            var endpoint = new Baseline
+            {
+                WorkspaceId = workspaceId,
+                ProjectId = projectId,
+                Name = "GET /history",
+                CreatedByUserId = Guid.CreateVersion7(),
+            };
+            db.Baselines.Add(endpoint);
+
+            // A real set and version: capture sessions carry a foreign key to one, and inventing
+            // an id would be a test passing over a schema that would refuse it in production.
+            var set = new DataSet
+            {
+                WorkspaceId = workspaceId,
+                ProjectId = projectId,
+                Name = $"history {Guid.CreateVersion7()}",
+                KeyColumn = "key",
+                CreatedByUserId = Guid.CreateVersion7(),
+            };
+            db.DataSets.Add(set);
+
+            var version = new DataSetVersion
+            {
+                WorkspaceId = workspaceId,
+                DataSetId = set.Id,
+                Number = 1,
+                ColumnsJson = """["key"]""",
+                RowCount = 4,
+                CreatedByUserId = Guid.CreateVersion7(),
+            };
+            db.DataSetVersions.Add(version);
+
+            // Three tests: two clean, one with a difference.
+            for (var at = 0; at < 3; at++)
+            {
+                db.CaptureSessions.Add(new CaptureSession
+                {
+                    WorkspaceId = workspaceId,
+                    ProjectId = projectId,
+                    BaselineId = endpoint.Id,
+                    DataSetVersionId = version.Id,
+                    TotalRows = 4,
+                    Completed = 4,
+                    Differing = at == 1 ? 1 : 0,
+                    Status = CaptureSessionStatus.Completed,
+                    StartedAt = DateTimeOffset.UtcNow.AddMinutes(-at),
+                });
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        var page = await client.GetStringAsync($"/projects/{projectId}/endpoints");
+
+        page.Should().Contain("sparkline-bar is-pass");
+        page.Should().Contain("sparkline-bar is-warn", "the middle test found a difference");
+
+        // Colour is never the only carrier. The sentence is what a screen reader is handed.
+        page.Should().MatchRegex(@"aria-label=""[^""]*2[^""]*3[^""]*""",
+            "the label should say two of the last three passed");
     }
 
     // ---- scaffolding ----------------------------------------------------------------------------

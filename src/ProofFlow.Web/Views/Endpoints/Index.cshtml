@@ -186,6 +186,9 @@ else
                             }
                         </td>
                         <td>
+                            @* The last test and the ones before it, in one cell: they answer the
+                               same question at two timescales, and a column of their own pushed a
+                               table that already scrolls further off the side of the screen. *@
                             @if (endpoint.Last is { } last)
                             {
                                 <partial name="Pieces/_EndpointResult" model="last" />
@@ -193,6 +196,13 @@ else
                             else
                             {
                                 <span class="subtle text-xs">@T["endpoint.neverTested"]</span>
+                            }
+
+                            @if (endpoint.Recent.Count > 1)
+                            {
+                                <partial name="Pieces/_Sparkline"
+                                         model="@(new SparklineView(endpoint.Recent,
+                                             endpoint.Recent.Count(tone => tone == "pass")))" />
                             }
                         </td>
                         <td>

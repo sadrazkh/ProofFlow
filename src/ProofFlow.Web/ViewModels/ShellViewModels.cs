@@ -20,15 +20,30 @@ public sealed record DashboardViewModel
     /// Not a tour and not a dismissible banner: it is four facts read from the database, and it
     /// stops being shown when the last of them is true. A checklist somebody has to close is a
     /// checklist that outlives its usefulness by a year.
+    ///
+    /// The steps are the journey the product actually has now. «Add an environment» was written
+    /// before the connect flow existed, when pointing at an API and getting past its sign-in were
+    /// two separate problems a newcomer had to discover in order.
     /// </summary>
     public bool HasEnvironment { get; init; }
-    public bool HasScenario { get; init; }
+    public bool HasEndpoint { get; init; }
     public bool HasRun { get; init; }
 
     /// <summary>Where the next unfinished step goes, or null when there is nothing left to do.</summary>
     public Guid? FirstProjectId { get; init; }
 
     public bool ShowGettingStarted => !HasRun;
+
+    /// <summary>
+    /// One nudge after the checklist has gone, and only ever one.
+    ///
+    /// The moments that follow a first run are real — tests nobody runs on a schedule, schedules
+    /// nobody hears about — but a second list would be a second thing to out-wait. Null when
+    /// there is nothing worth saying, which is most of the time.
+    /// </summary>
+    public string? Hint { get; init; }
+
+    public string? HintHref { get; init; }
 
     /// <summary>The last few runs, across every project in the workspace.</summary>
     public IReadOnlyList<RecentRunRow> RecentRuns { get; init; } = [];

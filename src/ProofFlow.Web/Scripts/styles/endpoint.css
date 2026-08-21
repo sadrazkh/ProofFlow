@@ -117,3 +117,26 @@
      controls side by side left the address twelve characters wide. */
   .endpoint-request-form .field.grow { flex-basis: 100%; }
 }
+
+/* ---- the recent-history sparkline ------------------------------------------------------------ */
+
+/*
+  Twenty tests, twenty bars.
+
+  A block rather than a chart: there is no y-axis and no scale, only a verdict per test, and drawing
+  it as varying heights would imply a magnitude nobody measured. Flipped in Persian so the newest
+  test is always at the end of the line the reader's eye finishes on.
+*/
+.sparkline {
+  display: block;
+  margin-block-start: var(--space-2);
+  block-size: 12px;
+  inline-size: auto;
+  max-inline-size: 104px;
+}
+html[dir='rtl'] .sparkline { transform: scaleX(-1); }
+
+.sparkline-bar.is-pass { fill: var(--pass-border); }
+.sparkline-bar.is-warn { fill: var(--warn-border); }
+.sparkline-bar.is-fail { fill: var(--fail-border); }
+.sparkline-bar.is-idle { fill: var(--line-strong); }

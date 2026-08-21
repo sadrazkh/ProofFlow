@@ -83,6 +83,33 @@ public sealed class DashboardController(
                 run.CreatedAt))
             .ToListAsync(cancellationToken);
 
+        // The checklist's four facts. Cheap Any() queries — the ticks are the data, so there is no
+        // per-step state to keep and nothing that can disagree with what the workspace contains.
+        var hasEnvironment = await db.Environments.AnyAsync(cancellationToken);
+        var hasEndpoint = await db.Baselines.AnyAsync(b => b.ApprovedVersionId != null, cancellationToken);
+        var hasRun = await db.Runs.AnyAsync(cancellationToken);
+        var first = projects.FirstOrDefault()?.Id;
+
+        // And, once the checklist has gone, at most one nudge. Ordered by how much the reader is
+        // currently missing out on: tests nobody runs are worth more than tests nobody hears about.
+        string? hint = null;
+        string? hintHref = null;
+
+        if (hasRun && first is { } project)
+        {
+            if (!await db.RunSchedules.AnyAsync(schedule => schedule.Enabled, cancellationToken))
+            {
+                hint = "schedule";
+                hintHref = $"/projects/{project}/schedules";
+            }
+            else if (!await db.Projects.AnyAsync(
+                         p => p.NotifyByEmail || p.WebhookUrl != null, cancellationToken))
+            {
+                hint = "notify";
+                hintHref = $"/projects/{project}/settings";
+            }
+        }
+
         ViewData["Title"] = null;
         // Not "ProofFlow" — the wordmark is already six centimetres away in the sidebar, and a
         // breadcrumb that repeats it tells the reader nothing about where they are.
@@ -101,11 +128,13 @@ public sealed class DashboardController(
             FailingCount = totalRuns - passed,
             AwaitingApproval = awaiting,
 
-            HasEnvironment = await db.Environments.AnyAsync(cancellationToken),
-            HasScenario = await db.Scenarios.AnyAsync(cancellationToken),
-            HasRun = await db.Runs.AnyAsync(cancellationToken),
-            FirstProjectId = projects.FirstOrDefault()?.Id,
+            HasEnvironment = hasEnvironment,
+            HasEndpoint = hasEndpoint,
+            HasRun = hasRun,
+            FirstProjectId = first,
             RecentRuns = recent,
+            Hint = hint,
+            HintHref = hintHref,
         });
     }
 }

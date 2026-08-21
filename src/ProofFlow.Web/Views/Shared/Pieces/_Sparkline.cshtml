@@ -1,0 +1,36 @@
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer Strings
+@model SparklineView
+
+@*
+    The last twenty tests, as twenty bars.
+
+    Server-rendered SVG rather than an island: twenty rects per row is not a component, and a list
+    of twenty-five endpoints would otherwise mount twenty-five Vue apps to draw five hundred
+    rectangles that never change.
+
+    Newest at the reading edge — the end of the line in both directions, because a timeline that
+    runs left-to-right on a right-to-left page reads backwards. One `aria-label` sentence carries
+    the whole thing for a screen reader; the bars themselves are decoration over a fact stated in
+    words, which is the rule everywhere else in this application too.
+
+    `IStringLocalizer` rather than the `@T` this project uses everywhere else: `IViewLocalizer`
+    returns a `LocalizedHtmlString` that substitutes its arguments when it is *written*, so reading
+    `.Value` for an attribute yields the template with «{0}» still in it. Here the sentence has to
+    exist as a string before it can be an attribute.
+*@
+
+@if (Model.Bars.Count > 0)
+{
+    var width = Model.Bars.Count * 5 - 1;
+    var label = Strings["endpoint.recent.summary", Model.Passing, Model.Bars.Count].Value;
+
+    <svg class="sparkline" viewBox="0 0 @width 16" width="@width" height="16"
+         role="img" aria-label="@label" preserveAspectRatio="none">
+        @for (var at = 0; at < Model.Bars.Count; at++)
+        {
+            <rect x="@(at * 5)" y="0" width="4" height="16" rx="1"
+                  class="sparkline-bar is-@Model.Bars[at]"></rect>
+        }
+    </svg>
+}
