@@ -28,4 +28,11 @@ public class ProofFlowUser : IdentityUser<Guid>
     public DateTimeOffset CreatedAt { get; set; }
 
     public DateTimeOffset? LastSignInAt { get; set; }
+
+    /// <summary>
+    /// When this person last opened the bell. Everything newer counts as unseen — per-user read
+    /// state as one timestamp, which is all «is there anything new for me» actually needs, and a
+    /// join table's worth cheaper.
+    /// </summary>
+    public DateTimeOffset? NotificationsSeenAt { get; set; }
 }

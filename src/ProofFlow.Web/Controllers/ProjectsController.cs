@@ -21,6 +21,9 @@ namespace ProofFlow.Web.Controllers;
 public sealed class ProjectsController(
     ProofFlowDbContext db,
     ApiKeyService keys,
+    ISecretCipher cipher,
+    IEmailSender mail,
+    IHttpClientFactory http,
     ICurrentUser me,
     IAuditLog audit,
     IStringLocalizer localizer) : Controller
@@ -153,6 +156,17 @@ public sealed class ProjectsController(
             IssuedSecret = TempData["IssuedKey"] as string,
             IssuedBadge = TempData["IssuedBadge"] as string,
             BadgePreview = project.BadgePreview,
+            NotifyByEmail = project.NotifyByEmail,
+            WebhookUrl = project.WebhookUrl,
+            WebhookAllowPrivate = project.WebhookAllowPrivate,
+            HasWebhookSecret = project.WebhookSecretCipher != null,
+            IssuedWebhookSecret = TempData["IssuedWebhook"] as string,
+            MailConfigured = mail.CanSend,
+            WebhookFailure = await db.Notifications
+                .Where(n => n.ProjectId == projectId && n.WebhookFailure != null && n.WebhookAt == null)
+                .OrderByDescending(n => n.CreatedAt)
+                .Select(n => n.WebhookFailure)
+                .FirstOrDefaultAsync(cancellationToken),
             Keys = await db.ApiKeys
                 .Where(key => key.ProjectId == projectId || key.ProjectId == null)
                 .OrderByDescending(key => key.CreatedAt)
@@ -276,6 +290,73 @@ public sealed class ProjectsController(
         return RedirectToAction(nameof(Settings), new { projectId });
     }
 
+    /// <summary>
+    /// Mints — or replaces — the webhook signing secret, and shows it once.
+    ///
+    /// Sealed rather than hashed, because signing needs the value back on every delivery; shown
+    /// once anyway, because the receiver is the only other party who should ever hold it.
+    /// </summary>
+    [HttpPost("{projectId:guid}/settings/webhook-secret")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageProject)]
+    public async Task<IActionResult> IssueWebhookSecret(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null) return NotFound();
+
+        var secret = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+
+        var boxed = cipher.Seal(secret);
+        project.WebhookSecretCipher = boxed.Ciphertext;
+        project.WebhookSecretNonce = boxed.Nonce;
+        project.WebhookSecretTag = boxed.Tag;
+        project.WebhookSecretKeyVersion = boxed.KeyVersion;
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "webhook.secretIssued", projectId, nameof(Project), projectId, project.Name), cancellationToken);
+
+        TempData["IssuedWebhook"] = secret;
+        return RedirectToAction(nameof(Settings), new { projectId });
+    }
+
+    /// <summary>
+    /// Sends a sample payload through the exact code the delivery worker uses, and says what the
+    /// receiver answered — right here, not at 3am.
+    /// </summary>
+    [HttpPost("{projectId:guid}/settings/webhook-test")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ManageProject)]
+    public async Task<IActionResult> TestWebhook(Guid projectId, CancellationToken cancellationToken)
+    {
+        var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
+        if (project is null) return NotFound();
+
+        if (string.IsNullOrWhiteSpace(project.WebhookUrl))
+        {
+            TempData.Error(localizer["notify.webhook.none"].Value);
+            return RedirectToAction(nameof(Settings), new { projectId });
+        }
+
+        var delivery = await WebhookSender.SendAsync(
+            http, cipher, project,
+            WebhookSender.Payload(
+                "test", project.Name, null, localizer["notify.test"].Value, null, DateTimeOffset.UtcNow),
+            cancellationToken);
+
+        if (delivery.Ok)
+        {
+            TempData.Success(localizer["notify.webhook.testOk", delivery.Detail]);
+        }
+        else
+        {
+            TempData.Error(localizer["notify.webhook.testFailed", delivery.Detail].Value);
+        }
+
+        return RedirectToAction(nameof(Settings), new { projectId });
+    }
+
     [HttpPost("{projectId:guid}/settings")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.ManageProject)]
@@ -297,6 +378,10 @@ public sealed class ProjectsController(
         {
             project.RetentionDays = model.RetentionDays;
         }
+
+        project.NotifyByEmail = model.NotifyByEmail;
+        project.WebhookUrl = string.IsNullOrWhiteSpace(model.WebhookUrl) ? null : model.WebhookUrl.Trim();
+        project.WebhookAllowPrivate = model.WebhookAllowPrivate;
 
         await db.SaveChangesAsync(cancellationToken);
         await audit.RecordAsync(new AuditEntry(

@@ -122,6 +122,15 @@ public sealed class ScheduleWorker(
         // scenario into a permanent load against whatever it points at.
         schedule.LastRunAt = now;
         ScheduleService.Advance(schedule, now);
+
+        // Advance found the cron unreadable: this schedule has just stopped firing for ever, which
+        // is exactly the kind of quiet that needs a bell.
+        if (schedule.Problem is { } unreadable && schedule.NextRunAt is null)
+        {
+            scope.ServiceProvider.GetRequiredService<Notifications.NotificationWriter>()
+                .ScheduleBroken(schedule, unreadable);
+        }
+
         await db.SaveChangesAsync(cancellation);
 
         var scenarios = schedule.Scenarios.Select(link => link.ScenarioId).ToList();
@@ -133,6 +142,9 @@ public sealed class ScheduleWorker(
             // left to fail silently every morning at six for ever.
             schedule.Enabled = false;
             schedule.Problem = "cron.nothingToRun";
+
+            scope.ServiceProvider.GetRequiredService<Notifications.NotificationWriter>()
+                .ScheduleBroken(schedule, "cron.nothingToRun");
             await db.SaveChangesAsync(cancellation);
 
             logger.LogWarning("Schedule {Name} has nothing left to run and was switched off.", name);
@@ -169,6 +181,21 @@ public sealed class ScheduleWorker(
         catch (Exception ex)
         {
             logger.LogError(ex, "Schedule {Name} could not start its runs.", name);
+
+            // The worst of the three failure paths, because it used to vanish into this log line
+            // and nothing else: the schedule had already been advanced, so the window was simply
+            // missed and nobody was told. Written in a fresh save — the batch work above may have
+            // left the context mid-thought.
+            try
+            {
+                scope.ServiceProvider.GetRequiredService<Notifications.NotificationWriter>()
+                    .ScheduleBroken(schedule, ex.Message);
+                await db.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception second)
+            {
+                logger.LogError(second, "And its failure could not be recorded either.");
+            }
         }
     }
 }

@@ -276,18 +276,22 @@ public sealed class GuardedHttpExecutor(
         var method = hop == 0 ? new HttpMethod(request.Method) : HttpMethod.Get;
         var message = new HttpRequestMessage(method, url);
 
-        foreach (var header in request.Headers.Where(h => h.Enabled))
-        {
-            if (!message.Headers.TryAddWithoutValidation(header.Name, header.Value))
-                message.Content ??= new StringContent(string.Empty);
-        }
-
         if (hop == 0 && request.Body is { Kind: not BodyKind.None } body)
         {
             message.Content = BuildContent(body);
+        }
 
-            foreach (var header in request.Headers.Where(h => h.Enabled))
-                message.Content.Headers.TryAddWithoutValidation(header.Name, header.Value);
+        // Each header lands exactly once. It used to be added to the message and then, when the
+        // request had a body, to the content as well — so every custom header on a POST went out
+        // twice, and a receiver reading X-Api-Key saw «value,value». Content headers are the
+        // fallback, not a second copy; an explicit one replaces what the body kind implied.
+        foreach (var header in request.Headers.Where(h => h.Enabled))
+        {
+            if (message.Headers.TryAddWithoutValidation(header.Name, header.Value)) continue;
+
+            message.Content ??= new StringContent(string.Empty);
+            message.Content.Headers.Remove(header.Name);
+            message.Content.Headers.TryAddWithoutValidation(header.Name, header.Value);
         }
 
         return message;

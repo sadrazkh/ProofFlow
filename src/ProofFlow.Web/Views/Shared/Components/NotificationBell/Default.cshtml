@@ -1,0 +1,55 @@
+@model NotificationBellViewModel
+
+@*
+    The bell. The same data-menu pattern as the account menu — no new JavaScript — and «seen» is an
+    explicit press inside the menu rather than a side effect of opening it, because a dot that
+    vanishes the moment you glance at it is a dot you can dismiss by accident.
+*@
+<div data-menu-root style="position: relative;">
+    <button type="button" class="btn btn-ghost btn-icon bell-trigger" data-menu-trigger
+            aria-haspopup="true" aria-expanded="false"
+            aria-label="@T["notify.title"]@(Model.Unseen > 0 ? $" ({Model.Unseen})" : "")">
+        <i data-lucide="bell" aria-hidden="true"></i>
+        @if (Model.Unseen > 0)
+        {
+            <span class="bell-dot" aria-hidden="true"></span>
+        }
+    </button>
+
+    <div class="menu hidden bell-menu" data-menu>
+        <div class="menu-label">@T["notify.title"]</div>
+        <div class="menu-separator"></div>
+
+        @if (Model.Rows.Count == 0)
+        {
+            <p class="bell-empty">@T["notify.empty"]</p>
+        }
+        else
+        {
+            @foreach (var row in Model.Rows)
+            {
+                var args = row.Args;
+                <a class="menu-item bell-item" href="@(row.LinkPath ?? "#")">
+                    <span class="bell-item-text" dir="auto">
+                        @T[$"notify.{row.Kind}", args.Length > 0 ? args[0] : "", args.Length > 1 ? args[1] : ""]
+                    </span>
+                    <span class="bell-item-when">
+                        <partial name="Pieces/_Timestamp" model="@(new TimestampView(row.CreatedAt))" />
+                    </span>
+                </a>
+            }
+
+            @if (Model.Unseen > 0)
+            {
+                <div class="menu-separator"></div>
+                <form method="post" action="/notifications/seen">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="back" value="@Context.Request.Path" />
+                    <button type="submit" class="menu-item" style="inline-size: 100%;">
+                        <i data-lucide="check-check" aria-hidden="true"></i>@T["notify.seen"]
+                    </button>
+                </form>
+            }
+        }
+    </div>
+</div>

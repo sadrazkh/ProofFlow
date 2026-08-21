@@ -70,4 +70,32 @@ public class Project : Entity, IWorkspaceOwned
 
     /// <summary>The first characters of the badge token — enough to recognise, never enough to use.</summary>
     public string? BadgePreview { get; set; }
+
+    /// <summary>
+    /// Email the workspace's members when a run or sweep in this project fails.
+    ///
+    /// Off by default, and one switch rather than an address book: the recipients are whoever is
+    /// on the team, which is a list that already exists and already gets maintained.
+    /// </summary>
+    public bool NotifyByEmail { get; set; }
+
+    /// <summary>Where failures are POSTed as JSON, when set. User input — sent through the same
+    /// guarded client as every other outbound request, SSRF rules and all.</summary>
+    public string? WebhookUrl { get; set; }
+
+    /// <summary>Whether the webhook may point at a private address — the environment rule, here.</summary>
+    public bool WebhookAllowPrivate { get; set; }
+
+    /// <summary>
+    /// The HMAC signing secret, sealed. Sealed rather than hashed — unlike a badge token, the
+    /// server must be able to read this back on every delivery to sign the payload; the AI-key
+    /// columns on <see cref="Workspaces.Workspace"/> are the same pattern for the same reason.
+    /// </summary>
+    public string? WebhookSecretCipher { get; set; }
+
+    public string? WebhookSecretNonce { get; set; }
+
+    public string? WebhookSecretTag { get; set; }
+
+    public int WebhookSecretKeyVersion { get; set; } = 1;
 }

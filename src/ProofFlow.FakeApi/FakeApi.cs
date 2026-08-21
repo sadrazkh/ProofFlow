@@ -316,6 +316,26 @@ public static class FakeApi
                 .ToDictionary(h => h.Key, h => h.Value.ToString()),
         }));
 
+        // A webhook receiver that remembers. What the notification worker delivers can be read
+        // back, signature and all, so a test can prove a payload arrived signed rather than
+        // asserting that a request was probably made.
+        group.MapPost("/hook", async (HttpContext context) =>
+        {
+            using var reader = new StreamReader(context.Request.Body);
+
+            state.LastHook = new ReceivedHook(
+                await reader.ReadToEndAsync(),
+                context.Request.Headers["X-ProofFlow-Signature"].ToString(),
+                DateTimeOffset.UtcNow);
+
+            return Results.Ok(new { received = true });
+        });
+
+        group.MapGet("/hook/last", (HttpContext context) =>
+            state.LastHook is { } hook
+                ? Results.Ok(new { hook.Body, hook.Signature, hook.At })
+                : Results.NotFound());
+
         // Resets everything the counters above accumulated, so a test run starts from a known state.
         group.MapPost("/reset", () =>
         {
@@ -353,6 +373,9 @@ public sealed class FakeApiState
     public ConcurrentDictionary<int, Product> Products { get; } = new();
     public ConcurrentDictionary<string, int> Attempts { get; } = new();
 
+    /// <summary>The last webhook delivery, kept so a test can read back what actually arrived.</summary>
+    public ReceivedHook? LastHook { get; set; }
+
     public int NextProductId = 5000;
 
     public IReadOnlyList<Category> Categories { get; } =
@@ -378,11 +401,14 @@ public sealed class FakeApiState
         Tokens.Clear();
         Products.Clear();
         Attempts.Clear();
+        LastHook = null;
         Interlocked.Exchange(ref NextProductId, 5000);
     }
 }
 
 public sealed record Category(int Id, string Name, string Slug);
+
+public sealed record ReceivedHook(string Body, string Signature, DateTimeOffset At);
 
 public sealed record FieldDefinition(string Name, string Type, bool Required);
 

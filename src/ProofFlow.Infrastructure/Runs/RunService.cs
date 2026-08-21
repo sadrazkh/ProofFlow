@@ -8,6 +8,7 @@ using ProofFlow.Domain.Scenarios;
 using ProofFlow.Infrastructure.Scenarios;
 using ProofFlow.Infrastructure.Baselines;
 using ProofFlow.Infrastructure.Environments;
+using ProofFlow.Infrastructure.Notifications;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.TestEngine.Http;
 using ProofFlow.TestEngine.Nodes;
@@ -40,7 +41,8 @@ public sealed class RunService(
     IRunWatchers watchers,
     ICurrentUser me,
     IClock clock,
-    ILogger<RunService> logger)
+    ILogger<RunService> logger,
+    NotificationWriter? notifications = null)
 {
     /// <summary>How often the record is written while a run is going.</summary>
     public static readonly TimeSpan FlushEvery = TimeSpan.FromSeconds(2);
@@ -282,6 +284,20 @@ public sealed class RunService(
         if (recorder.Dropped > 0)
         {
             run.Outcome = $"{run.Outcome} ({recorder.Dropped:N0} further log lines were not kept.)";
+        }
+
+        // The failure's notification rides the same save as the failure, so neither can exist
+        // without the other. Cancelled is deliberately quiet — somebody pressed stop and knows.
+        if (notifications is not null && status is RunStatus.Failed or RunStatus.Errored)
+        {
+            notifications.RunFailed(
+                run,
+                await db.Scenarios.Where(s => s.Id == run.ScenarioId)
+                    .Select(s => s.Name).FirstOrDefaultAsync(),
+                run.EnvironmentId is { } environmentId
+                    ? await db.Environments.Where(e => e.Id == environmentId)
+                        .Select(e => e.Name).FirstOrDefaultAsync()
+                    : null);
         }
 
         await recorder.FlushAsync();

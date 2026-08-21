@@ -33,6 +33,8 @@
 
     @if (Me.IsAuthenticated)
     {
+        @await Component.InvokeAsync("NotificationBell")
+
         <button type="button" class="search-trigger" data-palette-open aria-label="@T["nav.search"]">
             <i data-lucide="search" aria-hidden="true"></i>
             <span>@T["nav.searchHint"]</span>

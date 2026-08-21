@@ -158,6 +158,7 @@ builder.Services.AddSignalR().AddJsonProtocol(options =>
     options.PayloadSerializerOptions.Converters.Add(
         new System.Text.Json.Serialization.JsonStringEnumConverter()));
 builder.Services.AddScoped<IRunWatchers, SignalRRunWatchers>();
+builder.Services.AddHostedService<NotificationDeliveryWorker>();
 
 // The fake API is a development convenience: something for the request builder to point at
 // on a laptop with no internet. Registered unconditionally because the service is inert

@@ -353,3 +353,51 @@ html[dir='rtl'] .page-title { letter-spacing: 0; }
   .page-head { flex-direction: column; align-items: stretch; }
   .page-actions .btn { flex: 1; }
 }
+
+/* ---- the bell -------------------------------------------------------------------------------- */
+
+.bell-trigger { position: relative; }
+
+/* A presence, not a number: «something is new» is the whole message, and a live count would make
+   the topbar a scoreboard. The exact figure is one click away. */
+.bell-dot {
+  position: absolute;
+  inset-block-start: 7px;
+  inset-inline-end: 7px;
+  inline-size: 8px;
+  block-size: 8px;
+  border-radius: var(--radius-full);
+  background: var(--fail-ink);
+  border: 2px solid var(--surface);
+}
+
+.bell-menu {
+  inset-inline-end: 0;
+  inset-block-start: calc(100% + var(--space-2));
+  inline-size: min(360px, 90vw);
+}
+
+.bell-empty {
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--ink-subtle);
+}
+
+/* A sentence and a time, allowed to wrap — a notification cut to one ellipsised line withholds
+   exactly the part that says what broke. */
+.bell-item {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+}
+
+.bell-item-text {
+  font-size: var(--text-xs);
+  color: var(--ink);
+  white-space: normal;
+  line-height: var(--leading-normal);
+}
+
+.bell-item-when { font-size: var(--text-2xs); color: var(--ink-subtle); }

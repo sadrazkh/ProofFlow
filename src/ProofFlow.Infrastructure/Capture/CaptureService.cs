@@ -32,7 +32,8 @@ public sealed class CaptureService(
     IHttpExecutor executor,
     EnvironmentAuthenticator authenticator,
     ICurrentUser me,
-    IClock clock)
+    IClock clock,
+    Notifications.NotificationWriter? notifications = null)
 {
     /// <summary>
     /// How many requests are in flight at once.
@@ -96,6 +97,7 @@ public sealed class CaptureService(
             session.Status = CaptureSessionStatus.Failed;
             session.StoppedReason = "This baseline has no stored request, so it cannot be replayed.";
             session.FinishedAt = clock.UtcNow;
+            notifications?.SweepFailed(session, baseline.ProjectId, baseline.Name);
             await db.SaveChangesAsync(cancellationToken);
             return session;
         }
@@ -131,6 +133,10 @@ public sealed class CaptureService(
                 session.Status = CaptureSessionStatus.Failed;
                 session.StoppedReason = outcome.Problem;
                 session.FinishedAt = clock.UtcNow;
+
+                // The 3am case this whole feature exists for: a password changed and every
+                // scheduled sweep will stop exactly here until somebody hears about it.
+                notifications?.SweepFailed(session, baseline.ProjectId, baseline.Name);
                 await db.SaveChangesAsync(cancellationToken);
                 return session;
             }

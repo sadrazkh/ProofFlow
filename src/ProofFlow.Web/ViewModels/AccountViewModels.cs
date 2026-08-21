@@ -130,4 +130,26 @@ public sealed class ProjectFormViewModel
 
     /// <summary>A badge token just minted — the same shown-once rule as <see cref="IssuedSecret"/>.</summary>
     public string? IssuedBadge { get; set; }
+
+    // ---- when something fails ---------------------------------------------------------------
+
+    public bool NotifyByEmail { get; set; }
+
+    [MaxLength(2000, ErrorMessage = "error.tooLong")]
+    [Url(ErrorMessage = "environment.baseUrlInvalid")]
+    public string? WebhookUrl { get; set; }
+
+    public bool WebhookAllowPrivate { get; set; }
+
+    /// <summary>Display only: whether deliveries will be signed.</summary>
+    public bool HasWebhookSecret { get; set; }
+
+    /// <summary>A signing secret just minted — shown once, like every other secret here.</summary>
+    public string? IssuedWebhookSecret { get; set; }
+
+    /// <summary>Display only: whether the relay is configured at all, so the checkbox can say so.</summary>
+    public bool MailConfigured { get; set; }
+
+    /// <summary>The newest undelivered webhook's failure, surfaced instead of logged into a void.</summary>
+    public string? WebhookFailure { get; set; }
 }

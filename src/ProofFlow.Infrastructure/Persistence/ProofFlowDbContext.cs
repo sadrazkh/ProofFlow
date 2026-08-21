@@ -6,6 +6,7 @@ using ProofFlow.Domain.Auditing;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Capture;
 using ProofFlow.Domain.Data;
+using ProofFlow.Domain.Notifications;
 using ProofFlow.Domain.Runs;
 using ProofFlow.Domain.Runners;
 using ProofFlow.Domain.Scheduling;
@@ -45,6 +46,7 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<WorkspaceMember> WorkspaceMembers => Set<WorkspaceMember>();
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<TagAssignment> TagAssignments => Set<TagAssignment>();
     public DbSet<ProjectEnvironment> Environments => Set<ProjectEnvironment>();

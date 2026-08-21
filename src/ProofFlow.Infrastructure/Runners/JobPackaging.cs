@@ -9,6 +9,7 @@ using ProofFlow.Domain.Capture;
 using ProofFlow.Domain.Runs;
 using ProofFlow.Infrastructure.Baselines;
 using ProofFlow.Infrastructure.Environments;
+using ProofFlow.Infrastructure.Notifications;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.Infrastructure.Runs;
 
@@ -27,7 +28,8 @@ public sealed class JobPackaging(
     EnvironmentContextBuilder environments,
     BaselineService baselines,
     IRunWatchers watchers,
-    IClock clock)
+    IClock clock,
+    NotificationWriter? notifications = null)
 {
     private static readonly JsonSerializerOptions Json = new()
     {
@@ -204,6 +206,20 @@ public sealed class JobPackaging(
         run.AssertionsPassed = report.AssertionsPassed;
         run.AssertionsFailed = report.AssertionsFailed;
         run.Outcome = report.Outcome;
+
+        // The same rule as a local run: the failure and its notification are one save. The agent
+        // reports once, at the end, and this is that moment.
+        if (notifications is not null && run.Status is RunStatus.Failed or RunStatus.Errored)
+        {
+            notifications.RunFailed(
+                run,
+                await db.Scenarios.Where(s => s.Id == run.ScenarioId)
+                    .Select(s => s.Name).FirstOrDefaultAsync(cancellation),
+                run.EnvironmentId is { } environmentId
+                    ? await db.Environments.Where(e => e.Id == environmentId)
+                        .Select(e => e.Name).FirstOrDefaultAsync(cancellation)
+                    : null);
+        }
 
         await db.SaveChangesAsync(cancellation);
 

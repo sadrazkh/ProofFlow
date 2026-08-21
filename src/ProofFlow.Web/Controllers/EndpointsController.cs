@@ -53,6 +53,7 @@ public sealed class EndpointsController(
     ICurrentUser me,
     IAuditLog audit,
     ComparisonScratch scratch,
+    ProofFlow.Infrastructure.Notifications.NotificationWriter notifications,
     IStringLocalizer localizer) : Controller
 {
     private static CompareResponseDto Failed(string message, double durationMs = 0) => new()
@@ -1132,6 +1133,12 @@ public sealed class EndpointsController(
         // The response has been folded into a version; keeping it would let a second accept build
         // a second proposal from the same stale bytes.
         scratch.Release(userId, endpointId);
+
+        // The approver's bell, not the proposer's toast: separation of duties means the person
+        // who has to act next is by definition somebody else, and they are not on this page.
+        notifications.ApprovalWaiting(
+            endpoint.WorkspaceId, projectId, endpoint.Id, endpoint.Name, version.Number);
+        await db.SaveChangesAsync(cancellationToken);
 
         await audit.RecordAsync(new AuditEntry(
             "baseline.versionProposed", projectId, nameof(BaselineVersion), version.Id,

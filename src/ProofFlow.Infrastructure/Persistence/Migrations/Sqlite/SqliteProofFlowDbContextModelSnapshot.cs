@@ -915,6 +915,72 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.ToTable("Secrets", (string)null);
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Notifications.Notification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ArgsJson")
+                        .HasMaxLength(2000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("EmailedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LinkPath")
+                        .HasMaxLength(400)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TargetLabel")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TargetType")
+                        .HasMaxLength(80)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WebhookAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WebhookAttempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WebhookFailure")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkspaceId", "CreatedAt");
+
+                    b.HasIndex("ProjectId", "WebhookAt", "EmailedAt");
+
+                    b.ToTable("Notifications", (string)null);
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Projects.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -953,6 +1019,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("NotifyByEmail")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("RetentionDays")
                         .HasColumnType("INTEGER");
 
@@ -963,6 +1032,24 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
 
                     b.Property<string>("UpdatedAt")
                         .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("WebhookAllowPrivate")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WebhookSecretCipher")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("WebhookSecretKeyVersion")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("WebhookSecretNonce")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WebhookSecretTag")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("WebhookUrl")
                         .HasColumnType("TEXT");
 
                     b.Property<Guid>("WorkspaceId")
@@ -2191,6 +2278,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .HasMaxLength(256)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("NotificationsSeenAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("PasswordHash")
                         .HasColumnType("TEXT");
 
@@ -2421,6 +2511,17 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                         .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Environment");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Notifications.Notification", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Workspaces.Workspace", "Workspace")
+                        .WithMany()
+                        .HasForeignKey("WorkspaceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Workspace");
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Projects.Project", b =>

@@ -58,6 +58,55 @@
                     </select>
                     <p class="field-hint" id="retention-help">@T["retention.help"]</p>
                 </div>
+
+                @*
+                    When something fails. The whole reason schedules can be trusted: a run that
+                    breaks at 3am tells the team instead of waiting to be discovered.
+                *@
+                <h3 class="text-sm semibold" style="margin-block-start: var(--space-2);">
+                    @T["notify.settings.title"]
+                </h3>
+
+                <label class="check-row">
+                    <input class="checkbox" type="checkbox" name="NotifyByEmail" value="true"
+                           checked="@Model.NotifyByEmail" @(Model.MailConfigured ? null : "disabled") />
+                    <span class="check-row-text">
+                        <span class="check-row-title">@T["notify.settings.email"]</span>
+                        <span class="check-row-hint">
+                            @(Model.MailConfigured
+                                ? T["notify.settings.email.hint"]
+                                : T["notify.settings.email.noRelay"])
+                        </span>
+                    </span>
+                </label>
+
+                <div class="field">
+                    <label class="field-label" for="WebhookUrl">
+                        @T["notify.settings.webhook"] <span class="field-optional">· @T["common.optional"]</span>
+                    </label>
+                    <input class="input input-mono" id="WebhookUrl" name="WebhookUrl" dir="ltr"
+                           value="@Model.WebhookUrl" placeholder="https://hooks.example.com/proofflow"
+                           spellcheck="false" />
+                    <p class="field-hint">@T["notify.settings.webhook.hint"]</p>
+                    <partial name="Pieces/_FieldError" model="@("WebhookUrl")" />
+                </div>
+
+                <label class="check-row">
+                    <input class="checkbox" type="checkbox" name="WebhookAllowPrivate" value="true"
+                           checked="@Model.WebhookAllowPrivate" />
+                    <span class="check-row-text">
+                        <span class="check-row-title">@T["environment.privateNetwork"]</span>
+                        <span class="check-row-hint">@T["notify.settings.private.hint"]</span>
+                    </span>
+                </label>
+
+                @if (Model.WebhookFailure is { Length: > 0 } failure)
+                {
+                    <p class="endpoint-warning">
+                        <i data-lucide="triangle-alert" aria-hidden="true"></i>
+                        @T["notify.settings.lastFailure", failure]
+                    </p>
+                }
             </div>
 
             <div class="card-footer">
@@ -292,6 +341,51 @@
                               data-confirm-action="@T["badge.revoke"]">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-ghost btn-sm">@T["badge.revoke"]</button>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @* The webhook's signing secret and its proof. Beside the main form rather than in it,
+               because minting a secret and saving a name are different presses. *@
+            <div class="card card-pad stack">
+                <h2 class="card-title">@T["notify.webhook.title"]</h2>
+                <p class="muted">@T["notify.webhook.subtitle"]</p>
+
+                @if (Model.IssuedWebhookSecret is { Length: > 0 } issued)
+                {
+                    <div class="card card-pad stack key-issued" role="status">
+                        <p class="muted">@T["notify.webhook.issued"]</p>
+                        <div class="key-value">
+                            <code dir="ltr">@issued</code>
+                            <button type="button" class="btn btn-secondary btn-sm" data-copy="@issued">
+                                <i data-lucide="copy" aria-hidden="true"></i>@T["action.copy"]
+                            </button>
+                        </div>
+                    </div>
+                }
+                else if (Model.HasWebhookSecret)
+                {
+                    <p class="muted">@T["notify.webhook.sealed"]</p>
+                }
+
+                <div class="row wrap">
+                    <form method="post" action="/projects/@projectId/settings/webhook-secret">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-secondary btn-sm">
+                            <i data-lucide="key-round" aria-hidden="true"></i>
+                            @(Model.HasWebhookSecret ? T["notify.webhook.replace"] : T["notify.webhook.issue"])
+                        </button>
+                    </form>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.WebhookUrl))
+                    {
+                        <form method="post" action="/projects/@projectId/settings/webhook-test"
+                              data-busy-text="@T["notify.webhook.testing"]">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-ghost btn-sm">
+                                <i data-lucide="send" aria-hidden="true"></i>@T["notify.webhook.test"]
+                            </button>
                         </form>
                     }
                 </div>

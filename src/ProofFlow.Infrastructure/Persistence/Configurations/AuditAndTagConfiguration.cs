@@ -24,6 +24,24 @@ public sealed class AuditEventConfiguration : IEntityTypeConfiguration<AuditEven
     }
 }
 
+public sealed class NotificationConfiguration : IEntityTypeConfiguration<ProofFlow.Domain.Notifications.Notification>
+{
+    public void Configure(EntityTypeBuilder<ProofFlow.Domain.Notifications.Notification> builder)
+    {
+        builder.ToTable("Notifications");
+        builder.Property(n => n.Kind).HasMaxLength(60).IsRequired();
+        builder.Property(n => n.ArgsJson).HasMaxLength(2000);
+        builder.Property(n => n.LinkPath).HasMaxLength(400);
+        builder.Property(n => n.TargetType).HasMaxLength(80);
+        builder.Property(n => n.TargetLabel).HasMaxLength(300);
+        builder.Property(n => n.WebhookFailure).HasMaxLength(500);
+
+        // The bell reads newest-first per workspace; the delivery worker sweeps by what is owed.
+        builder.HasIndex(n => new { n.WorkspaceId, n.CreatedAt });
+        builder.HasIndex(n => new { n.ProjectId, n.WebhookAt, n.EmailedAt });
+    }
+}
+
 public sealed class TagConfiguration : IEntityTypeConfiguration<Tag>
 {
     public void Configure(EntityTypeBuilder<Tag> builder)

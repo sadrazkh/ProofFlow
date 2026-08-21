@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<Baselines.Separation>();
         services.AddScoped<Baselines.ApprovalInbox>();
         services.AddScoped<Capture.CaptureService>();
+        services.AddScoped<Notifications.NotificationWriter>();
         services.AddScoped<Data.DataSetService>();
         services.AddScoped<Scenarios.ScenarioGraphService>();
         services.AddScoped<Runs.RunService>();
