@@ -156,7 +156,7 @@ public sealed class CaptureService(
                 foreach (var (row, result) in chunk.Zip(results))
                 {
                     db.CaptureSamples.Add(
-                        Judge(session, row, result, rules, approved, baseline.MaxDurationMs));
+                        Judge(session, row, result, rules, approved, baseline.MaxDurationMs, baseline.ContractJson));
                 }
 
                 session.Completed += chunk.Length;
@@ -205,7 +205,11 @@ public sealed class CaptureService(
         {
             resolved = request with
             {
-                Url = resolver.Resolve(request.Url),
+                // Joined onto the environment when the stored address is a path rather than a
+                // whole URL — an OpenAPI import stores «/records/{id}» verbatim, and an absolute
+                // one comes back from Combine untouched.
+                Url = EnvironmentAuthenticator.Combine(
+                    context?.Environment.BaseUrl, resolver.Resolve(request.Url)),
                 Headers = [.. request.Headers.Select(h => h with { Value = resolver.Resolve(h.Value) })],
                 Body = request.Body is null ? null : request.Body with
                 {
@@ -248,7 +252,7 @@ public sealed class CaptureService(
     private CaptureSample Judge(
         CaptureSession session, DataSetRow row, SampleResult result,
         ComparisonRuleSet rules, IReadOnlyDictionary<string, BaselineSample> approved,
-        int? maxDurationMs)
+        int? maxDurationMs, string? contractJson)
     {
         var sample = new CaptureSample
         {
@@ -292,6 +296,11 @@ public sealed class CaptureService(
         // 200 with a 401's body did too, which is why negative tests only half-worked.
         var statusDiffers = baseline.StatusCode != 0 && result.StatusCode != baseline.StatusCode;
 
+        // And the contract, when the endpoint came from a document that made one. Checked even
+        // when the hash matches: a rule can silence a field that changes, and none of them says
+        // «this field may stop being what the documentation promised».
+        var broken = ContractCheck.Check(contractJson, result.Body);
+
         var bodyMatches = baseline.NormalizedHash == sample.NormalizedHash;
         DiffResult? diff = null;
 
@@ -301,7 +310,7 @@ public sealed class CaptureService(
             bodyMatches = diff.Matches;
         }
 
-        if (bodyMatches && !statusDiffers)
+        if (bodyMatches && !statusDiffers && broken.Count == 0)
         {
             // A correct answer that took too long is its own category — not a pass, because
             // «passed» is derived from what none of the counters claimed.
@@ -316,6 +325,11 @@ public sealed class CaptureService(
             : diff.Counts.ToDictionary(pair => pair.Key.ToString(), pair => pair.Value);
 
         if (statusDiffers) counts["Status"] = 1;
+        if (broken.Count > 0) counts["Contract"] = broken.Count;
+
+        // The first violation in words, on the row: a reader looking at two thousand samples needs
+        // to know which of them broke the promise and how, without opening each one.
+        if (broken.Count > 0) sample.FailureMessage = $"{broken[0].Path}: {broken[0].Message}";
 
         sample.DiffSummaryJson = JsonSerializer.Serialize(counts, Json);
 

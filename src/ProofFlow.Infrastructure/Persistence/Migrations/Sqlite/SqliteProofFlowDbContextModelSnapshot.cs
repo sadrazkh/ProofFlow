@@ -157,6 +157,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Sqlite
                     b.Property<string>("ArchivedAt")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ContractJson")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("CreatedAt")
                         .IsRequired()
                         .HasColumnType("TEXT");

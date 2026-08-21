@@ -129,6 +129,24 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
             });
         }
 
+        // The document's own promise, checked separately from the recorded answer — and reported
+        // even when the body matches, because a contract can break while the bytes stay identical
+        // only in the sense that the reader would never notice.
+        foreach (var violation in ContractCheck.Check(baseline.ContractJson, body))
+        {
+            synthetic.Add(new DiffRowDto
+            {
+                Index = 0,
+                Depth = 0,
+                Path = violation.Path,
+                Leaf = violation.Path,
+                // Its own kind, not RuleViolation: no rule was broken. A reader who sees «rule
+                // broken» goes looking for the rule they wrote, and there is not one.
+                Kind = "Contract",
+                Reason = violation.Message,
+            });
+        }
+
         if (synthetic.Count == 0) return result;
 
         return result with
@@ -144,10 +162,11 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
                 .. Enumerable.Range(0, synthetic.Count),
                 .. result.FindingIndexes.Select(index => index + synthetic.Count),
             ],
-            // Folded into Changed rather than a category of their own: the chips over the diff
-            // are a fixed set, and «2 changed» counting the status line is the truthful reading.
+            // Counted under the kind each one actually is, so the chips over the diff keep meaning
+            // what they say: a status or a budget is a change, a broken promise is a contract.
             Counts = result.Counts
-                .Concat([new KeyValuePair<string, int>(nameof(DiffKind.Changed), synthetic.Count)])
+                .Concat(synthetic.GroupBy(row => row.Kind)
+                    .Select(group => new KeyValuePair<string, int>(group.Key, group.Count())))
                 .GroupBy(pair => pair.Key)
                 .ToDictionary(group => group.Key, group => group.Sum(pair => pair.Value)),
         };

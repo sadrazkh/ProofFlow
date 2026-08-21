@@ -402,6 +402,7 @@ public sealed class BundleImporter(
                     : null,
 
                 RequestJson = incoming.RequestJson,
+                ContractJson = incoming.ContractJson,
                 CreatedByUserId = me.UserId ?? Guid.Empty,
             };
 

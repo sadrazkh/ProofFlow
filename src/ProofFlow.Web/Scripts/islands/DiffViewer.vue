@@ -107,6 +107,7 @@ const counts = computed(() => {
   return ([
     ['Added', 'diff-added'], ['Removed', 'diff-removed'], ['Changed', 'diff-changed'],
     ['TypeChanged', 'diff-type'], ['OrderChanged', 'diff-order'], ['RuleViolation', 'diff-rule'],
+    ['Status', 'diff-changed'], ['Contract', 'diff-type'],
     ['Ignored', 'diff-ignored'],
   ] as const)
     .map(([kind, tone]) => ({ kind, tone, count: raw[kind] ?? 0 }))
@@ -238,6 +239,8 @@ function marker(kind: string): string {
     case 'TypeChanged': return '⌥';
     case 'OrderChanged': return '⇄';
     case 'RuleViolation': return '!';
+    case 'Contract': return '§';
+    case 'Status': return '~';
     case 'Ignored': return '·';
     default: return ' ';
   }

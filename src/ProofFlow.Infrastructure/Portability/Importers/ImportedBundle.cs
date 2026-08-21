@@ -119,6 +119,10 @@ public static class ImportedBundle
             // find it — the same shape the request lab writes when somebody keeps a response.
             RequestJson = JsonSerializer.Serialize(imported.Request, Pairs),
 
+            // The document's own promise about the answer, kept beside the request that asks
+            // for it. Null for every importer but OpenAPI, which is the only one that has one.
+            ContractJson = imported.ContractJson,
+
             // No approved answer. Nothing has been sent yet, so there is nothing to approve, and
             // an import that invented one would be an import that decided what correct looks like
             // on the strength of a file somebody exported from Postman.

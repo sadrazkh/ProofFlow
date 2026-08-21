@@ -464,3 +464,16 @@ html[dir='rtl'] .diff-arrow { transform: scaleX(-1); }
   font-size: var(--text-xs);
   border-radius: var(--radius-sm);
 }
+
+/*
+  A broken contract: the API no longer returns what its own documentation promised.
+
+  Marked apart from a rule violation because they are different accusations. A rule violation says
+  «you wrote a rule and the response broke it»; this says «the API broke its own word», and the
+  reader who confuses the two goes looking for a rule that was never written.
+*/
+.diff-row.is-contract { background: var(--diff-type-soft); }
+.diff-row.is-contract .diff-marker { color: var(--diff-type-marker); }
+.diff-row.is-contract .diff-path { color: var(--diff-type-ink); font-weight: var(--weight-medium); }
+
+.diff-row.is-status .diff-marker { color: var(--diff-changed-marker); }

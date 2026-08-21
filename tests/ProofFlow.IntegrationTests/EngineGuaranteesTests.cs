@@ -139,6 +139,71 @@ public sealed class EngineGuaranteesTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_broken_promise_is_found_even_when_the_recorded_answer_still_matches()
+    {
+        // The contract answers a different question from the baseline. The baseline says «this is
+        // what it returned last time»; the contract says «this is what it said it would always
+        // return». A rule can silence the first — that is what rules are for — and must not be
+        // able to silence the second.
+        await using var context = Db();
+
+        var (baselineId, versionId) = await EndpointAsync(
+            context, "{{environment.baseUrl}}/fake/records/7");
+
+        var record = await Executor().SendAsync(
+            new HttpRequestDefinition { Method = "GET", Url = $"{_baseUrl}/fake/records/7" },
+            new UrlPolicy { AllowPrivateNetwork = true });
+
+        // The approved answer is exactly what the API returns, so the body diff is silent.
+        context.BaselineSamples.Add(new BaselineSample
+        {
+            WorkspaceId = _workspaceId,
+            BaselineId = baselineId,
+            Key = "row0",
+            Body = record.Body!,
+            StatusCode = 200,
+            NormalizedHash = BaselineService.Hash(record.Body!, new ComparisonRuleSet([])),
+        });
+
+        var endpoint = await context.Baselines.FirstAsync(b => b.Id == baselineId);
+
+        // And a contract the API does not honour: the fake API's «score» is a number.
+        endpoint.ContractJson = """
+            {"type":"object","properties":{"score":{"type":"string"}},"required":["score"]}
+            """;
+
+        // A rule that would hide the field if this were an ordinary difference — «score changes,
+        // stop checking it». It must not reach the promise.
+        context.BaselineRules.Add(new BaselineRule
+        {
+            WorkspaceId = _workspaceId,
+            BaselineId = baselineId,
+            Path = "$.score",
+            Matcher = nameof(MatcherKind.Ignore),
+            Enabled = true,
+        });
+
+        await context.SaveChangesAsync();
+
+        var session = await Capture(context).RunAsync(new StartCaptureCommand
+        {
+            BaselineId = baselineId,
+            DataSetVersionId = versionId,
+            EnvironmentId = _environmentId,
+        });
+
+        session.Status.Should().Be(CaptureSessionStatus.Completed);
+        session.Differing.Should().Be(1, "the API is not honouring what its document promised");
+
+        var sample = await context.CaptureSamples.SingleAsync(s => s.CaptureSessionId == session.Id);
+
+        sample.Differs.Should().BeTrue();
+        sample.DiffSummaryJson.Should().Contain("Contract");
+        sample.FailureMessage.Should().Contain("score",
+            "the reader should not have to open the sample to learn which promise broke");
+    }
+
+    [Fact]
     public async Task A_bare_request_is_sent_without_the_environment_signing_it_in()
     {
         // The engine half of «without a token, this should refuse»: Bare short-circuits

@@ -682,7 +682,8 @@
       "TypeChanged": "Type changed",
       "OrderChanged": "Order changed",
       "RuleViolation": "Rule broken",
-      "Ignored": "Ignored"
+      "Ignored": "Ignored",
+      "Contract": "Contract"
     },
     "identical": "The two are identical",
     "against": "Against {0}"
@@ -1693,7 +1694,8 @@
     "note.oauth2": "An OAuth2 token was found and not kept — it is somebody’s live session.",
     "note.unknownAuth": "An authentication kind this does not know was skipped.",
     "note.environmentOnly": "This is a Postman environment, not a collection: it brings addresses and variable names, and no requests.",
-    "noValues": "That environment has no values in it."
+    "noValues": "That environment has no values in it.",
+    "note.deepSchema": "A schema nested too deeply to follow was cut short. What is above it is still checked."
   },
   "template": {
     "title": "Templates",
@@ -1951,7 +1953,10 @@
     "defined": "«{0}» is ready. Record what a correct answer looks like next.",
     "result.unchecked": "not checked",
     "noAnswer": "no answer yet",
-    "recent.summary": "{0} of the last {1} tests passed"
+    "recent.summary": "{0} of the last {1} tests passed",
+    "contract.on": "Checked against the shape its documentation promises.",
+    "contract.remove": "Stop checking the contract",
+    "contract.removed": "The contract is gone. The recorded answer is still checked."
   },
   "share": {
     "action": "Share",

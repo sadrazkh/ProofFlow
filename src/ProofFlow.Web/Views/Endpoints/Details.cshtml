@@ -178,6 +178,26 @@
             {
                 <p class="field-hint">@T["endpoint.noRequest"]</p>
             }
+
+            @* Only when the endpoint came from a document that made a promise. Removable, because
+               a contract that has drifted from the API is a test failing for the wrong reason. *@
+            @if (Model.Endpoint.ContractJson is not null)
+            {
+                <p class="field-hint row wrap" style="gap: var(--space-2);">
+                    <i data-lucide="file-check" aria-hidden="true"></i>
+                    <span class="grow">@T["endpoint.contract.on"]</span>
+                    @if (Model.CanRecord)
+                    {
+                        <form method="post"
+                              action="/projects/@Model.ProjectId/endpoints/@Model.Endpoint.Id/contract/remove">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-ghost btn-sm">
+                                @T["endpoint.contract.remove"]
+                            </button>
+                        </form>
+                    }
+                </p>
+            }
         </div>
     </section>
 

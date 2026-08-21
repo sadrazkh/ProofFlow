@@ -243,6 +243,7 @@ public sealed class BundleExporter(ProofFlowDbContext db, ScenarioGraphService g
                     ? dataSets.GetValueOrDefault(setId)
                     : null,
                 RequestJson = baseline.RequestJson,
+                ContractJson = baseline.ContractJson,
                 Approved = Version(baseline, approved),
             }),
         ];

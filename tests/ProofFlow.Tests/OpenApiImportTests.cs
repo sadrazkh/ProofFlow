@@ -195,6 +195,80 @@ public class OpenApiImportTests
         OpenApiImporter.Read(text).Refusal.Should().Be(refusal);
     }
 
+    [Fact]
+    public void A_documents_promise_about_its_answer_is_kept_with_the_refs_resolved()
+    {
+        // The schema is the document's own claim about its API, and it is worth more than the
+        // request: a recorded answer says what happened once, a contract says what was promised
+        // always. It used to be read for the security scheme's name and then thrown away.
+        var imported = OpenApiImporter.Read(Recursive);
+        var contract = Named(imported, "One product").ContractJson;
+
+        contract.Should().NotBeNull("the document made a promise and it should have been kept");
+
+        // Resolved inline: the file it came from will not be there when the check runs.
+        contract.Should().NotContain("$ref", "a reference to a closed document points at nothing");
+        contract.Should().Contain("required");
+        contract.Should().Contain("name");
+
+        // 3.0's nullable is a type union everywhere else, and the difference is whether every row
+        // with a null note fails.
+        contract.Should().Contain("null", "nullable has to become something a validator reads");
+        contract.Should().NotContain("nullable");
+
+        // A type that contains itself is ordinary — a product with a parent product — and has to
+        // be cut rather than followed for ever.
+        imported.Notes.Should().Contain("import.note.deepSchema");
+    }
+
+    [Fact]
+    public void An_endpoint_whose_document_promised_nothing_carries_no_contract()
+    {
+        // Most endpoints. A contract invented from a recorded answer would turn today's response
+        // into a rule, which is the opposite of what a contract is.
+        OpenApiImporter.Read(Document).Requests
+            .Should().Contain(request => request.ContractJson == null,
+                "a document with no response schema should produce endpoints without one");
+    }
+
+    /// <summary>A schema that references itself, which is the ordinary case a naive walk hangs on.</summary>
+    private const string Recursive = """
+        {
+          "openapi": "3.0.3",
+          "info": { "title": "Catalog" },
+          "components": {
+            "schemas": {
+              "Product": {
+                "type": "object",
+                "required": ["id", "name"],
+                "properties": {
+                  "id": { "type": "integer" },
+                  "name": { "type": "string" },
+                  "note": { "type": "string", "nullable": true },
+                  "parent": { "$ref": "#/components/schemas/Product" }
+                }
+              }
+            }
+          },
+          "paths": {
+            "/products/{id}": {
+              "get": {
+                "summary": "One product",
+                "responses": {
+                  "200": {
+                    "content": {
+                      "application/json": {
+                        "schema": { "$ref": "#/components/schemas/Product" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+        """;
+
     private static ImportedRequest Named(Imported imported, string name) =>
         imported.Requests.Should().ContainSingle(request => request.Name == name).Subject;
 }

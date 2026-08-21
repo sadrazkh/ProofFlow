@@ -66,6 +66,20 @@ public class Baseline : Entity, IWorkspaceOwned
     /// </summary>
     public int? MaxDurationMs { get; set; }
 
+    /// <summary>
+    /// The shape the API's own description promises, as a JSON Schema. Null for most endpoints.
+    ///
+    /// Written by the OpenAPI import and by nothing else — an endpoint made by hand has no
+    /// contract to check against, and inventing one from a recorded answer would turn today's
+    /// response into a rule.
+    ///
+    /// It answers a different question from the baseline. The baseline says «this is what it
+    /// returned»; the contract says «this is what it promised to return». A rule can silence the
+    /// first — that is what rules are for — and cannot silence the second, because an endpoint
+    /// that stops honouring its own documentation is exactly the thing worth hearing about.
+    /// </summary>
+    public string? ContractJson { get; set; }
+
     /// <summary>The version currently in force. Null while the first one is still a draft.</summary>
     public Guid? ApprovedVersionId { get; set; }
 

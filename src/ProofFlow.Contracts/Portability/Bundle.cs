@@ -150,6 +150,9 @@ public sealed record BundleBaseline
 
     public string? RequestJson { get; init; }
 
+    /// <summary>The shape the API's description promised, when the endpoint came from one.</summary>
+    public string? ContractJson { get; init; }
+
     /// <summary>
     /// The approved version, and only that one.
     ///

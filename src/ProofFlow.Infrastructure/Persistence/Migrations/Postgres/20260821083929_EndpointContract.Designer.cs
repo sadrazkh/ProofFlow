@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using ProofFlow.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using ProofFlow.Infrastructure.Persistence;
 namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 {
     [DbContext(typeof(PostgresProofFlowDbContext))]
-    partial class PostgresProofFlowDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260821083929_EndpointContract")]
+    partial class EndpointContract
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

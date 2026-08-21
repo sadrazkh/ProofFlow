@@ -74,4 +74,14 @@ public sealed record ImportedRequest
 
     /// <summary>The status the document says is the success case. 200 when it does not say.</summary>
     public int ExpectedStatus { get; init; } = 200;
+
+    /// <summary>
+    /// The shape the document promises the success response has, as a JSON Schema, or null.
+    ///
+    /// The document's own claim about its API, kept rather than discarded. It is what makes a
+    /// «the field is still called total and is still a number» check possible without anybody
+    /// having first recorded an answer — and it survives a change to the recorded answer, because
+    /// it is a statement about the contract rather than about one response.
+    /// </summary>
+    public string? ContractJson { get; init; }
 }

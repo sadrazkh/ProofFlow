@@ -68,7 +68,7 @@ public static class OpenApiImporter
                     goto done;
                 }
 
-                requests.Add(Operation(path, method, operation, secured, notes));
+                requests.Add(Operation(path, method, operation, root, secured, notes));
             }
         }
 
@@ -88,7 +88,8 @@ public static class OpenApiImporter
     }
 
     private static ImportedRequest Operation(
-        string path, string method, JsonObject operation, string? secured, List<string> notes)
+        string path, string method, JsonObject operation, JsonObject root, string? secured,
+        List<string> notes)
     {
         var headers = new List<KeyValueEntry>();
 
@@ -153,6 +154,7 @@ public static class OpenApiImporter
             Group = (operation["tags"] as JsonArray)?.FirstOrDefault()?.GetValue<string>(),
             Description = operation["description"]?.GetValue<string>(),
             ExpectedStatus = Success(operation),
+            ContractJson = Contract(operation, root, notes),
             Request = new HttpRequestDefinition
             {
                 Method = method.ToUpperInvariant(),
@@ -161,6 +163,141 @@ public static class OpenApiImporter
                 Body = body,
             },
         };
+    }
+
+    /// <summary>
+    /// The success response's schema, with local <c>$ref</c>s resolved into it.
+    ///
+    /// Dereferenced rather than kept as references because the schema is stored on the endpoint and
+    /// the document it came from is not: a <c>$ref</c> to <c>#/components/schemas/Product</c> would
+    /// point at nothing the moment the file is closed.
+    ///
+    /// One 3.0-ism is translated — <c>nullable: true</c>, which JSON Schema spells as a type union
+    /// — because it is the difference between «this field may legitimately be null» and a contract
+    /// that fails on every row where it is.
+    /// </summary>
+    private static string? Contract(JsonObject operation, JsonObject root, List<string> notes)
+    {
+        if (operation["responses"] is not JsonObject responses) return null;
+
+        var success = responses
+            .Where(pair => int.TryParse(pair.Key, out var code) && code is >= 200 and < 300)
+            .OrderBy(pair => pair.Key)
+            .Select(pair => pair.Value)
+            .FirstOrDefault();
+
+        if (success?["content"] is not JsonObject content) return null;
+
+        var json = content.FirstOrDefault(pair =>
+            pair.Key.Contains("json", StringComparison.OrdinalIgnoreCase));
+
+        if (json.Value?["schema"] is not JsonNode schema) return null;
+
+        var truncated = false;
+        var resolved = Resolve(schema, root, [], depth: 0, ref truncated);
+
+        if (truncated) notes.Add("import.note.deepSchema");
+
+        return resolved?.ToJsonString();
+    }
+
+    /// <summary>How far a schema may nest before it is more likely a cycle than a shape.</summary>
+    private const int MaxSchemaDepth = 12;
+
+    private static JsonNode? Resolve(
+        JsonNode? node, JsonObject root, HashSet<string> seen, int depth, ref bool truncated)
+    {
+        if (node is null) return null;
+
+        if (depth > MaxSchemaDepth)
+        {
+            truncated = true;
+            return null;
+        }
+
+        if (node is JsonArray array)
+        {
+            var copy = new JsonArray();
+            foreach (var item in array)
+            {
+                copy.Add(Resolve(item, root, seen, depth + 1, ref truncated));
+            }
+            return copy;
+        }
+
+        if (node is not JsonObject holder) return node.DeepClone();
+
+        if (holder["$ref"]?.GetValue<string>() is { } reference)
+        {
+            // A type that contains itself — a comment with replies, a category with children — is
+            // ordinary and must not be followed for ever. Cutting it leaves the rest checkable.
+            if (!seen.Add(reference))
+            {
+                truncated = true;
+                return null;
+            }
+
+            var target = Follow(reference, root);
+            var expanded = Resolve(target, root, seen, depth + 1, ref truncated);
+
+            seen.Remove(reference);
+            return expanded;
+        }
+
+        var result = new JsonObject();
+
+        foreach (var pair in holder)
+        {
+            // 3.0's nullable becomes a type union, which is what every JSON Schema validator reads.
+            if (pair.Key == "nullable")
+            {
+                if (pair.Value?.GetValue<bool>() == true
+                    && holder["type"]?.GetValue<string>() is { } only)
+                {
+                    result["type"] = new JsonArray(only, "null");
+                }
+                continue;
+            }
+
+            if (pair.Key == "type" && result.ContainsKey("type")) continue;
+
+            // Vocabulary a validator would choke on or ignore, and that says nothing about shape.
+            if (pair.Key is "discriminator" or "xml" or "externalDocs" or "example" or "deprecated")
+            {
+                continue;
+            }
+
+            result[pair.Key] = Resolve(pair.Value, root, seen, depth + 1, ref truncated);
+        }
+
+        // The union may have been written before «type» was reached, in which case the loop above
+        // skipped it; if it was reached first, the nullable branch has overwritten it. Either way
+        // what is left is one type declaration.
+        if (holder["nullable"]?.GetValue<bool>() == true
+            && holder["type"]?.GetValue<string>() is { } named
+            && result["type"] is not JsonArray)
+        {
+            result["type"] = new JsonArray(named, "null");
+        }
+
+        return result;
+    }
+
+    /// <summary>Walks a local <c>#/a/b/c</c> pointer. External documents are not fetched.</summary>
+    private static JsonNode? Follow(string reference, JsonObject root)
+    {
+        if (!reference.StartsWith("#/", StringComparison.Ordinal)) return null;
+
+        JsonNode? at = root;
+
+        foreach (var segment in reference[2..].Split('/'))
+        {
+            var name = segment.Replace("~1", "/").Replace("~0", "~");
+            at = at is JsonObject step ? step[name] : null;
+            if (at is null) return null;
+        }
+
+        return at;
     }
 
     /// <summary>

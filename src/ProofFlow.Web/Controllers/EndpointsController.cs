@@ -829,6 +829,34 @@ public sealed class EndpointsController(
         return replaced == url ? null : replaced;
     }
 
+    /// <summary>
+    /// Stops checking the imported contract.
+    ///
+    /// The escape hatch for a document that has drifted from the API it describes — which happens,
+    /// and when it does the contract is a test failing for a reason that is nobody's defect. The
+    /// recorded answer goes on being checked; only the promise is dropped.
+    /// </summary>
+    [HttpPost("{endpointId:guid}/contract/remove")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    public async Task<IActionResult> RemoveContract(
+        Guid projectId, Guid endpointId, CancellationToken cancellationToken)
+    {
+        var endpoint = await db.Baselines
+            .FirstOrDefaultAsync(b => b.Id == endpointId && b.ProjectId == projectId, cancellationToken);
+        if (endpoint is null) return NotFound();
+
+        endpoint.ContractJson = null;
+        await db.SaveChangesAsync(cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.requestChanged", projectId, nameof(Baseline), endpoint.Id, endpoint.Name,
+            new Dictionary<string, string?> { ["contract"] = "removed" }), cancellationToken);
+
+        TempData.Success(localizer["endpoint.contract.removed"]);
+        return Redirect($"/projects/{projectId}/endpoints/{endpointId}");
+    }
+
     /// <summary>The inputs: which set of rows the Test button sweeps across, or none.</summary>
     [HttpPost("{endpointId:guid}/inputs")]
     [ValidateAntiForgeryToken]
@@ -962,7 +990,12 @@ public sealed class EndpointsController(
         {
             resolved = request with
             {
-                Url = resolver.Resolve(request.Url),
+                // Joined onto the environment when the stored address is a path rather than a
+                // whole URL. An OpenAPI import stores «/records/{id}» verbatim — which is right,
+                // because the path belongs to the endpoint and the host belongs to the
+                // environment — and without this every imported endpoint was untestable.
+                Url = EnvironmentAuthenticator.Combine(
+                    environment?.BaseUrl, resolver.Resolve(request.Url)),
                 Headers = [.. request.Headers.Select(h => h with { Value = resolver.Resolve(h.Value) })],
                 Body = request.Body is null ? null : request.Body with
                 {
