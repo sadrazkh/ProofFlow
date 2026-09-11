@@ -10,6 +10,7 @@ import ConnectApi from './islands/ConnectApi.vue';
 import RequestLab from './islands/RequestLab.vue';
 import BaselineWorkbench from './islands/BaselineWorkbench.vue';
 import DataSetEditor from './islands/DataSetEditor.vue';
+import EndpointInputsPaste from './islands/EndpointInputsPaste.vue';
 import EndpointTest from './islands/EndpointTest.vue';
 import ScenarioCanvas from './islands/ScenarioCanvas.vue';
 import RunConsole from './islands/RunConsole.vue';
@@ -59,6 +60,7 @@ island('connect-api', ConnectApi);
 island('request-lab', RequestLab);
 island('baseline-workbench', BaselineWorkbench);
 island('dataset-editor', DataSetEditor);
+island('endpoint-inputs-paste', EndpointInputsPaste);
 // The review queue is no longer an island of its own: it is what the test section renders once a
 // test has run, and reaching it meant knowing which capture session to open.
 island('endpoint-test', EndpointTest);

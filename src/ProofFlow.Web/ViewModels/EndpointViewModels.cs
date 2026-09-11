@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using ProofFlow.Contracts.Baselines;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Capture;
+using ProofFlow.TestEngine.Variables;
 
 namespace ProofFlow.Web.ViewModels;
 
@@ -109,6 +110,29 @@ public sealed record EndpointDetailViewModel
 }
 
 public sealed record EndpointDataSetOption(Guid Id, string Name, int RowCount);
+
+/// <summary>
+/// The column names a request asks each input row for.
+///
+/// An address like <c>/things/{{dataset.current.id}}</c> only works against rows that have a
+/// column called «id», and the way this goes wrong is quiet: the reference resolves to nothing,
+/// every call goes to the same wrong address, and the sweep reports two thousand identical
+/// failures that look like the API being down. Naming the columns beside the paste box costs one
+/// pass over the stored request and turns that into something a reader can see before pasting.
+///
+/// The whole request rather than only its address, because a reference is as likely to be in the
+/// body or a header. <c>{{dataset.current}}</c> on its own — the whole row — names no column and
+/// is skipped rather than reported as a column called "current".
+/// </summary>
+public static class DataSetReferences
+{
+    public static IReadOnlyList<string> ColumnsIn(string? requestJson) =>
+        [.. VariableReference.FindAll(requestJson)
+            .Where(reference => reference.Scope == "dataset"
+                                && reference.Path is [PropertySegment { Name: "current" }, PropertySegment, ..])
+            .Select(reference => ((PropertySegment)reference.Path[1]).Name)
+            .Distinct(StringComparer.Ordinal)];
+}
 
 /// <summary>
 /// Defining an endpoint that cannot be sent from the request lab.

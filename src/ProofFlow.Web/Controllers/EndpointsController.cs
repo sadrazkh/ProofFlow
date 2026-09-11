@@ -10,9 +10,11 @@ using ProofFlow.Contracts.Requests;
 using ProofFlow.Domain.Authorization;
 using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Capture;
+using ProofFlow.Domain.Data;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Infrastructure.Baselines;
 using ProofFlow.Infrastructure.Capture;
+using ProofFlow.Infrastructure.Data;
 using ProofFlow.Infrastructure.Environments;
 using ProofFlow.Infrastructure.Persistence;
 using ProofFlow.TestEngine.Http;
@@ -888,6 +890,122 @@ public sealed class EndpointsController(
         TempData.Success(localizer["endpoint.inputsSaved"]);
         return Redirect($"/projects/{projectId}/endpoints/{endpointId}");
     }
+
+    /// <summary>
+    /// The second door to the same place: rows pasted here become the set this endpoint is checked
+    /// against, without leaving the page.
+    ///
+    /// Choosing from the list above only works once somebody has made a set, and making one meant
+    /// going to the data-set screens, creating it, pasting there, saving, coming back and then
+    /// choosing it. Five navigations to answer «what should I send this to», and until they were
+    /// finished the Test button refused. The inputs are the commonest thing an endpoint is missing,
+    /// so the long way round was the usual way round.
+    ///
+    /// No new machinery: this is <c>DataSetsController.Create</c> and <see cref="SaveInputs"/> in
+    /// one request, over the same parser whose guess the reader has already been shown.
+    /// </summary>
+    [HttpPost("{endpointId:guid}/inputs/paste")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.RecordBaseline)]
+    [Authorize(Policy = Policies.ManageDataSet)]
+    public async Task<IActionResult> PasteInputs(
+        Guid projectId,
+        Guid endpointId,
+        [FromBody] PasteInputsCommand command,
+        // One of this controller's actions needs the data-set service and the rest do not, so it is
+        // asked for where it is used rather than added to the constructor they all share.
+        [FromServices] DataSetService sets,
+        CancellationToken cancellationToken)
+    {
+        var endpoint = await db.Baselines
+            .FirstOrDefaultAsync(b => b.Id == endpointId && b.ProjectId == projectId, cancellationToken);
+        if (endpoint is null) return NotFound();
+
+        // Read again here, pinned to the format the preview reported, rather than storing the rows
+        // the browser hands back. The text is the thing the reader looked at; the parser is the one
+        // thing that decides what it means, and there should not be two answers to that.
+        var parsed = DataSetService.Parse(command.Text, command.Format);
+
+        // Nothing readable means nothing written — not an empty set, which would sit in the list
+        // looking like inputs and sweep zero rows when the Test button was pressed.
+        if (parsed.Rows.Count == 0)
+        {
+            return ValidationProblem(localizer["endpoint.inputs.paste.nothing"].Value);
+        }
+
+        var name = string.IsNullOrWhiteSpace(command.Name) ? endpoint.Name : command.Name.Trim();
+
+        // The column the name is stored in. Said here rather than left to the database, whose
+        // refusal arrives as a five-hundred with nothing in it a reader could act on.
+        if (name.Length > NameLimit) return ValidationProblem(localizer["error.tooLong", NameLimit].Value);
+
+        // Refused rather than numbered apart. The name defaults to the endpoint's, so a second
+        // paste on the same endpoint lands here — and «GET /orders (2)» is a set nobody meant to
+        // make and everybody has to tell from «GET /orders» afterwards.
+        if (await db.DataSets.AnyAsync(d => d.ProjectId == projectId && d.Name == name, cancellationToken))
+        {
+            return ValidationProblem(localizer["dataset.nameTaken", name].Value);
+        }
+
+        var set = new DataSet
+        {
+            WorkspaceId = endpoint.WorkspaceId,
+            ProjectId = projectId,
+            Name = name,
+            Description = localizer["endpoint.inputs.paste.from", endpoint.Name].Value,
+            CreatedByUserId = me.UserId ?? Guid.Empty,
+        };
+
+        db.DataSets.Add(set);
+        await db.SaveChangesAsync(cancellationToken);
+
+        var version = await sets.SaveVersionAsync(set, new DataSetDraft
+        {
+            Columns = parsed.Columns,
+            Rows = parsed.Rows,
+            KeyColumn = command.KeyColumn,
+        }, cancellationToken);
+
+        endpoint.DataSetId = set.Id;
+        await db.SaveChangesAsync(cancellationToken);
+
+        // Three entries for three things that happened, under the names the rest of the product
+        // already uses for them. One «inputs pasted» entry would read well here and would hide the
+        // new set from anybody scanning the log for where their data sets came from.
+        await audit.RecordAsync(new AuditEntry(
+            "dataset.created", projectId, nameof(DataSet), set.Id, set.Name,
+            new Dictionary<string, string?> { ["from"] = "endpoint" }), cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "dataset.versionSaved", projectId, nameof(DataSetVersion), version.Id,
+            $"{set.Name} v{version.Number}",
+            new Dictionary<string, string?> { ["rows"] = version.RowCount.ToString() }), cancellationToken);
+
+        await audit.RecordAsync(new AuditEntry(
+            "baseline.inputsChanged", projectId, nameof(Baseline), endpoint.Id, endpoint.Name,
+            new Dictionary<string, string?> { ["dataSet"] = set.Id.ToString() }), cancellationToken);
+
+        TempData.Success(localizer["endpoint.inputs.paste.made", set.Name, version.RowCount]);
+
+        return Json(new { url = $"/projects/{projectId}/endpoints/{endpointId}" });
+    }
+
+    /// <summary>
+    /// What was pasted, what to call it, and which column names a row.
+    ///
+    /// <c>Format</c> is the one the preview reported rather than the one the reader forced, so the
+    /// rows that are stored are the rows that were shown.
+    /// </summary>
+    public sealed record PasteInputsCommand
+    {
+        public string? Name { get; init; }
+        public string? Text { get; init; }
+        public string? Format { get; init; }
+        public string? KeyColumn { get; init; }
+    }
+
+    /// <summary>As much of a name as the DataSets table will hold.</summary>
+    private const int NameLimit = 200;
 
     /// <summary>
     /// The Test button.

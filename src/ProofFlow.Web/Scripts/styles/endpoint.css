@@ -78,6 +78,20 @@
 .endpoint-request-form .method-chip { inline-size: auto; min-inline-size: 108px; }
 .endpoint-request-form .select:not(.method-chip) { inline-size: auto; min-inline-size: 180px; }
 
+/*
+  The second way to give an endpoint its inputs, under the first.
+
+  A rule rather than a card of its own: it is inside the inputs card already, and a card in a card
+  drew a border around half the section and made the two doors look like two subjects.
+*/
+.endpoint-paste {
+  margin-block-start: var(--space-4);
+  padding-block-start: var(--space-4);
+  border-block-start: 1px solid var(--line-subtle);
+}
+
+.endpoint-paste .textarea { font-size: var(--text-xs); }
+
 /* ---- the test ------------------------------------------------------------------------------ */
 
 .endpoint-test-bar { gap: var(--space-3); }
