@@ -207,6 +207,41 @@ for (const theme of ['light', 'dark'] as const) {
       });
 
       /**
+       * A batch of endpoint checks, finished.
+       *
+       * Started here rather than looked up, because there is no list of batches to find one on —
+       * the press lives on the endpoint list and the page it opens is the only way in. Every row
+       * is a status built from five counters and a coloured dot, which is exactly the markup that
+       * reads as nothing without its words.
+       */
+      test('check batch', async ({ page }) => {
+        test.skip(!PASSWORD, 'PROOFFLOW_PASSWORD is not set.');
+
+        const id = await firstProject(page);
+        expect(id, 'the demo seed should have created a project').not.toBeNull();
+
+        await page.goto(`${BASE}/projects/${id}/endpoints`, { waitUntil: 'networkidle' });
+
+        const press = page.locator('form[action$="/checks"] button');
+        expect(await press.count(), 'there should be an endpoint to check — run e2e/demo-regression.ts first')
+          .toBeGreaterThan(0);
+
+        await press.first().click();
+        await page.waitForURL(/\/checks\/[0-9a-f-]+$/i, { timeout: 20_000 });
+        await page.waitForSelector('[data-island-mounted="true"]');
+
+        // Audited while it is still going: the progress row and the Stop button only exist then,
+        // and they are markup axe would otherwise never see.
+        await page.waitForSelector('.table tbody tr', { timeout: 20_000 });
+        await audit(page, `check batch, running (${language}/${theme})`);
+
+        await page.waitForSelector('.status-dot', { timeout: 120_000 });
+        await page.waitForTimeout(600);
+
+        await audit(page, `check batch, finished (${language}/${theme})`);
+      });
+
+      /**
        * The run console, with a finished run in it.
        *
        * The list page would measure an empty table. The console is where the dense markup is: a

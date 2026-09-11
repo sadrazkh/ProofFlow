@@ -155,8 +155,22 @@ async function test(page: Page, path: string): Promise<number> {
   await page.getByRole('button', { name: /^test$/i }).click();
   await page.waitForSelector('.endpoint-test-result', { timeout: 60_000 });
 
-  const summary = await page.locator('.endpoint-test-result').innerText();
-  console.log(`Test finished: ${summary.replace(/\s+/g, ' ').trim()}`);
+  // The press queues the check and comes straight back, so the result box appears immediately —
+  // holding «Waiting to start…» and a Stop button. Waiting for the box alone used to be the whole
+  // assertion here and now proves nothing: it was printing the progress line under the words
+  // «Test finished». The Stop button is the thing that is only there while there is something to
+  // stop, so its absence is the honest signal that the check is over.
+  await page.waitForSelector('.endpoint-test-result button', { state: 'detached', timeout: 120_000 });
+
+  const summary = (await page.locator('.endpoint-test-result').innerText())
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (/waiting|checked/i.test(summary)) {
+    throw new Error(`The check had not finished when its result was read: ${summary}`);
+  }
+
+  console.log(`Test finished: ${summary}`);
 
   await page.waitForSelector('.sample', { timeout: 30_000 });
   return page.locator('.sample').count();

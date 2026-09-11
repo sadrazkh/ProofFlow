@@ -1259,6 +1259,55 @@ not a verification.
 
 ---
 
+## Six things that were still in the way
+
+The review after the last pass asked what was left, «especially for making this easier». Most of the
+answers were the same shape: the product could do the thing, and getting to it cost more than the
+thing was worth.
+
+| | What it is |
+|---|---|
+| A check is work, not a held-open page | The sweep ran inside the POST that started it. Two thousand rows meant one connection held for twenty minutes, a proxy losing the answer to a sweep that had actually finished, and a closed tab cancelling twenty minutes of work by accident. It queues now, on its own channel — sharing the run queue would make «check this endpoint» wait behind a sixty-cell matrix — and the page polls, so a reload finds the check rather than a button |
+| Stop means two different things | A check running here has a token to cancel. One still waiting has nobody listening, so it is marked stopped and the worker finds it that way and passes over it |
+| Check everything | One press on the endpoint list, one page that fills in as they land. Adding forty endpoints takes a minute; checking them took forty presses on forty pages, so nobody did — and the bell, the badge and the sparkline had nothing to report about thirty-nine of them |
+| Endpoints can be scheduled | `RunSchedule` held scenarios and environments and nothing else. It names endpoints beside them now, or instead of them: somebody who records paths and never draws a scenario was exactly who the old rule left with nothing running on its own |
+| An endpoint with no inputs can be checked at all | Most endpoints are this — quick-add and the request lab both produce one — and the Test button refused them outright. It is sent once and compared against its approved version, through the same loop and the same `Judge` as a two-thousand-row sweep. The approved version is handed over as a sample that is never stored; a second comparison of the same two things would be a second answer to «did this change» |
+| You can find your own things | The command palette knew every page and none of your endpoints. It searches them now — endpoints, scenarios, environments, data sets, scoped to the project you are in — and the endpoint and run lists grew a filter that is a plain GET, so a narrowed list is a URL somebody can send |
+| The evidence is in the row | Approving meant leaving the page to see what changed and coming back. The diff opens in place, and several can be decided at once — honestly: «3 approved. 1 left for somebody else: you recorded them», rather than one refusal that throws the other three away |
+| Inputs without the detour | Pasting rows on the endpoint page makes the set, saves version 1 and links it. It also names the columns the request asks every row for, and warns before you paste when they are missing — a reference that resolves to nothing sends two thousand identical calls to the same wrong address and reports it as the API being down |
+| Tests | 765 passing — 515 unit, 250 integration, 53 component; 137 accessibility checks. Acceptance: 20 of 20 |
+
+### What building it found
+
+**A search that could not find a capitalised name.** `Contains` renders as `LIKE` on SQLite, which
+folds ASCII, and as `strpos` on PostgreSQL, which does not — so the provider people deploy on was
+the one where typing «orders» answered «GET /Orders» with nothing. Lower-cased on both sides now.
+The test that came with it says out loud that it cannot fail on SQLite: it guards against the filter
+becoming case-sensitive everywhere, and not against the regression that only shows in production.
+
+**A driver that had stopped checking anything.** `demo-regression` waited for the result box to
+appear and printed what was in it. Once a check became queued work the box appears at once, holding
+«Waiting to start…» — so the script was printing the progress line under the words «Test finished»
+and asserting nothing at all. It waits for the Stop button to go now, and refuses a summary that
+still reads like one.
+
+**Two failure paths with no owner.** A sweep that fell over between the sign-in and the first row
+left its session «running» for ever, because nothing owned the failure once no request was waiting
+for it. And being stopped during the sign-in was about to be recorded as a failure — «somebody
+pressed stop» is not «the API is broken», and nobody should be woken for it.
+
+**`CaptureSession.DataSetVersionId` was lying.** Making it nullable is also an admission: the
+sessions a scenario run opens have been carrying an all-zero id in that column rather than saying
+there was no data set.
+
+**A performance test that fails under load.** `A_multi_megabyte_payload_compares_in_reasonable_time`
+gives itself three seconds and normally takes one. It went red twice while three agents were
+building and testing on this machine at once, and passed every time it was run alone. Left as it is
+rather than loosened: the budget is the point of the test, and a wall-clock assertion on a shared
+machine is a cost worth knowing about rather than designing away.
+
+---
+
 ## Backlog
 
 Everything found and deliberately not done. None of it blocks using the product; each entry says why
