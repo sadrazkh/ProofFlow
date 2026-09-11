@@ -59,6 +59,12 @@ public sealed class SearchController(ProofFlowDbContext db, ICurrentUser me) : C
         if (term.Length == 0) return Json(new SearchAnswer([]));
         if (term.Length > LongestTerm) term = term[..LongestTerm];
 
+        // Folded to lower case on both sides, and matched that way. «Contains» alone is
+        // case-sensitive on PostgreSQL and, depending on the collation, on SQLite too — so typing
+        // «orders» would not find «GET /Orders», which is the single most likely thing anybody
+        // types into this box. ToLower translates to the database’s own lower() on both providers.
+        var folded = term.ToLowerInvariant();
+
         var groups = new List<SearchGroup>();
         var left = Overall;
 
@@ -76,8 +82,8 @@ public sealed class SearchController(ProofFlowDbContext db, ICurrentUser me) : C
                 // The address is inside the stored request document rather than in a column of its
                 // own, so the filter is on the document. That casts a slightly wider net — a header
                 // value can match — which is the right way round for a search box.
-                .Where(b => b.Name.Contains(term)
-                            || (b.RequestJson != null && b.RequestJson.Contains(term)))
+                .Where(b => b.Name.ToLower().Contains(folded)
+                            || (b.RequestJson != null && b.RequestJson.ToLower().Contains(folded)))
                 .OrderBy(b => b.Name)
                 .Take(Math.Min(PerGroup, left))
                 .Select(b => new Found(b.Name, b.ProjectId, $"/projects/{b.ProjectId}/endpoints/{b.Id}"))
@@ -90,7 +96,7 @@ public sealed class SearchController(ProofFlowDbContext db, ICurrentUser me) : C
             if (project is { } id) scenarios = scenarios.Where(s => s.ProjectId == id);
 
             left -= Add(groups, "nav.scenarios", "workflow", await scenarios
-                .Where(s => s.Name.Contains(term))
+                .Where(s => s.Name.ToLower().Contains(folded))
                 .OrderBy(s => s.Name)
                 .Take(Math.Min(PerGroup, left))
                 .Select(s => new Found(s.Name, s.ProjectId, $"/projects/{s.ProjectId}/scenarios/{s.Id}"))
@@ -103,7 +109,7 @@ public sealed class SearchController(ProofFlowDbContext db, ICurrentUser me) : C
             if (project is { } id) environments = environments.Where(e => e.ProjectId == id);
 
             left -= Add(groups, "nav.environments", "globe", await environments
-                .Where(e => e.Name.Contains(term))
+                .Where(e => e.Name.ToLower().Contains(folded))
                 .OrderBy(e => e.Name)
                 .Take(Math.Min(PerGroup, left))
                 // An environment has no page of its own; the list opens with one selected. Linking
@@ -119,7 +125,7 @@ public sealed class SearchController(ProofFlowDbContext db, ICurrentUser me) : C
             if (project is { } id) dataSets = dataSets.Where(d => d.ProjectId == id);
 
             left -= Add(groups, "nav.datasets", "table-2", await dataSets
-                .Where(d => d.Name.Contains(term))
+                .Where(d => d.Name.ToLower().Contains(folded))
                 .OrderBy(d => d.Name)
                 .Take(Math.Min(PerGroup, left))
                 .Select(d => new Found(d.Name, d.ProjectId, $"/projects/{d.ProjectId}/datasets/{d.Id}"))

@@ -70,6 +70,36 @@ public sealed class FindingThingsTests(ProofFlowApplication app) : IClassFixture
     }
 
     [Fact]
+    public async Task Search_does_not_care_how_anybody_capitalised_it()
+    {
+        var (client, projectId) = await SignedInAsync();
+        var token = $"Invoices{Guid.CreateVersion7():N}"[..20];
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var db = Db(scope.ServiceProvider);
+            Endpoint(db, await WorkspaceOfAsync(db, projectId), projectId, $"GET /{token}");
+            await db.SaveChangesAsync();
+        }
+
+        // The single likeliest thing anybody types. A search box that answers «invoices» with
+        // nothing because the endpoint is called «Invoices» has failed at the one job it has.
+        //
+        // Worth knowing what this does and does not prove. These tests run on SQLite, where EF
+        // renders Contains as LIKE and LIKE folds ASCII on its own — so this passes with or without
+        // the lower() in the query. PostgreSQL renders the same expression as strpos, which does
+        // not fold, and that is the provider the lower() is there for. So: this guards against
+        // somebody making the filter case-sensitive on *both* providers, and it cannot catch a
+        // regression that only shows in production. Said out loud rather than left as a green tick
+        // that looks like more than it is.
+        var lower = Group(await SearchAsync(client, token.ToLowerInvariant()), "nav.endpoints");
+        lower.Should().ContainSingle();
+
+        var upper = Group(await SearchAsync(client, token.ToUpperInvariant()), "nav.endpoints");
+        upper.Should().ContainSingle();
+    }
+
+    [Fact]
     public async Task Search_never_reaches_into_another_workspace()
     {
         var (client, projectId) = await SignedInAsync();

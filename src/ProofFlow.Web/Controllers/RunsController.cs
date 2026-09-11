@@ -70,11 +70,15 @@ public sealed class RunsController(
 
         if (term.Length > 0)
         {
+            // Lower-cased on both sides: «Contains» alone is case-sensitive on PostgreSQL, and
+            // typing «nightly» must find «Nightly regression».
+            var folded = term.ToLowerInvariant();
+
             // The scenario's name, because a run has none of its own. Matched with a subquery
             // rather than a join so the filter reads the same way the list's own name column is
             // already written.
             history = history.Where(run =>
-                db.Scenarios.Any(s => s.Id == run.ScenarioId && s.Name.Contains(term)));
+                db.Scenarios.Any(s => s.Id == run.ScenarioId && s.Name.ToLower().Contains(folded)));
         }
 
         if (verdict is { } only) history = history.Where(run => run.Status == only);

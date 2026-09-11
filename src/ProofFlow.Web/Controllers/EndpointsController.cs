@@ -103,8 +103,12 @@ public sealed class EndpointsController(
             // lives inside the stored request document rather than in a column of its own, so the
             // match is on the document — a slightly wider net than the address alone, which is the
             // right way round for a filter box.
-            query = query.Where(b => b.Name.Contains(term)
-                                     || (b.RequestJson != null && b.RequestJson.Contains(term)));
+            // Lower-cased on both sides: «Contains» alone is case-sensitive on PostgreSQL, and
+            // typing «orders» must find «GET /Orders». ToLower becomes the database’s own lower().
+            var folded = term.ToLowerInvariant();
+
+            query = query.Where(b => b.Name.ToLower().Contains(folded)
+                                     || (b.RequestJson != null && b.RequestJson.ToLower().Contains(folded)));
         }
 
         var total = await query.CountAsync(cancellationToken);
