@@ -40,17 +40,46 @@ public sealed class RunsController(
     /// <summary>How many runs the history shows at once.</summary>
     public const int PageSize = 30;
 
+    /// <summary>
+    /// The history, optionally narrowed by scenario name and by verdict.
+    ///
+    /// Both are ordinary GET parameters and the form that sets them is a plain form, so a narrowed
+    /// history is a URL somebody can send. The two filters answer the two questions this page is
+    /// opened with — «what happened to checkout» and «what is failing» — and no more than that: a
+    /// history with eight filter fields is a history nobody filters.
+    /// </summary>
     [HttpGet("")]
     [Authorize(Policy = Policies.ViewProject)]
-    public async Task<IActionResult> Index(Guid projectId, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        Guid projectId, string? q, string? status, CancellationToken cancellationToken)
     {
         var project = await db.Projects
             .FirstOrDefaultAsync(candidate => candidate.Id == projectId, cancellationToken);
 
         if (project is null) return NotFound();
 
-        var rows = await db.Runs
-            .Where(run => run.ProjectId == projectId)
+        var term = (q ?? string.Empty).Trim();
+
+        // An unrecognised verdict is read as «all» rather than refused. It can only arrive from a
+        // hand-edited URL, and an empty list would look like a real answer to a real question.
+        var verdict = Enum.TryParse<RunStatus>(status, ignoreCase: true, out var wanted)
+            ? wanted
+            : (RunStatus?)null;
+
+        var history = db.Runs.Where(run => run.ProjectId == projectId);
+
+        if (term.Length > 0)
+        {
+            // The scenario's name, because a run has none of its own. Matched with a subquery
+            // rather than a join so the filter reads the same way the list's own name column is
+            // already written.
+            history = history.Where(run =>
+                db.Scenarios.Any(s => s.Id == run.ScenarioId && s.Name.Contains(term)));
+        }
+
+        if (verdict is { } only) history = history.Where(run => run.Status == only);
+
+        var rows = await history
             .OrderByDescending(run => run.CreatedAt)
             .Take(PageSize)
             .Select(run => new RunSummaryRow(
@@ -75,6 +104,8 @@ public sealed class RunsController(
             ProjectName = project.Name,
             Runs = rows,
             CanRun = me.Can(Capability.RunTest),
+            Query = term.Length == 0 ? null : term,
+            Status = verdict,
         });
     }
 

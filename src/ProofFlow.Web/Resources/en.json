@@ -20,7 +20,7 @@
     "section_verify": "Verify",
     "section_operate": "Operate",
     "search": "Search",
-    "searchHint": "Search projects, scenarios, runs",
+    "searchHint": "Go to a page, or find something you made",
     "commandHint": "Press Ctrl+K",
     "collapse": "Collapse the sidebar",
     "expand": "Expand the sidebar",
@@ -1400,7 +1400,16 @@
     "column.started": "Started",
     "column.trigger": "Started by",
     "timeline.show": "Show {0} in the log",
-    "column.step": "Step"
+    "column.step": "Step",
+    "filter.label": "Find a run",
+    "filter.hint": "The name of a scenario",
+    "filter.any": "Any verdict",
+    "filter.action": "Filter",
+    "filter.clear": "Show all",
+    "filter.none.title": "No run here matches «{0}»",
+    "filter.none.verdict": "No run here ended that way",
+    "filter.none.body": "This page holds the most recent runs, so an older one may be behind it.",
+    "filter.none.action": "Show all runs"
   },
   "matrix": {
     "subtitle": "The same tests, at the same moment, in more than one place.",
@@ -1984,7 +1993,15 @@
     "recent.summary": "{0} of the last {1} tests passed",
     "contract.on": "Checked against the shape its documentation promises.",
     "contract.remove": "Stop checking the contract",
-    "contract.removed": "The contract is gone. The recorded answer is still checked."
+    "contract.removed": "The contract is gone. The recorded answer is still checked.",
+    "filter.label": "Find an endpoint",
+    "filter.hint": "A name, or part of the address",
+    "filter.action": "Filter",
+    "filter.clear": "Show all",
+    "filter.matched": "{0} found for «{1}».",
+    "filter.none.title": "Nothing here matches «{0}»",
+    "filter.none.body": "Try a shorter word, or part of the address instead of the name.",
+    "filter.none.action": "Show all endpoints"
   },
   "share": {
     "action": "Share",
@@ -1995,5 +2012,8 @@
     "revoke": "Stop sharing",
     "revoked": "The link no longer opens anything.",
     "what": "Verdict, steps and timings. No log, no responses."
+  },
+  "search": {
+    "searching": "Looking…"
   }
 }

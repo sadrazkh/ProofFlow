@@ -105,13 +105,35 @@ export function mountMenus(): void {
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeAll(); });
 }
 
+/** One thing somebody made, as /search describes it. */
+type SearchItem = { title: string; subtitle: string | null; path: string; icon: string };
+
+/** A kind of thing, named by a catalogue key rather than by a sentence. */
+type SearchGroup = { labelKey: string; items: SearchItem[] };
+
+type SearchAnswer = { groups: SearchGroup[] };
+
+/**
+ * Long enough that «orders» is one request rather than six, short enough that nobody waits.
+ *
+ * Shorter than the 300ms a search field usually takes, on purpose: the palette already has rows in
+ * it, so the pause reads as the list hesitating rather than as a page loading.
+ */
+const SEARCH_DEBOUNCE = 150;
+
 /**
  * The command palette.
  *
- * Its entries are rendered server-side from the same navigation map as the sidebar, so it can only
- * ever offer routes the signed-in member is authorised to reach. Building the list client-side
- * would mean shipping the full route table to every account, including the ones that may not see
- * most of it.
+ * Two lists in one box, and they answer different questions. The destinations are rendered
+ * server-side from the same navigation map as the sidebar, so the palette can only ever offer
+ * routes the signed-in member is authorised to reach — building that list here would mean shipping
+ * the full route table to every account. The things somebody actually made cannot be rendered that
+ * way at all: a workspace's endpoints, scenarios, environments and data sets are thousands of rows,
+ * almost none of them wanted, so they are asked for as they are typed and appended underneath.
+ *
+ * Every read of the rows re-queries the DOM. The previous version captured them once at mount,
+ * which was correct while the list was fixed and became a silent bug the moment anything was added
+ * to it: the found rows were on screen, clickable with a mouse, and invisible to the arrow keys.
  */
 export function mountCommandPalette(): void {
   const overlay = document.querySelector<HTMLElement>('[data-palette]');
@@ -119,46 +141,188 @@ export function mountCommandPalette(): void {
 
   const input = overlay.querySelector<HTMLInputElement>('[data-palette-input]');
   const empty = overlay.querySelector<HTMLElement>('[data-palette-empty]');
-  const items = Array.from(overlay.querySelectorAll<HTMLAnchorElement>('[data-palette-item]'));
-  let selected = 0;
+  const searching = overlay.querySelector<HTMLElement>('[data-palette-loading]');
+  const results = overlay.querySelector<HTMLElement>('[data-palette-results]');
 
-  const visible = () => items.filter((item) => !item.classList.contains('hidden'));
+  // Present only inside a project, and it narrows the search to that project when it is.
+  const project = overlay.dataset.paletteProject ?? '';
+
+  let selected = 0;
+  let timer = 0;
+  let ticket = 0;
+  let busy = false;
+  let pending: AbortController | null = null;
+
+  const rows = () => Array.from(overlay.querySelectorAll<HTMLAnchorElement>('[data-palette-item]'));
+  const visible = () => rows().filter((row) => !row.classList.contains('hidden'));
 
   const paint = (index: number) => {
-    const shown = visible();
+    const all = rows();
+    const shown = all.filter((row) => !row.classList.contains('hidden'));
+
+    for (const row of all) {
+      row.classList.remove('is-selected');
+      row.setAttribute('aria-selected', 'false');
+    }
 
     if (shown.length === 0) {
       selected = 0;
       // Nothing highlighted means nothing to announce. Leaving a stale id here points a screen
-      // reader at a row that is filtered out and no longer on screen.
+      // reader at a row that has been filtered out, or at one that has been replaced wholesale by
+      // the answer to a later keystroke.
       input?.removeAttribute('aria-activedescendant');
-      items.forEach((item) => item.setAttribute('aria-selected', 'false'));
       return;
     }
 
-    selected = (index + shown.length) % shown.length;
+    selected = ((index % shown.length) + shown.length) % shown.length;
 
-    shown.forEach((item, i) => {
-      const active = i === selected;
-      item.classList.toggle('is-selected', active);
-      item.setAttribute('aria-selected', String(active));
-    });
+    const current = shown[selected]!;
+    current.classList.add('is-selected');
+    current.setAttribute('aria-selected', 'true');
 
     // Focus never leaves the input, so this is the only thing telling a screen reader which row
-    // the arrow keys are on.
-    const current = shown[selected];
-    if (current?.id) input?.setAttribute('aria-activedescendant', current.id);
-    current?.scrollIntoView({ block: 'nearest' });
+    // the arrow keys are on. Every row carries an id — the found ones are given one as they are
+    // made — because this attribute naming an element that is not there says nothing at all.
+    input?.setAttribute('aria-activedescendant', current.id);
+    current.scrollIntoView({ block: 'nearest' });
+  };
+
+  const sayIfEmpty = () => {
+    // Silent while a request is out. «Nothing matches that» before the answer arrives is a
+    // sentence that is not yet true, and this is a live region — it will have been read aloud by
+    // the time it stops being true.
+    empty?.classList.toggle('hidden', busy || visible().length > 0);
+  };
+
+  /** Only the destinations carry `data-search`; a found row is already an answer to the query. */
+  const filterDestinations = (query: string) => {
+    for (const item of overlay.querySelectorAll<HTMLElement>('[data-palette-item][data-search]')) {
+      const haystack = (item.dataset.search ?? item.textContent ?? '').toLocaleLowerCase();
+      item.classList.toggle('hidden', query.length > 0 && !haystack.includes(query));
+    }
+  };
+
+  const render = (answer: SearchAnswer | null) => {
+    if (!results) return;
+
+    results.replaceChildren();
+    if (!answer?.groups?.length) return;
+
+    // A line between the places you can go and the things you have. Without it the two run
+    // together into one list where a route and a name look like the same kind of row.
+    const rule = document.createElement('div');
+    rule.className = 'palette-rule';
+    rule.setAttribute('aria-hidden', 'true');
+    results.appendChild(rule);
+
+    let ordinal = 0;
+
+    for (const group of answer.groups) {
+      const label = t(group.labelKey);
+
+      const section = document.createElement('div');
+      section.setAttribute('role', 'group');
+      section.setAttribute('aria-label', label);
+
+      const heading = document.createElement('div');
+      heading.className = 'palette-group';
+      // The group is already named by its aria-label; leaving this readable too would announce
+      // every heading twice.
+      heading.setAttribute('aria-hidden', 'true');
+      heading.textContent = label;
+      section.appendChild(heading);
+
+      for (const item of group.items) {
+        const row = document.createElement('a');
+        row.className = 'menu-item';
+        row.id = `pf-palette-found-${ordinal++}`;
+        row.href = item.path;
+        row.tabIndex = -1;
+        row.setAttribute('data-palette-item', '');
+        row.setAttribute('role', 'option');
+        row.setAttribute('aria-selected', 'false');
+
+        // Built element by element rather than from a template string: a name is whatever somebody
+        // typed, and the one place it must not be able to become markup is the box people paste
+        // other people's words into.
+        const icon = document.createElement('i');
+        icon.setAttribute('data-lucide', item.icon);
+        icon.setAttribute('aria-hidden', 'true');
+        row.appendChild(icon);
+
+        const title = document.createElement('span');
+        title.className = 'grow truncate';
+        title.dir = 'auto';
+        title.textContent = item.title;
+        row.appendChild(title);
+
+        if (item.subtitle) {
+          const subtitle = document.createElement('span');
+          subtitle.className = 'text-xs subtle truncate';
+          subtitle.dir = 'auto';
+          subtitle.textContent = item.subtitle;
+          row.appendChild(subtitle);
+        }
+
+        section.appendChild(row);
+      }
+
+      results.appendChild(section);
+    }
+  };
+
+  const forget = () => {
+    window.clearTimeout(timer);
+    // Anything still on its way belongs to a question that is no longer on screen.
+    ticket++;
+    pending?.abort();
+    pending = null;
+    busy = false;
+    searching?.classList.add('hidden');
+    render(null);
+  };
+
+  const ask = (term: string) => {
+    const mine = ++ticket;
+
+    pending?.abort();
+    pending = new AbortController();
+
+    busy = true;
+    searching?.classList.remove('hidden');
+    sayIfEmpty();
+
+    const address = `/search?q=${encodeURIComponent(term)}`
+      + (project ? `&project=${encodeURIComponent(project)}` : '');
+
+    api.get<SearchAnswer>(address, pending.signal)
+      .then((answer) => { if (mine === ticket) render(answer); })
+      .catch(() => {
+        // Aborted by a later keystroke, or the server could not be reached. Either way the
+        // destinations above are still true, so the list drops what was found and keeps the rest
+        // rather than going blank and looking like an answer.
+        if (mine === ticket) render(null);
+      })
+      .finally(() => {
+        if (mine !== ticket) return;
+        busy = false;
+        searching?.classList.add('hidden');
+        paint(0);
+        sayIfEmpty();
+      });
   };
 
   const open = (isOpen: boolean) => {
     overlay.classList.toggle('hidden', !isOpen);
     overlay.setAttribute('aria-hidden', String(!isOpen));
     document.body.style.overflow = isOpen ? 'hidden' : '';
+
+    forget();
+
     if (!isOpen) return;
     if (input) { input.value = ''; input.focus(); }
-    items.forEach((item) => item.classList.remove('hidden'));
-    if (empty) empty.classList.add('hidden');
+    for (const row of rows()) row.classList.remove('hidden');
+    empty?.classList.add('hidden');
     paint(0);
   };
 
@@ -167,16 +331,28 @@ export function mountCommandPalette(): void {
   overlay.querySelector('[data-palette-backdrop]')?.addEventListener('click', () => open(false));
 
   input?.addEventListener('input', () => {
-    const query = input.value.trim().toLocaleLowerCase();
-    for (const item of items) {
-      const haystack = (item.dataset.search ?? item.textContent ?? '').toLocaleLowerCase();
-      item.classList.toggle('hidden', query.length > 0 && !haystack.includes(query));
+    const query = input.value.trim();
+
+    filterDestinations(query.toLocaleLowerCase());
+
+    if (query.length === 0) {
+      forget();
+    } else {
+      window.clearTimeout(timer);
+
+      // Counted as busy from the keystroke rather than from the request, so that a word matching
+      // no destination does not flash «nothing matches that» for the length of the debounce. It is
+      // a live region: a sentence shown for 150ms is a sentence read out loud.
+      busy = true;
+
+      // The rows found for the previous query stay on screen until the next answer replaces them.
+      // Clearing them on every keystroke made the list flicker between two states while somebody
+      // typed one word, which reads as the palette losing its place.
+      timer = window.setTimeout(() => ask(query), SEARCH_DEBOUNCE);
     }
-    if (empty) {
-      empty.classList.toggle('hidden', visible().length > 0);
-      empty.textContent = t('nav.noResults');
-    }
+
     paint(0);
+    sayIfEmpty();
   });
 
   document.addEventListener('keydown', (event) => {

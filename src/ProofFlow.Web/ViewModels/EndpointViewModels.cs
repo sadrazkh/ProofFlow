@@ -18,6 +18,15 @@ public sealed record EndpointListViewModel
     public bool CanRun { get; init; }
 
     /// <summary>
+    /// What the list was narrowed by, or null when it was not.
+    ///
+    /// Null and empty are not the same thing here: an empty table with no query is «you have no
+    /// endpoints», and an empty table with one is «nothing matches that». They are different facts
+    /// and they need different pages.
+    /// </summary>
+    public string? Query { get; init; }
+
+    /// <summary>
     /// Environments that can sign in by themselves — the ones quick-add can send through.
     ///
     /// Empty hides the quick-add form entirely: without a configured sign-in the form would be a

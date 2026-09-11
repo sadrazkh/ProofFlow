@@ -8,7 +8,71 @@
     </div>
 </div>
 
-@if (Model.Runs.Count == 0)
+@if (Model.Runs.Count > 0 || Model.Narrowed)
+{
+    @*
+        A plain GET form: no JavaScript, and a narrowed history is a URL that can be sent to
+        whoever asked «did checkout pass last night».
+    *@
+    <form method="get" action="/projects/@Model.ProjectId/runs" class="card">
+        <div class="card-body row wrap" style="gap: var(--space-3); align-items: flex-end;">
+            <div class="field grow" style="min-inline-size: 220px;">
+                <label class="field-label" for="run-filter">@T["run.filter.label"]</label>
+                <input class="input" id="run-filter" name="q" value="@Model.Query"
+                       placeholder="@T["run.filter.hint"]" dir="auto" autocomplete="off" />
+            </div>
+            <div class="field" style="min-inline-size: 170px;">
+                <label class="field-label" for="run-verdict">@T["run.column.verdict"]</label>
+                <select class="select" id="run-verdict" name="status">
+                    <option value="" selected="@(Model.Status is null)">@T["run.filter.any"]</option>
+                    @foreach (var verdict in new[]
+                    {
+                        RunStatus.Passed, RunStatus.Failed, RunStatus.Errored, RunStatus.Running,
+                    })
+                    {
+                        <option value="@verdict" selected="@(Model.Status == verdict)">
+                            @T[$"run.status.{verdict.ToString().ToLowerInvariant()}"]
+                        </option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="btn btn-secondary">
+                <i data-lucide="filter" aria-hidden="true"></i>@T["run.filter.action"]
+            </button>
+            @if (Model.Narrowed)
+            {
+                <a class="btn btn-ghost" href="/projects/@Model.ProjectId/runs">@T["run.filter.clear"]</a>
+            }
+        </div>
+    </form>
+}
+
+@if (Model.Runs.Count == 0 && Model.Narrowed)
+{
+    @* Not «no runs yet»: there are runs, and none of them is this one. *@
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="search" aria-hidden="true"></i></div>
+            <h2 class="empty-title">
+                @if (Model.Query is { } missed)
+                {
+                    @T["run.filter.none.title", missed]
+                }
+                else
+                {
+                    @T["run.filter.none.verdict"]
+                }
+            </h2>
+            <p class="empty-body">@T["run.filter.none.body"]</p>
+            <div class="empty-actions">
+                <a class="btn btn-secondary" href="/projects/@Model.ProjectId/runs">
+                    @T["run.filter.none.action"]
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else if (Model.Runs.Count == 0)
 {
     <div class="card">
         <div class="empty">

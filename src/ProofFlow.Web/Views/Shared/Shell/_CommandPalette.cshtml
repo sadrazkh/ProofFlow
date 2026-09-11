@@ -4,11 +4,15 @@
 }
 @if (Me.IsAuthenticated)
 {
-    @* Rendered server-side from the same map as the sidebar, so it can only offer routes this
-       member is authorised to reach. Building the list in the browser would mean shipping the
-       whole route table to every account. *@
+    @* The destinations are rendered server-side from the same map as the sidebar, so the palette
+       can only offer routes this member is authorised to reach. Building that list in the browser
+       would mean shipping the whole route table to every account.
+
+       What somebody *made* cannot be rendered here — it is a workspace's worth of rows, and most
+       of them are not wanted. Those arrive from /search as they are typed for, under the
+       destinations, and are gated by the same capabilities on the way out. *@
     <div class="palette-overlay hidden" data-palette aria-hidden="true" role="dialog" aria-modal="true"
-         aria-label="@T["nav.search"]">
+         aria-label="@T["nav.search"]" data-palette-project="@projectId">
         <div class="palette-backdrop" data-palette-backdrop
              style="position: absolute; inset: 0;"></div>
         <div class="palette" style="position: relative;">
@@ -38,6 +42,17 @@
                     </a>
                     index++;
                 }
+
+                @* Filled in by the browser from /search. Empty in the HTML on purpose: a page that
+                   pre-rendered anything here would be rendering a search nobody has asked for. *@
+                <div data-palette-results></div>
+
+                @* Its own status line rather than a spinner: «searching» and «nothing matched» are
+                   different facts, and a reader who hears only the second one cannot tell a slow
+                   answer from an empty one. *@
+                <div class="palette-searching hidden" data-palette-loading role="status">
+                    @T["search.searching"]
+                </div>
                 <div class="palette-empty hidden" data-palette-empty role="status">@T["nav.noResults"]</div>
             </div>
         </div>

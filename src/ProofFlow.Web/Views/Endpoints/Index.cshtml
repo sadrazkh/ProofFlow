@@ -90,7 +90,52 @@
     </form>
 }
 
-@if (Model.Endpoints.Count == 0)
+@if (Model.Page.Total > 0 || Model.Query is not null)
+{
+    @*
+        A GET with one field, and no JavaScript anywhere near it. Forty endpoints is two pages of
+        table, and «is /orders in here» should not be a paging exercise.
+
+        The form posts nothing and remembers nothing: a narrowed list is a URL, so it can be sent
+        to a colleague and it survives the back button. Page one is implied — dropping the old page
+        number is deliberate, because page three of a different list is not the same place.
+    *@
+    <form method="get" action="/projects/@Model.ProjectId/endpoints" class="card">
+        <div class="card-body row wrap" style="gap: var(--space-3); align-items: flex-end;">
+            <div class="field grow" style="min-inline-size: 220px;">
+                <label class="field-label" for="endpoint-filter">@T["endpoint.filter.label"]</label>
+                <input class="input" id="endpoint-filter" name="q" value="@Model.Query"
+                       placeholder="@T["endpoint.filter.hint"]" dir="auto" autocomplete="off" />
+            </div>
+            <button type="submit" class="btn btn-secondary">
+                <i data-lucide="filter" aria-hidden="true"></i>@T["endpoint.filter.action"]
+            </button>
+            @if (Model.Query is not null)
+            {
+                <a class="btn btn-ghost" href="/projects/@Model.ProjectId/endpoints">@T["endpoint.filter.clear"]</a>
+            }
+        </div>
+    </form>
+}
+
+@if (Model.Endpoints.Count == 0 && Model.Query is { } missed)
+{
+    @* Not the «no endpoints yet» state. The project has endpoints; this one word does not match
+       any of them, and telling somebody to go and record their first one would be a lie. *@
+    <div class="card">
+        <div class="empty">
+            <div class="empty-art"><i data-lucide="search" aria-hidden="true"></i></div>
+            <h2 class="empty-title">@T["endpoint.filter.none.title", missed]</h2>
+            <p class="empty-body">@T["endpoint.filter.none.body"]</p>
+            <div class="empty-actions">
+                <a class="btn btn-secondary" href="/projects/@Model.ProjectId/endpoints">
+                    @T["endpoint.filter.none.action"]
+                </a>
+            </div>
+        </div>
+    </div>
+}
+else if (Model.Endpoints.Count == 0)
 {
     @* An endpoint is recorded from a response, not typed into a form, so the empty state points at
        the place responses come from rather than offering a "new" button that would open a form
@@ -121,6 +166,15 @@
 }
 else
 {
+    @if (Model.Query is { } narrowed)
+    {
+        @* How many, in words, before the table. The pager says «1–25 of 60» further down, which
+           answers a different question — this one says the filter did something. *@
+        <p class="muted text-sm" style="margin-block-end: var(--space-3);">
+            @T["endpoint.filter.matched", Model.Page.Total, narrowed]
+        </p>
+    }
+
     <div class="card">
         <div class="table-wrap">
             <table class="table table-hover">
