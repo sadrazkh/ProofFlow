@@ -173,6 +173,57 @@ public sealed class BaselineService(ProofFlowDbContext db, ICurrentUser me, IClo
     }
 
     /// <summary>
+    /// What a proposed version would change about the answer this endpoint currently gives.
+    ///
+    /// Null when there is nothing on the other side of the comparison — no approved version, or the
+    /// proposal is itself the approved one. That is not an empty diff and must not be rendered as
+    /// one: "nothing changed" and "there was nothing to change from" are opposite facts, and a
+    /// viewer showing zero differences for the second is the more convincing of the two lies.
+    ///
+    /// Separate from <see cref="CompareAsync"/> because the subjects differ. That one compares a
+    /// response that has just arrived, so it can also weigh the clock and the document's contract;
+    /// two stored versions have neither a duration nor a live promise to break. The status line is
+    /// the one extra finding that survives, and it is the one worth keeping — an approved 200
+    /// replaced by a proposed 500 is a body diff that looks like an ordinary rewrite.
+    /// </summary>
+    public async Task<DiffResultDto?> CompareVersionsAsync(
+        BaselineVersion proposed, CancellationToken cancellationToken = default)
+    {
+        var approved = await ApprovedVersionAsync(proposed.BaselineId, cancellationToken);
+        if (approved is null || approved.Id == proposed.Id) return null;
+
+        var rules = await LoadRulesAsync(proposed.BaselineId, cancellationToken);
+        var diff = SemanticDiff.CompareText(approved.Body, proposed.Body, new ComparisonRuleSet(rules));
+
+        var result = Flatten(diff, $"v{approved.Number}", proposed.StatusCode, 0);
+
+        if (approved.StatusCode == 0 || proposed.StatusCode == approved.StatusCode) return result;
+
+        var status = new DiffRowDto
+        {
+            Index = 0,
+            Depth = 0,
+            Path = "status",
+            Leaf = "status",
+            Kind = nameof(DiffKind.Changed),
+            Expected = approved.StatusCode.ToString(),
+            Actual = proposed.StatusCode.ToString(),
+            Reason = "The status code is part of the answer.",
+        };
+
+        return result with
+        {
+            Matches = false,
+            Rows = [status, .. result.Rows.Select(row => row with { Index = row.Index + 1 })],
+            FindingIndexes = [0, .. result.FindingIndexes.Select(index => index + 1)],
+            Counts = result.Counts
+                .Concat([new KeyValuePair<string, int>(status.Kind, 1)])
+                .GroupBy(pair => pair.Key)
+                .ToDictionary(group => group.Key, group => group.Sum(pair => pair.Value)),
+        };
+    }
+
+    /// <summary>
     /// Turns the engine's tree into the flat list the viewer renders.
     ///
     /// Depth-first, so the order is the document's order and stepping with n and p walks the
