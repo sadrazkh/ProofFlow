@@ -33,6 +33,16 @@
         }),
         defaultEnvironmentId = Model.Endpoint.EnvironmentId,
     }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+    var pasteInputs = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        endpointId = Model.Endpoint.Id,
+        endpointName = Model.Endpoint.Name,
+        // What the stored request asks each row for, so the paste box can say which columns this
+        // endpoint actually needs before anything is written.
+        needs = DataSetReferences.ColumnsIn(Model.Endpoint.RequestJson),
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 
 <div class="page-head">
@@ -259,6 +269,19 @@
                         </div>
                     }
                 </form>
+            }
+
+            @* The second door, under the first. Choosing from the list needs a set to exist; this
+               makes one out of what is already on the reader's clipboard, and points the endpoint
+               at it in the same press. *@
+            @if (Model.CanRecord && Me.Can(Capability.ManageDataSet))
+            {
+                <div data-island="endpoint-inputs-paste" data-props="@pasteInputs">
+                    <div class="endpoint-paste stack-2">
+                        <div class="skeleton" style="inline-size: 180px; block-size: 18px;"></div>
+                        <div class="skeleton" style="block-size: 88px;"></div>
+                    </div>
+                </div>
             }
         </div>
     </section>
