@@ -13,6 +13,9 @@ public sealed record EndpointListViewModel
     public required Paging Page { get; init; }
     public bool CanRecord { get; init; }
 
+    /// <summary>Whether this reader may start tests. Recording and running are different rights.</summary>
+    public bool CanRun { get; init; }
+
     /// <summary>
     /// Environments that can sign in by themselves — the ones quick-add can send through.
     ///

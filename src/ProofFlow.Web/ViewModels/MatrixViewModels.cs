@@ -39,3 +39,20 @@ public sealed class MatrixGridViewModel
 
     public string? Name { get; init; }
 }
+
+/// <summary>
+/// One press of «check everything», as its page needs it.
+///
+/// Three fields, because everything else arrives from the state endpoint the island polls. The
+/// page is deliberately not server-rendered with rows: the first render happens while the checks
+/// are still queued, and a table of forty «waiting» rows written into HTML would have to be
+/// replaced wholesale a second later anyway.
+/// </summary>
+public sealed class CheckBatchViewModel
+{
+    public required Guid ProjectId { get; init; }
+
+    public required Guid BatchId { get; init; }
+
+    public string? Name { get; init; }
+}

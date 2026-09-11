@@ -4,7 +4,16 @@ namespace ProofFlow.Contracts.Capture;
 public sealed record StartCaptureCommand
 {
     public required Guid BaselineId { get; init; }
-    public required Guid DataSetVersionId { get; init; }
+
+    /// <summary>
+    /// Which rows to sweep, or nothing to send it once.
+    ///
+    /// Null is the ordinary case rather than the exception: an endpoint added from the list or the
+    /// request lab has no data set until somebody gives it one, and «check this» has to mean
+    /// something for it anyway. One send, compared against the approved answer.
+    /// </summary>
+    public Guid? DataSetVersionId { get; init; }
+
     public Guid? EnvironmentId { get; init; }
 
     /// <summary>Capture records; Regression judges. The same machinery, two different questions.</summary>
@@ -17,6 +26,50 @@ public sealed record StartCaptureCommand
     /// wants to find after ten, not after twenty minutes and two thousand real calls to a real API.
     /// </summary>
     public int? Limit { get; init; }
+
+    /// <summary>The press this check was part of, when it was one of many. Null for a single one.</summary>
+    public Guid? BatchId { get; init; }
+}
+
+/// <summary>One press of «check these», as a page reads it.</summary>
+public sealed record CheckBatchDto
+{
+    public required Guid Id { get; init; }
+    public required Guid ProjectId { get; init; }
+    public string? Name { get; init; }
+
+    /// <summary>How many checks were started. The rows may be fewer while they are still being written.</summary>
+    public required int Total { get; init; }
+
+    /// <summary>Every check has finished, one way or another. The page stops polling on this.</summary>
+    public required bool Settled { get; init; }
+
+    public required DateTimeOffset StartedAt { get; init; }
+    public DateTimeOffset? FinishedAt { get; init; }
+
+    public required IReadOnlyList<CheckRowDto> Rows { get; init; }
+}
+
+/// <summary>One endpoint in a batch, and what its check found.</summary>
+public sealed record CheckRowDto
+{
+    public required Guid SessionId { get; init; }
+    public required Guid BaselineId { get; init; }
+    public required string Name { get; init; }
+    public required string Method { get; init; }
+    public required string Url { get; init; }
+
+    /// <summary>Which environment it was sent to, when the endpoint is tied to one.</summary>
+    public string? EnvironmentName { get; init; }
+
+    public required string Status { get; init; }
+    public required int TotalRows { get; init; }
+    public required int Completed { get; init; }
+    public required int Differing { get; init; }
+    public required int Failed { get; init; }
+    public required int Unmatched { get; init; }
+    public required int Slow { get; init; }
+    public string? StoppedReason { get; init; }
 }
 
 /// <summary>One row in the review queue. Deliberately without the body — that is fetched on demand.</summary>

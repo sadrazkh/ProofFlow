@@ -26,9 +26,30 @@ public sealed class RunScheduleConfiguration : IEntityTypeConfiguration<RunSched
             .HasForeignKey(link => link.RunScheduleId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(s => s.Baselines)
+            .WithOne(link => link.Schedule!)
+            .HasForeignKey(link => link.RunScheduleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(s => s.Environments)
             .WithOne(link => link.Schedule!)
             .HasForeignKey(link => link.RunScheduleId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class ScheduleBaselineConfiguration : IEntityTypeConfiguration<ScheduleBaseline>
+{
+    public void Configure(EntityTypeBuilder<ScheduleBaseline> builder)
+    {
+        builder.ToTable("ScheduleBaselines");
+        builder.HasIndex(link => new { link.RunScheduleId, link.BaselineId }).IsUnique();
+
+        // Cascade from the endpoint too, for the reason the scenario link gives: a schedule that
+        // fires every morning against something that was deleted fails in a way nobody can act on.
+        builder.HasOne(link => link.Baseline)
+            .WithMany()
+            .HasForeignKey(link => link.BaselineId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }

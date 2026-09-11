@@ -94,7 +94,7 @@ public sealed class ScheduleAndCiTests : IAsyncLifetime
 
         var schedule = await Schedules(context).SaveAsync(
             _projectId, null, "Nightly", "0 6 * * *", "Asia/Tehran",
-            [scenario], [_environmentId], enabled: true);
+            [scenario], [], [_environmentId], enabled: true);
 
         schedule.NextRunAt.Should().NotBeNull();
         schedule.Problem.Should().BeNull();
@@ -106,6 +106,54 @@ public sealed class ScheduleAndCiTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task A_schedule_may_name_only_endpoints()
+    {
+        await using var context = Db();
+
+        // The project a lot of people actually have: paths recorded from the endpoint list, and no
+        // scenario drawn at all. Requiring a scenario left exactly those people with nothing that
+        // runs on its own, which made every overnight failure one nobody would hear about.
+        var endpoint = new ProofFlow.Domain.Baselines.Baseline
+        {
+            WorkspaceId = _workspaceId,
+            ProjectId = _projectId,
+            EnvironmentId = _environmentId,
+            Name = "GET /orders",
+            RequestJson = """{"method":"GET","url":"/orders"}""",
+        };
+
+        context.Baselines.Add(endpoint);
+        await context.SaveChangesAsync();
+
+        var schedule = await Schedules(context).SaveAsync(
+            _projectId, null, "Endpoints only", "0 6 * * *", "UTC",
+            [], [endpoint.Id], [_environmentId], enabled: true);
+
+        schedule.NextRunAt.Should().NotBeNull();
+        schedule.Problem.Should().BeNull();
+
+        var links = await context.ScheduleBaselines
+            .Where(link => link.RunScheduleId == schedule.Id)
+            .ToListAsync();
+
+        links.Should().ContainSingle(link => link.BaselineId == endpoint.Id);
+    }
+
+    [Fact]
+    public async Task A_schedule_that_names_nothing_at_all_is_refused()
+    {
+        await using var context = Db();
+
+        var save = async () => await Schedules(context).SaveAsync(
+            _projectId, null, "Empty", "0 6 * * *", "UTC",
+            [], [], [_environmentId], enabled: true);
+
+        // Loosening the rule to «scenarios or endpoints» must not loosen it to «nothing»: a
+        // schedule with neither would fire every morning and do nothing, for ever.
+        await save.Should().ThrowAsync<InvalidOperationException>();
+    }
+
+    [Fact]
     public async Task A_schedule_with_an_unreadable_expression_says_so_rather_than_never_firing()
     {
         await using var context = Db();
@@ -113,7 +161,7 @@ public sealed class ScheduleAndCiTests : IAsyncLifetime
 
         var schedule = await Schedules(context).SaveAsync(
             _projectId, null, "Broken", "not a cron", "UTC",
-            [scenario], [_environmentId], enabled: true);
+            [scenario], [], [_environmentId], enabled: true);
 
         schedule.Problem.Should().Be("cron.unreadable");
         schedule.NextRunAt.Should().BeNull();
@@ -129,7 +177,7 @@ public sealed class ScheduleAndCiTests : IAsyncLifetime
 
         var schedule = await Schedules(context).SaveAsync(
             _projectId, null, "Hourly", "0 * * * *", "UTC",
-            [scenario], [_environmentId], enabled: true);
+            [scenario], [], [_environmentId], enabled: true);
 
         // Pretend the process was down for a day.
         var now = DateTimeOffset.UtcNow;
@@ -165,7 +213,7 @@ public sealed class ScheduleAndCiTests : IAsyncLifetime
 
         var save = async () => await Schedules(context).SaveAsync(
             _projectId, null, "Sneaky", "0 6 * * *", "UTC",
-            [stranger.Id], [_environmentId], enabled: true);
+            [stranger.Id], [], [_environmentId], enabled: true);
 
         await save.Should().ThrowAsync<InvalidOperationException>();
     }

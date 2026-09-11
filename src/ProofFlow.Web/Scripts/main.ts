@@ -14,6 +14,7 @@ import EndpointTest from './islands/EndpointTest.vue';
 import ScenarioCanvas from './islands/ScenarioCanvas.vue';
 import RunConsole from './islands/RunConsole.vue';
 import EnvironmentMatrix from './islands/EnvironmentMatrix.vue';
+import CheckBatch from './islands/CheckBatch.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -65,6 +66,7 @@ island('endpoint-test', EndpointTest);
 island('scenario-canvas', ScenarioCanvas);
 island('run-console', RunConsole);
 island('environment-matrix', EnvironmentMatrix);
+island('check-batch', CheckBatch);
 
 mountIslands();
 mountSecretReveal();

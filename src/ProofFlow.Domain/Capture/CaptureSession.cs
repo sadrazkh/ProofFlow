@@ -31,18 +31,32 @@ public class CaptureSession : Entity, IWorkspaceOwned
     public Baseline? Baseline { get; set; }
 
     /// <summary>
-    /// The exact version of the data that was used.
+    /// The exact version of the data that was used, or nothing when there was none.
     ///
     /// The version, never the set: a report that says "ran against the customers set" is worthless
     /// six weeks and four edits later.
+    ///
+    /// Null means the endpoint has no inputs and was sent once — the case most endpoints are in,
+    /// since one added from the list or the request lab has no data set until somebody gives it
+    /// one. It was not nullable before, which is why the sessions a scenario run opens have been
+    /// carrying an all-zero id in this column rather than admitting the same thing.
     /// </summary>
-    public Guid DataSetVersionId { get; set; }
+    public Guid? DataSetVersionId { get; set; }
 
     public DataSetVersion? DataSetVersion { get; set; }
 
     public Guid? EnvironmentId { get; set; }
 
     public ProjectEnvironment? Environment { get; set; }
+
+    /// <summary>
+    /// The press that started it, when it was started together with others.
+    ///
+    /// Null for a check somebody started on one endpoint, which is most of them.
+    /// </summary>
+    public Guid? BatchId { get; set; }
+
+    public CheckBatch? Batch { get; set; }
 
     public CaptureMode Mode { get; set; } = CaptureMode.Capture;
 

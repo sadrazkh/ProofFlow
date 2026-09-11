@@ -8,6 +8,23 @@
     @if (Model.CanRecord)
     {
         <div class="page-actions">
+            @*
+                One press for all of them. Adding forty endpoints takes a minute and checking them
+                took forty presses on forty pages, which meant in practice that nobody did — and a
+                product whose whole promise is «it tells you when this changed» was telling nobody
+                anything about thirty-nine of them.
+            *@
+            @if (Model.CanRun && Model.Endpoints.Count > 0)
+            {
+                <form method="post" action="/projects/@Model.ProjectId/checks"
+                      data-busy-text="@T["checks.starting"]">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-secondary">
+                        <i data-lucide="list-checks" aria-hidden="true"></i>@T["checks.all"]
+                    </button>
+                </form>
+            }
+
             <a class="btn btn-ghost" href="/projects/@Model.ProjectId/import?source=postman">
                 <i data-lucide="upload" aria-hidden="true"></i>Postman
             </a>

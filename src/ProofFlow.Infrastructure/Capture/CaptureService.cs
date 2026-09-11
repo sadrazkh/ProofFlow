@@ -72,22 +72,32 @@ public sealed class CaptureService(
             .FirstOrDefaultAsync(b => b.Id == command.BaselineId, cancellationToken)
             ?? throw new InvalidOperationException("No such baseline in this workspace.");
 
-        var version = await db.DataSetVersions
-            .FirstOrDefaultAsync(v => v.Id == command.DataSetVersionId, cancellationToken)
-            ?? throw new InvalidOperationException("No such data-set version in this workspace.");
+        DataSetVersion? version = null;
 
-        var total = await db.DataSetRows
-            .Where(r => r.DataSetVersionId == version.Id && r.Enabled)
-            .OrderBy(r => r.Ordinal)
-            .Take(command.Limit is > 0 ? command.Limit.Value : int.MaxValue)
-            .CountAsync(cancellationToken);
+        if (command.DataSetVersionId is { } versionId)
+        {
+            version = await db.DataSetVersions
+                .FirstOrDefaultAsync(v => v.Id == versionId, cancellationToken)
+                ?? throw new InvalidOperationException("No such data-set version in this workspace.");
+        }
+
+        // One, when there are no inputs. Not zero: a check that reports «0 of 0» has the shape of a
+        // success and the content of nothing, and the endpoint really is going to be called once.
+        var total = version is null
+            ? 1
+            : await db.DataSetRows
+                .Where(r => r.DataSetVersionId == version.Id && r.Enabled)
+                .OrderBy(r => r.Ordinal)
+                .Take(command.Limit is > 0 ? command.Limit.Value : int.MaxValue)
+                .CountAsync(cancellationToken);
 
         var session = new CaptureSession
         {
             WorkspaceId = baseline.WorkspaceId,
             ProjectId = baseline.ProjectId,
             BaselineId = baseline.Id,
-            DataSetVersionId = version.Id,
+            DataSetVersionId = version?.Id,
+            BatchId = command.BatchId,
             EnvironmentId = command.EnvironmentId ?? baseline.EnvironmentId,
             Mode = Enum.TryParse<CaptureMode>(command.Mode, out var mode) ? mode : CaptureMode.Capture,
             Status = CaptureSessionStatus.Queued,
@@ -198,11 +208,13 @@ public sealed class CaptureService(
     private async Task<CaptureSession> SweepAsync(
         CaptureSession session, Baseline baseline, CancellationToken cancellationToken)
     {
-        var rows = await db.DataSetRows
-            .Where(r => r.DataSetVersionId == session.DataSetVersionId && r.Enabled)
-            .OrderBy(r => r.Ordinal)
-            .Take(session.TotalRows)
-            .ToListAsync(cancellationToken);
+        var rows = session.DataSetVersionId is { } versionId
+            ? await db.DataSetRows
+                .Where(r => r.DataSetVersionId == versionId && r.Enabled)
+                .OrderBy(r => r.Ordinal)
+                .Take(session.TotalRows)
+                .ToListAsync(cancellationToken)
+            : [Once];
 
         var request = ReadRequest(baseline);
         if (request is null)
@@ -219,9 +231,11 @@ public sealed class CaptureService(
 
         // Loaded once, by key. Two thousand individual lookups is two thousand round trips, and
         // the approved bodies are the same bodies the diff needs anyway.
-        var approved = await db.BaselineSamples
-            .Where(s => s.BaselineId == baseline.Id)
-            .ToDictionaryAsync(s => s.Key, cancellationToken);
+        var approved = session.DataSetVersionId is null
+            ? await ApprovedAnswerAsync(baseline, rules, cancellationToken)
+            : await db.BaselineSamples
+                .Where(s => s.BaselineId == baseline.Id)
+                .ToDictionaryAsync(s => s.Key, cancellationToken);
 
         var context = session.EnvironmentId is { } environmentId
             ? await environments.BuildAsync(environmentId, cancellationToken)
@@ -290,6 +304,60 @@ public sealed class CaptureService(
         await db.SaveChangesAsync(CancellationToken.None);
 
         return session;
+    }
+
+    /// <summary>
+    /// The row an endpoint with no inputs is swept over.
+    ///
+    /// Never saved and never looked up — it exists so that "send it once" and "send it two thousand
+    /// times" are the same loop. Its key is empty because there is no key: nothing was varied.
+    /// </summary>
+    private static DataSetRow Once => new()
+    {
+        Key = string.Empty,
+        Ordinal = 0,
+        ValuesJson = "{}",
+    };
+
+    /// <summary>
+    /// What an endpoint with no inputs is compared against, in the shape the row loop expects.
+    ///
+    /// An endpoint with inputs keeps an approved answer per row, in BaselineSamples. One without
+    /// keeps a single approved BaselineVersion. This is the one place the two shapes meet, and it
+    /// meets them by building a sample that is never stored — the alternative was a second Judge
+    /// that compared the same two things slightly differently, and then two answers to «did this
+    /// change».
+    ///
+    /// Nothing approved yet gives back nothing, which lands the sample in «unmatched»: compared
+    /// against nothing is not a pass, and never has been here.
+    /// </summary>
+    private async Task<Dictionary<string, BaselineSample>> ApprovedAnswerAsync(
+        Baseline baseline, ComparisonRuleSet rules, CancellationToken cancellationToken)
+    {
+        if (baseline.ApprovedVersionId is not { } versionId) return [];
+
+        var version = await db.BaselineVersions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(v => v.Id == versionId, cancellationToken);
+
+        if (version is null) return [];
+
+        return new Dictionary<string, BaselineSample>
+        {
+            [string.Empty] = new BaselineSample
+            {
+                BaselineId = baseline.Id,
+                Key = string.Empty,
+                Body = version.Body,
+                ContentType = version.ContentType,
+                StatusCode = version.StatusCode,
+
+                // Recomputed rather than taken off the version: the version's hash was written
+                // under whatever rules existed when it was approved, and the rules are read fresh
+                // for every sweep.
+                NormalizedHash = BaselineService.Hash(version.Body, rules),
+            },
+        };
     }
 
     /// <summary>One row: resolve, send, redact. No judgement, no database.</summary>

@@ -15,7 +15,8 @@ public sealed class ScheduleService(ProofFlowDbContext db, IClock clock, ICurren
 {
     public async Task<RunSchedule> SaveAsync(
         Guid projectId, Guid? scheduleId, string name, string cron, string timeZoneId,
-        IReadOnlyList<Guid> scenarioIds, IReadOnlyList<Guid> environmentIds, bool enabled,
+        IReadOnlyList<Guid> scenarioIds, IReadOnlyList<Guid> baselineIds,
+        IReadOnlyList<Guid> environmentIds, bool enabled,
         IReadOnlyDictionary<string, string?>? inputs = null,
         CancellationToken cancellation = default)
     {
@@ -36,12 +37,25 @@ public sealed class ScheduleService(ProofFlowDbContext db, IClock clock, ICurren
             .Select(environment => environment.Id)
             .ToListAsync(cancellation);
 
-        if (scenarios.Count == 0) throw new InvalidOperationException("No scenario was chosen.");
+        var baselines = await db.Baselines
+            .Where(baseline => baseline.ProjectId == projectId
+                               && baseline.ArchivedAt == null
+                               && baselineIds.Contains(baseline.Id))
+            .Select(baseline => baseline.Id)
+            .ToListAsync(cancellation);
+
+        // Either kind will do. A schedule that only checks endpoints is the ordinary case for
+        // somebody who has recorded paths and never drawn a scenario, and refusing it because no
+        // scenario was ticked would leave exactly those people with nothing running.
+        if (scenarios.Count == 0 && baselines.Count == 0)
+            throw new InvalidOperationException("Nothing was chosen to run.");
+
         if (environments.Count == 0) throw new InvalidOperationException("No environment was chosen.");
 
         var schedule = scheduleId is { } id
             ? await db.RunSchedules
                   .Include(candidate => candidate.Scenarios)
+                  .Include(candidate => candidate.Baselines)
                   .Include(candidate => candidate.Environments)
                   .FirstOrDefaultAsync(candidate =>
                       candidate.Id == id && candidate.ProjectId == projectId, cancellation)
@@ -76,6 +90,7 @@ public sealed class ScheduleService(ProofFlowDbContext db, IClock clock, ICurren
         else
         {
             db.ScheduleScenarios.RemoveRange(schedule.Scenarios);
+            db.ScheduleBaselines.RemoveRange(schedule.Baselines);
             db.ScheduleEnvironments.RemoveRange(schedule.Environments);
         }
 
@@ -86,6 +101,16 @@ public sealed class ScheduleService(ProofFlowDbContext db, IClock clock, ICurren
                 WorkspaceId = project.WorkspaceId,
                 RunScheduleId = schedule.Id,
                 ScenarioId = scenario,
+            });
+        }
+
+        foreach (var baseline in baselines)
+        {
+            db.ScheduleBaselines.Add(new ScheduleBaseline
+            {
+                WorkspaceId = project.WorkspaceId,
+                RunScheduleId = schedule.Id,
+                BaselineId = baseline,
             });
         }
 

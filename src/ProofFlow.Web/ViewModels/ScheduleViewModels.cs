@@ -18,8 +18,10 @@ public sealed record ScheduleRow(
     DateTimeOffset? NextRunAt,
     DateTimeOffset? LastRunAt,
     Guid? LastBatchId,
+    Guid? LastCheckBatchId,
     string? Problem,
     int ScenarioCount,
+    int EndpointCount,
     int EnvironmentCount,
     int InputCount);
 
@@ -34,6 +36,15 @@ public sealed class ScheduleListViewModel
     public required IReadOnlyList<FlakyScenarioDto> Flaky { get; init; }
 
     public required IReadOnlyList<MatrixChoice> Scenarios { get; init; }
+
+    /// <summary>
+    /// The endpoints this schedule could check.
+    ///
+    /// Offered beside the scenarios rather than on a page of their own: «every morning, these» is
+    /// one sentence somebody says, and it does not distinguish between the two ways a thing to run
+    /// happens to be stored.
+    /// </summary>
+    public required IReadOnlyList<MatrixChoice> Endpoints { get; init; }
 
     public required IReadOnlyList<MatrixChoice> Environments { get; init; }
 

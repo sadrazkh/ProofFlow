@@ -162,6 +162,126 @@ public sealed class CaptureSweepTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task An_endpoint_with_no_inputs_is_sent_once_and_compared_with_its_approved_answer()
+    {
+        await using var context = Db();
+
+        // The endpoint most people have. Quick-add and the request lab both produce one of these:
+        // a path, an approved answer, and no data set at all. «Check everything» has to mean
+        // something for it, and before this it meant nothing — Test refused outright.
+        var endpoint = new Baseline
+        {
+            WorkspaceId = _workspaceId,
+            ProjectId = _projectId,
+            EnvironmentId = _environmentId,
+            Name = "One record",
+            RequestJson = """{"method":"GET","url":"/fake/records/1"}""",
+            CreatedByUserId = _userId,
+        };
+        context.Baselines.Add(endpoint);
+        await context.SaveChangesAsync();
+
+        // Recorded from the API itself rather than typed, so the comparison is against what this
+        // server actually says — a hand-written body would prove only that the test can spell.
+        var first = await Capture(context).RunAsync(new StartCaptureCommand
+        {
+            BaselineId = endpoint.Id,
+            EnvironmentId = _environmentId,
+            Mode = "Capture",
+        });
+
+        first.Status.Should().Be(CaptureSessionStatus.Completed);
+        first.TotalRows.Should().Be(1);
+        first.Completed.Should().Be(1);
+
+        // Nothing approved yet, so it is compared against nothing — which is «unmatched», not a pass.
+        first.Unmatched.Should().Be(1);
+        first.Differing.Should().Be(0);
+
+        var captured = await context.CaptureSamples.SingleAsync(s => s.CaptureSessionId == first.Id);
+
+        var version = new BaselineVersion
+        {
+            WorkspaceId = _workspaceId,
+            BaselineId = endpoint.Id,
+            Number = 1,
+            Status = BaselineStatus.Approved,
+            Body = captured.Body!,
+            ContentType = captured.ContentType,
+            StatusCode = captured.StatusCode,
+            CreatedByUserId = _userId,
+            ApprovedByUserId = _userId,
+            ApprovedAt = DateTimeOffset.UtcNow,
+        };
+
+        context.BaselineVersions.Add(version);
+        await context.SaveChangesAsync();
+
+        endpoint.ApprovedVersionId = version.Id;
+        await context.SaveChangesAsync();
+
+        var second = await Capture(context).RunAsync(new StartCaptureCommand
+        {
+            BaselineId = endpoint.Id,
+            EnvironmentId = _environmentId,
+            Mode = "Regression",
+        });
+
+        // The whole assertion. /fake/records/1 is stable, so a second look has to be silent — and
+        // «unmatched» would mean the approved version was never consulted.
+        second.Completed.Should().Be(1);
+        second.Unmatched.Should().Be(0);
+        second.Differing.Should().Be(0);
+        second.Failed.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task An_endpoint_with_no_inputs_and_a_changed_answer_differs()
+    {
+        await using var context = Db();
+
+        var endpoint = new Baseline
+        {
+            WorkspaceId = _workspaceId,
+            ProjectId = _projectId,
+            EnvironmentId = _environmentId,
+            Name = "One changed record",
+            RequestJson = """{"method":"GET","url":"/fake/records/2"}""",
+            CreatedByUserId = _userId,
+        };
+        context.Baselines.Add(endpoint);
+
+        // An approved answer that is not what the API says. Without this the previous test would
+        // pass just as well against a comparison that never actually compares.
+        var version = new BaselineVersion
+        {
+            WorkspaceId = _workspaceId,
+            BaselineId = endpoint.Id,
+            Number = 1,
+            Status = BaselineStatus.Approved,
+            Body = """{"id":2,"name":"something else entirely"}""",
+            StatusCode = 200,
+            CreatedByUserId = _userId,
+        };
+        context.BaselineVersions.Add(version);
+        await context.SaveChangesAsync();
+
+        endpoint.ApprovedVersionId = version.Id;
+        await context.SaveChangesAsync();
+
+        var session = await Capture(context).RunAsync(new StartCaptureCommand
+        {
+            BaselineId = endpoint.Id,
+            EnvironmentId = _environmentId,
+            Mode = "Regression",
+        });
+
+        session.Completed.Should().Be(1);
+        session.Differing.Should().Be(1);
+        session.Unmatched.Should().Be(0);
+    }
+
+    [Fact]
     public async Task Queueing_a_check_writes_it_down_and_calls_nothing()
     {
         await using var context = Db();

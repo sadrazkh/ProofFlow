@@ -52,8 +52,10 @@ public sealed class SchedulesController(
                 schedule.NextRunAt,
                 schedule.LastRunAt,
                 schedule.LastBatchId,
+                schedule.LastCheckBatchId,
                 schedule.Problem,
                 schedule.Scenarios.Count,
+                schedule.Baselines.Count,
                 schedule.Environments.Count,
                 ScenarioInputs.ReadValues(schedule.InputsJson).Count))
             .ToListAsync(cancellationToken);
@@ -87,6 +89,13 @@ public sealed class SchedulesController(
                 .OrderBy(scenario => scenario.Name)
                 .Select(scenario => new MatrixChoice(scenario.Id, scenario.Name, false))
                 .ToListAsync(cancellationToken),
+            Endpoints = await db.Baselines
+                .Where(baseline => baseline.ProjectId == projectId
+                                   && baseline.ArchivedAt == null
+                                   && baseline.RequestJson != null)
+                .OrderBy(baseline => baseline.Name)
+                .Select(baseline => new MatrixChoice(baseline.Id, baseline.Name, false))
+                .ToListAsync(cancellationToken),
             Environments = await db.Environments
                 .Where(environment => environment.ProjectId == projectId)
                 .OrderBy(environment => environment.SortOrder)
@@ -101,8 +110,8 @@ public sealed class SchedulesController(
     [Authorize(Policy = Policies.ManageProject)]
     public async Task<IActionResult> Save(
         Guid projectId, [FromForm] Guid? id, [FromForm] string name, [FromForm] string cron,
-        [FromForm] string timeZoneId, [FromForm] Guid[] scenarioIds, [FromForm] Guid[] environmentIds,
-        CancellationToken cancellationToken)
+        [FromForm] string timeZoneId, [FromForm] Guid[] scenarioIds, [FromForm] Guid[] baselineIds,
+        [FromForm] Guid[] environmentIds, CancellationToken cancellationToken)
     {
         // input.orderId=8812, the same shape the canvas and the matrix use.
         var inputs = Request.Form
@@ -115,7 +124,7 @@ public sealed class SchedulesController(
         try
         {
             var schedule = await schedules.SaveAsync(
-                projectId, id, name, cron, timeZoneId, scenarioIds, environmentIds,
+                projectId, id, name, cron, timeZoneId, scenarioIds, baselineIds, environmentIds,
                 enabled: true, inputs, cancellationToken);
 
             await audit.RecordAsync(

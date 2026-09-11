@@ -203,6 +203,7 @@ public sealed class EndpointsController(
                 Path = $"/projects/{projectId}/endpoints",
             },
             CanRecord = canRecord,
+            CanRun = me.Can(Capability.RunTest),
         });
     }
 

@@ -1,3 +1,4 @@
+using ProofFlow.Domain.Baselines;
 using ProofFlow.Domain.Common;
 using ProofFlow.Domain.Environments;
 using ProofFlow.Domain.Projects;
@@ -61,8 +62,17 @@ public class RunSchedule : Entity, IWorkspaceOwned
 
     public DateTimeOffset? LastRunAt { get; set; }
 
-    /// <summary>The batch it started last time, so the list can link to what happened.</summary>
+    /// <summary>The batch of runs it started last time, so the list can link to what happened.</summary>
     public Guid? LastBatchId { get; set; }
+
+    /// <summary>
+    /// The batch of endpoint checks it started last time.
+    ///
+    /// Its own column rather than a shared one: a schedule may cover scenarios and endpoints at
+    /// once, and those are two different pages. One id would mean the link went to whichever half
+    /// happened to be queued second.
+    /// </summary>
+    public Guid? LastCheckBatchId { get; set; }
 
     /// <summary>Why the expression could not be read, when it could not. Shown, not swallowed.</summary>
     public string? Problem { get; set; }
@@ -81,7 +91,37 @@ public class RunSchedule : Entity, IWorkspaceOwned
 
     public ICollection<ScheduleScenario> Scenarios { get; set; } = [];
 
+    /// <summary>
+    /// The endpoints this schedule checks.
+    ///
+    /// Added because endpoints are the easy half of this product and were the unscheduled half: a
+    /// path recorded in one field from the endpoint list would never run again unless somebody
+    /// opened it and pressed a button, which made every failure one nobody would hear about.
+    /// A schedule may name scenarios, endpoints, or both.
+    /// </summary>
+    public ICollection<ScheduleBaseline> Baselines { get; set; } = [];
+
     public ICollection<ScheduleEnvironment> Environments { get; set; } = [];
+}
+
+/// <summary>
+/// One endpoint a schedule checks.
+///
+/// A row rather than a list in a column, for the reason <see cref="ScheduleScenario"/> gives:
+/// deleting an endpoint takes its schedule entries with it, instead of leaving a schedule that
+/// fires every morning against something that is no longer there.
+/// </summary>
+public class ScheduleBaseline : Entity, IWorkspaceOwned
+{
+    public Guid WorkspaceId { get; set; }
+
+    public Guid RunScheduleId { get; set; }
+
+    public RunSchedule? Schedule { get; set; }
+
+    public Guid BaselineId { get; set; }
+
+    public Baseline? Baseline { get; set; }
 }
 
 /// <summary>

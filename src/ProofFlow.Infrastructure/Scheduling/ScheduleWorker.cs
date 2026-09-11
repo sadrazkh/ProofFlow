@@ -112,6 +112,7 @@ public sealed class ScheduleWorker(
 
         var schedule = await db.RunSchedules
             .Include(candidate => candidate.Scenarios)
+            .Include(candidate => candidate.Baselines)
             .Include(candidate => candidate.Environments)
             .FirstOrDefaultAsync(candidate => candidate.Id == scheduleId, cancellation);
 
@@ -134,9 +135,10 @@ public sealed class ScheduleWorker(
         await db.SaveChangesAsync(cancellation);
 
         var scenarios = schedule.Scenarios.Select(link => link.ScenarioId).ToList();
+        var baselines = schedule.Baselines.Select(link => link.BaselineId).ToList();
         var environments = schedule.Environments.Select(link => link.EnvironmentId).ToList();
 
-        if (scenarios.Count == 0 || environments.Count == 0)
+        if ((scenarios.Count == 0 && baselines.Count == 0) || environments.Count == 0)
         {
             // Everything it pointed at has been deleted. Said out loud and switched off rather than
             // left to fail silently every morning at six for ever.
@@ -153,30 +155,53 @@ public sealed class ScheduleWorker(
 
         try
         {
-            var matrix = scope.ServiceProvider.GetRequiredService<MatrixService>();
+            var cells = 0;
 
-            // What the schedule was told to answer with. Empty is not the same as nothing: an
-            // empty set means every scenario falls back to its own defaults, which is what a
-            // schedule saved before anybody filled this in should keep doing.
-            var inputs = ScenarioInputs.ReadValues(schedule.InputsJson)
-                .ToDictionary(pair => pair.Key, pair => (string?)pair.Value, StringComparer.Ordinal);
-
-            var batch = await matrix.QueueAsync(
-                schedule.ProjectId, scenarios, environments, name, inputs, cancellation);
-
-            batch.Trigger = Domain.Runs.RunTrigger.Schedule;
-
-            foreach (var run in await db.Runs.Where(run => run.BatchId == batch.Id).ToListAsync(cancellation))
+            if (scenarios.Count > 0)
             {
-                run.Trigger = Domain.Runs.RunTrigger.Schedule;
+                var matrix = scope.ServiceProvider.GetRequiredService<MatrixService>();
+
+                // What the schedule was told to answer with. Empty is not the same as nothing: an
+                // empty set means every scenario falls back to its own defaults, which is what a
+                // schedule saved before anybody filled this in should keep doing.
+                var inputs = ScenarioInputs.ReadValues(schedule.InputsJson)
+                    .ToDictionary(pair => pair.Key, pair => (string?)pair.Value, StringComparer.Ordinal);
+
+                var batch = await matrix.QueueAsync(
+                    schedule.ProjectId, scenarios, environments, name, inputs, cancellation);
+
+                batch.Trigger = Domain.Runs.RunTrigger.Schedule;
+
+                foreach (var run in await db.Runs.Where(run => run.BatchId == batch.Id).ToListAsync(cancellation))
+                {
+                    run.Trigger = Domain.Runs.RunTrigger.Schedule;
+                }
+
+                schedule.LastBatchId = batch.Id;
+                cells += batch.Total;
             }
 
-            schedule.LastBatchId = batch.Id;
+            if (baselines.Count > 0)
+            {
+                // The endpoints go against the environments the schedule names, not against the one
+                // each endpoint happens to be tied to. «Every morning against staging and
+                // production» is the sentence somebody said, and it has to mean the same thing for
+                // both halves of what they ticked.
+                var checks = scope.ServiceProvider.GetRequiredService<Capture.CheckService>();
+
+                var batch = await checks.QueueAsync(
+                    schedule.ProjectId, baselines, environments, name,
+                    Domain.Runs.RunTrigger.Schedule, cancellation);
+
+                schedule.LastCheckBatchId = batch.Id;
+                cells += batch.Total;
+            }
+
             await db.SaveChangesAsync(cancellation);
 
             logger.LogInformation(
-                "Schedule {Name} started {Cells} runs; next at {Next:O}.",
-                name, batch.Total, schedule.NextRunAt);
+                "Schedule {Name} started {Cells} runs and checks; next at {Next:O}.",
+                name, cells, schedule.NextRunAt);
         }
         catch (Exception ex)
         {

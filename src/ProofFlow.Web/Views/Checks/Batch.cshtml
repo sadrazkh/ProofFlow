@@ -1,0 +1,35 @@
+@using System.Text.Json
+@model CheckBatchViewModel
+@{
+    var props = JsonSerializer.Serialize(new
+    {
+        projectId = Model.ProjectId,
+        batchId = Model.BatchId,
+    }, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+}
+
+<div class="page-head">
+    <div>
+        <h1 class="page-title" dir="auto">@(Model.Name ?? T["checks.title"].Value)</h1>
+        <p class="page-subtitle">@T["checks.subtitle"]</p>
+    </div>
+
+    <div class="page-actions">
+        <a class="btn btn-ghost btn-sm" href="/projects/@Model.ProjectId/endpoints">
+            <i data-lucide="target" aria-hidden="true"></i>@T["nav.endpoints"]
+        </a>
+    </div>
+</div>
+
+@*
+    The island carries a skeleton in the shape it becomes, so the page does not jump when Vue takes
+    over and pushes the table down under the reader's cursor.
+*@
+<div data-island="check-batch" data-props="@props">
+    <div class="card">
+        <div class="card-body stack">
+            <div class="skeleton" style="block-size: 20px; inline-size: 40%;"></div>
+            <div class="skeleton" style="block-size: 120px; border-radius: var(--radius-lg);"></div>
+        </div>
+    </div>
+</div>

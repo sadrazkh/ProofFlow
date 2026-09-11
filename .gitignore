@@ -45,3 +45,6 @@ Thumbs.db
 **/test-results/
 **/playwright-report/
 **/e2e/tmp/
+
+# Worktrees the agent tooling creates alongside the repo. Working copies, not sources.
+.claude/worktrees/

@@ -499,13 +499,16 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<Guid>("BaselineId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("BatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("Completed")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<Guid>("DataSetVersionId")
+                    b.Property<Guid?>("DataSetVersionId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("Differing")
@@ -556,6 +559,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 
                     b.HasKey("Id");
 
+                    b.HasIndex("BatchId");
+
                     b.HasIndex("DataSetVersionId");
 
                     b.HasIndex("EnvironmentId");
@@ -565,6 +570,47 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.HasIndex("ProjectId", "StartedAt");
 
                     b.ToTable("CaptureSessions", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CheckBatch", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset?>("FinishedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("StartedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Total")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Trigger")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "CreatedAt");
+
+                    b.ToTable("CheckBatches", (string)null);
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Data.DataSet", b =>
@@ -1860,6 +1906,9 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Property<Guid?>("LastBatchId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("LastCheckBatchId")
+                        .HasColumnType("uuid");
+
                     b.Property<DateTimeOffset?>("LastRunAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -1896,6 +1945,37 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.HasIndex("ProjectId", "Name");
 
                     b.ToTable("RunSchedules", (string)null);
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleBaseline", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BaselineId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RunScheduleId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("WorkspaceId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BaselineId");
+
+                    b.HasIndex("RunScheduleId", "BaselineId")
+                        .IsUnique();
+
+                    b.ToTable("ScheduleBaselines", (string)null);
                 });
 
             modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleEnvironment", b =>
@@ -2364,11 +2444,15 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("ProofFlow.Domain.Capture.CheckBatch", "Batch")
+                        .WithMany("Checks")
+                        .HasForeignKey("BatchId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("ProofFlow.Domain.Data.DataSetVersion", "DataSetVersion")
                         .WithMany()
                         .HasForeignKey("DataSetVersionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
                         .WithMany()
@@ -2382,9 +2466,22 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 
                     b.Navigation("Baseline");
 
+                    b.Navigation("Batch");
+
                     b.Navigation("DataSetVersion");
 
                     b.Navigation("Environment");
+
+                    b.Navigation("Project");
+                });
+
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CheckBatch", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Project");
                 });
@@ -2662,6 +2759,25 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Navigation("Project");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleBaseline", b =>
+                {
+                    b.HasOne("ProofFlow.Domain.Baselines.Baseline", "Baseline")
+                        .WithMany()
+                        .HasForeignKey("BaselineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ProofFlow.Domain.Scheduling.RunSchedule", "Schedule")
+                        .WithMany("Baselines")
+                        .HasForeignKey("RunScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Baseline");
+
+                    b.Navigation("Schedule");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Scheduling.ScheduleEnvironment", b =>
                 {
                     b.HasOne("ProofFlow.Domain.Environments.ProjectEnvironment", "Environment")
@@ -2743,6 +2859,11 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
                     b.Navigation("Samples");
                 });
 
+            modelBuilder.Entity("ProofFlow.Domain.Capture.CheckBatch", b =>
+                {
+                    b.Navigation("Checks");
+                });
+
             modelBuilder.Entity("ProofFlow.Domain.Data.DataSet", b =>
                 {
                     b.Navigation("Versions");
@@ -2789,6 +2910,8 @@ namespace ProofFlow.Infrastructure.Persistence.Migrations.Postgres
 
             modelBuilder.Entity("ProofFlow.Domain.Scheduling.RunSchedule", b =>
                 {
+                    b.Navigation("Baselines");
+
                     b.Navigation("Environments");
 
                     b.Navigation("Scenarios");

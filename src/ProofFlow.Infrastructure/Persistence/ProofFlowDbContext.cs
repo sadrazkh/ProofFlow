@@ -61,6 +61,7 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<DataSetRow> DataSetRows => Set<DataSetRow>();
     public DbSet<CaptureSession> CaptureSessions => Set<CaptureSession>();
     public DbSet<CaptureSample> CaptureSamples => Set<CaptureSample>();
+    public DbSet<CheckBatch> CheckBatches => Set<CheckBatch>();
     public DbSet<TestSuite> TestSuites => Set<TestSuite>();
     public DbSet<TestScenario> Scenarios => Set<TestScenario>();
     public DbSet<ScenarioVersion> ScenarioVersions => Set<ScenarioVersion>();
@@ -75,6 +76,7 @@ public abstract class ProofFlowDbContext(DbContextOptions options, IWorkspaceSco
     public DbSet<RunArtifact> RunArtifacts => Set<RunArtifact>();
     public DbSet<RunSchedule> RunSchedules => Set<RunSchedule>();
     public DbSet<ScheduleScenario> ScheduleScenarios => Set<ScheduleScenario>();
+    public DbSet<ScheduleBaseline> ScheduleBaselines => Set<ScheduleBaseline>();
     public DbSet<ScheduleEnvironment> ScheduleEnvironments => Set<ScheduleEnvironment>();
     public DbSet<ApiKey> ApiKeys => Set<ApiKey>();
     public DbSet<WorkspaceInvitation> WorkspaceInvitations => Set<WorkspaceInvitation>();

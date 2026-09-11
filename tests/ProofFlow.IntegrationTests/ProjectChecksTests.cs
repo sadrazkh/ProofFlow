@@ -174,7 +174,99 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
         answer.GetProperty("reason").GetString().Should().NotBeNullOrWhiteSpace();
     }
 
+    [Fact]
+    public async Task Checking_everything_starts_one_check_for_every_endpoint()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        await EndpointAsync(projectId, rows: 2);
+
+        // The one that used to be unreachable. An endpoint with no data set refused the Test
+        // button outright, so «check everything» would have skipped most of a real project.
+        await EndpointAsync(projectId, rows: 0);
+
+        var token = await AntiforgeryAsync(client, $"/projects/{projectId}/endpoints");
+
+        var started = await client.PostAsync($"/projects/{projectId}/checks",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+            }));
+
+        started.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        var batchId = Guid.Parse(Regex.Match(
+            started.Headers.Location!.ToString(), "checks/([0-9a-f-]{36})$").Groups[1].Value);
+
+        var state = await SettledBatchAsync(client, projectId, batchId);
+
+        state.GetProperty("total").GetInt32().Should().Be(2);
+
+        var rows = state.GetProperty("rows").EnumerateArray().ToList();
+        rows.Should().HaveCount(2);
+
+        // Both were actually carried out. The address is refused by the URL guard, so the honest
+        // outcome for each is a failed row — but a row that never left «Queued» would mean the
+        // batch queued work nothing ever picked up.
+        rows.Should().OnlyContain(row => row.GetProperty("status").GetString() == "Completed");
+        rows.Sum(row => row.GetProperty("failed").GetInt32()).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Checking_everything_in_an_empty_project_refuses_and_writes_nothing()
+    {
+        var (client, projectId) = await SignedInAsync();
+
+        var token = await AntiforgeryAsync(client, $"/projects/{projectId}/endpoints");
+
+        var started = await client.PostAsync($"/projects/{projectId}/checks",
+            new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["__RequestVerificationToken"] = token,
+            }));
+
+        // Back to the list with the refusal, rather than an empty batch page that looks like
+        // something ran.
+        started.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        started.Headers.Location!.ToString().Should().EndWith("/endpoints");
+
+        using var scope = app.Services.CreateScope();
+        var db = Db(scope.ServiceProvider);
+
+        (await db.CheckBatches.IgnoreQueryFilters().CountAsync(b => b.ProjectId == projectId))
+            .Should().Be(0);
+        (await db.CaptureSessions.IgnoreQueryFilters().CountAsync(s => s.ProjectId == projectId))
+            .Should().Be(0);
+    }
+
     // ---- scaffolding ----------------------------------------------------------------------------
+
+    /// <summary>Polls a batch the way its page does, and gives up rather than hanging.</summary>
+    private static async Task<JsonElement> SettledBatchAsync(
+        HttpClient client, Guid projectId, Guid batchId)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(30);
+
+        while (true)
+        {
+            var state = await client.GetFromJsonAsync<JsonElement>(
+                $"/projects/{projectId}/checks/{batchId}/state");
+
+            if (state.GetProperty("settled").GetBoolean()) return state;
+
+            DateTimeOffset.UtcNow.Should().BeBefore(deadline, "a two-endpoint batch should finish");
+            await Task.Delay(100);
+        }
+    }
+
+    private static async Task<string> AntiforgeryAsync(HttpClient client, string page)
+    {
+        var html = await client.GetStringAsync(page);
+        var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
+
+        match.Success.Should().BeTrue($"{page} should render an antiforgery token");
+        return match.Groups[1].Value;
+    }
 
     /// <summary>Polls the state endpoint the way the page does, and gives up rather than hanging.</summary>
     private static async Task<JsonElement> SettledAsync(
@@ -195,7 +287,12 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
         }
     }
 
-    /// <summary>An endpoint with inputs, pointed at an address the guard will not send to.</summary>
+    /// <summary>
+    /// An endpoint pointed at an address the guard will not send to.
+    ///
+    /// <paramref name="rows"/> of zero makes one with no inputs at all — the shape quick-add and
+    /// the request lab produce, and the one a project is mostly made of.
+    /// </summary>
     private async Task<Guid> EndpointAsync(Guid projectId, int rows)
     {
         using var scope = app.Services.CreateScope();
@@ -208,7 +305,7 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
             WorkspaceId = project.WorkspaceId,
             ProjectId = projectId,
             Name = "Nowhere",
-            Slug = $"n-{Guid.CreateVersion7():N}"[..12],
+            Slug = $"n-{Guid.NewGuid():N}"[..12],
 
             // Loopback, with the allowance deliberately not given. Every row comes back refused by
             // the URL guard, which is a failure this test can rely on to the millisecond.
@@ -217,11 +314,27 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
         };
         db.Environments.Add(environment);
 
+        if (rows == 0)
+        {
+            var once = new Baseline
+            {
+                WorkspaceId = project.WorkspaceId,
+                ProjectId = projectId,
+                EnvironmentId = environment.Id,
+                Name = $"GET /one {Guid.NewGuid():N}"[..18],
+                RequestJson = """{"method":"GET","url":"/one"}""",
+            };
+
+            db.Baselines.Add(once);
+            await db.SaveChangesAsync();
+            return once.Id;
+        }
+
         var set = new DataSet
         {
             WorkspaceId = project.WorkspaceId,
             ProjectId = projectId,
-            Name = $"Ids {Guid.CreateVersion7():N}"[..12],
+            Name = $"Ids {Guid.NewGuid():N}"[..12],
         };
         db.DataSets.Add(set);
         await db.SaveChangesAsync();
@@ -256,7 +369,7 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
             ProjectId = projectId,
             EnvironmentId = environment.Id,
             DataSetId = set.Id,
-            Name = $"GET /things {Guid.CreateVersion7():N}"[..18],
+            Name = $"GET /things {Guid.NewGuid():N}"[..18],
             RequestJson = """{"method":"GET","url":"/things/{{dataset.current.id}}"}""",
         };
         db.Baselines.Add(endpoint);
@@ -307,7 +420,7 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
                 var workspace = new Workspace
                 {
                     Name = "Checks workspace",
-                    Slug = $"cw-{Guid.CreateVersion7():N}"[..20],
+                    Slug = $"cw-{Guid.NewGuid():N}"[..20],
                     CreatedByUserId = user.Id,
                 };
                 db.Workspaces.Add(workspace);
@@ -351,8 +464,8 @@ public sealed class ProjectChecksTests(ProofFlowApplication app) : IClassFixture
                 var project = new Project
                 {
                     WorkspaceId = _sharedWorkspaceId,
-                    Name = $"Checks {Guid.CreateVersion7():N}"[..18],
-                    Slug = $"c-{Guid.CreateVersion7():N}"[..20],
+                    Name = $"Checks {Guid.NewGuid():N}"[..18],
+                    Slug = $"c-{Guid.NewGuid():N}"[..20],
                 };
                 db.Projects.Add(project);
                 await db.SaveChangesAsync();

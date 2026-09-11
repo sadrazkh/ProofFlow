@@ -64,6 +64,9 @@ public sealed class CaptureSessionConfiguration : IEntityTypeConfiguration<Captu
         builder.HasIndex(s => new { s.ProjectId, s.StartedAt });
         builder.HasIndex(s => new { s.BaselineId, s.Status });
 
+        // The batch page reads every check of one press, and the worker asks for the queued ones.
+        builder.HasIndex(s => s.BatchId);
+
         builder.HasMany(s => s.Samples)
             .WithOne(sample => sample.Session!)
             .HasForeignKey(sample => sample.CaptureSessionId)
@@ -75,6 +78,24 @@ public sealed class CaptureSessionConfiguration : IEntityTypeConfiguration<Captu
             .WithMany()
             .HasForeignKey(s => s.DataSetVersionId)
             .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+public sealed class CheckBatchConfiguration : IEntityTypeConfiguration<CheckBatch>
+{
+    public void Configure(EntityTypeBuilder<CheckBatch> builder)
+    {
+        builder.ToTable("CheckBatches");
+        builder.Property(b => b.Name).HasMaxLength(200);
+
+        builder.HasIndex(b => new { b.ProjectId, b.CreatedAt });
+
+        // Deleting the grouping does not delete what happened. Every check is a session with its
+        // own samples and its own verdict, and those outlive the press that started them.
+        builder.HasMany(b => b.Checks)
+            .WithOne(s => s.Batch!)
+            .HasForeignKey(s => s.BatchId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
 

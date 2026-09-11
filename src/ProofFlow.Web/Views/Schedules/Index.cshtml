@@ -63,7 +63,10 @@ else
                             </div>
                         </td>
                         <td class="tabular" dir="ltr">
-                            @schedule.ScenarioCount × @schedule.EnvironmentCount
+                            @* Scenarios and endpoints are both things this fires; added rather
+                               than shown as two sums, because the reader is asking how big one
+                               press of it is. *@
+                            @(schedule.ScenarioCount + schedule.EndpointCount) × @schedule.EnvironmentCount
 
                             @* Only when there are some. A "0 answers" on every row is noise. *@
                             @if (schedule.InputCount > 0)
@@ -110,6 +113,16 @@ else
                                         </a>
                                     }
 
+                                    @* Two links rather than one, because a schedule may cover both
+                                       and they end on different pages. *@
+                                    @if (schedule.LastCheckBatchId is { } checkBatchId)
+                                    {
+                                        <a class="btn btn-ghost btn-sm"
+                                           href="/projects/@Model.ProjectId/checks/@checkBatchId">
+                                            @T["schedule.lastChecks"]
+                                        </a>
+                                    }
+
                                     <form method="post"
                                           action="/projects/@Model.ProjectId/schedules/@schedule.Id/enabled">
                                         @Html.AntiForgeryToken()
@@ -141,7 +154,11 @@ else
     </div>
 }
 
-@if (Model.CanEdit && Model.Scenarios.Count > 0 && Model.Environments.Count > 0)
+@* Either kind will do. Somebody who has recorded paths and never drawn a scenario is the ordinary
+   case now, and a form that refused to appear for them left exactly those people with nothing
+   running on its own. *@
+@if (Model.CanEdit && (Model.Scenarios.Count > 0 || Model.Endpoints.Count > 0)
+     && Model.Environments.Count > 0)
 {
     <div class="card card-pad stack">
         <h2 class="card-title">@T["schedule.new"]</h2>
@@ -196,6 +213,29 @@ else
                         }
                     </div>
                 </fieldset>
+
+                @*
+                    Endpoints beside scenarios, in the same list of things to run. They were the
+                    unscheduled half of the product: a path recorded from the endpoint list in one
+                    field would never run again unless somebody opened it and pressed a button,
+                    which made every failure one nobody would hear about.
+                *@
+                @if (Model.Endpoints.Count > 0)
+                {
+                    <fieldset class="matrix-picker">
+                        <legend class="field-label">@T["nav.endpoints"]</legend>
+                        <div class="matrix-picker-list">
+                            @foreach (var endpoint in Model.Endpoints)
+                            {
+                                <label class="matrix-picker-row">
+                                    <input class="checkbox" type="checkbox" name="baselineIds"
+                                           value="@endpoint.Id" />
+                                    <span dir="auto">@endpoint.Name</span>
+                                </label>
+                            }
+                        </div>
+                    </fieldset>
+                }
 
                 <fieldset class="matrix-picker">
                     <legend class="field-label">@T["run.column.environment"]</legend>

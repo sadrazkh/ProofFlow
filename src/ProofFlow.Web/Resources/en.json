@@ -276,6 +276,7 @@
       "apikey.issued": "issued an API key",
       "apikey.revoked": "revoked an API key",
       "matrix.started": "started an environment matrix",
+      "checks.started": "checked every endpoint",
       "run.started": "started a run",
       "run.cancelled": "cancelled a run",
       "schedule.saved": "saved a schedule",
@@ -1427,6 +1428,18 @@
     "noSharedSteps": "These two runs share no step that returned a response.",
     "failedCount": "{0} failed"
   },
+  "checks": {
+    "title": "Checking every endpoint",
+    "subtitle": "One press, every path you have recorded. Each row links to its endpoint.",
+    "all": "Check everything",
+    "starting": "Starting…",
+    "working": "Still going",
+    "progress": "{0} of {1} checked",
+    "allWell": "All {0} still match.",
+    "needLooking": "{0} to look at.",
+    "eachRow": "One row per endpoint. Open one to see what changed.",
+    "none": "Nothing was checked."
+  },
   "schedule": {
     "subtitle": "What runs on its own, and when.",
     "new": "Add a schedule",
@@ -1437,6 +1450,7 @@
     "turnOn": "Turn on",
     "turnOff": "Turn off",
     "lastRun": "Last run",
+    "lastChecks": "Last checks",
     "zone": "Time zone",
     "zone.hint": "«Every morning» means morning here. Written as an IANA name, like Asia/Tehran.",
     "cron.hint": "Five fields: minute, hour, day of month, month, day of week.",
