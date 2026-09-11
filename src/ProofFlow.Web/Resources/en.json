@@ -1559,7 +1559,18 @@
     "look": "Look at it",
     "review": "Review",
     "more": "{0} more are not shown.",
-    "waitingOnSomebodyElse": "Waiting on somebody else"
+    "waitingOnSomebodyElse": "Waiting on somebody else",
+    "whatChanged": "What changed",
+    "whatChanged.of": "What changed in {0}, version {1}",
+    "first": "Nothing was approved before this one, so there is nothing to compare it against. It is the first answer.",
+    "select": "Select {0}, version {1}",
+    "selectAll": "Select every version you can approve",
+    "selectedCount": "{0} selected",
+    "approveSelected": "Approve selected",
+    "many.approved": "{0} approved.",
+    "many.yours": "{0} left for somebody else: you recorded them.",
+    "many.gone": "{0} had already been decided by the time you pressed.",
+    "many.nothing": "Nothing was ticked, so nothing was approved."
   },
   "team": {
     "subtitle": "Who is in this workspace, and what each of them may do.",

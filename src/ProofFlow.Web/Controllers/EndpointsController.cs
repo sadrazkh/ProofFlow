@@ -1504,6 +1504,107 @@ public sealed class EndpointsController(
         return Redirect($"/projects/{projectId}/endpoints/{endpointId}");
     }
 
+    /// <summary>
+    /// What a version waiting for a decision would change, against the one in force now.
+    ///
+    /// It exists so the decision and the evidence can be in the same place. The inbox used to offer
+    /// Approve and a link away to the endpoint, which meant the reader either approved without
+    /// looking or left the list, looked, came back and hunted for their place again — eight times
+    /// after an import.
+    ///
+    /// <c>first</c> rather than an empty diff when nothing was approved before it. There is no
+    /// difference to draw, and a viewer reporting no differences would be saying the opposite of
+    /// what is true.
+    /// </summary>
+    [HttpGet("{endpointId:guid}/versions/{versionId:guid}/diff")]
+    [Authorize(Policy = Policies.ViewProject)]
+    public async Task<IActionResult> VersionDiff(
+        Guid projectId, Guid endpointId, Guid versionId, CancellationToken cancellationToken)
+    {
+        // The project is part of the question, not only of the address: the workspace filter alone
+        // would happily show a colleague's other project through this one's URL.
+        var version = await db.BaselineVersions
+            .FirstOrDefaultAsync(
+                v => v.Id == versionId
+                     && v.BaselineId == endpointId
+                     && db.Baselines.Any(b => b.Id == v.BaselineId && b.ProjectId == projectId),
+                cancellationToken);
+
+        if (version is null) return NotFound();
+
+        var diff = await baselines.CompareVersionsAsync(version, cancellationToken);
+
+        return Json(new { first = diff is null, diff });
+    }
+
+    /// <summary>
+    /// One decision over several waiting versions.
+    ///
+    /// Partial success is reported rather than avoided. The two tidier designs are both worse: a
+    /// silent "approved" that quietly skipped the reader's own recording teaches nothing and hides
+    /// a governance rule, and an all-or-nothing refusal throws away three legitimate approvals to
+    /// punish a fourth that was never going to happen. So each version is judged on its own and the
+    /// answer says how many went each way — one sentence per fact, because a single sentence
+    /// carrying three numbers is one nobody reads to the end of.
+    ///
+    /// The separation rule is asked per version rather than once, because it turns on who recorded
+    /// each one; the capability is the attribute's job and is the same for the whole press.
+    /// </summary>
+    [HttpPost("/projects/{projectId:guid}/approvals/approve")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = Policies.ApproveBaseline)]
+    public async Task<IActionResult> ApproveMany(
+        Guid projectId, [FromForm(Name = "versionIds")] Guid[]? versionIds,
+        CancellationToken cancellationToken)
+    {
+        var wanted = versionIds?.Distinct().ToList() ?? [];
+        var back = $"/projects/{projectId}/approvals";
+
+        if (wanted.Count == 0)
+        {
+            TempData.Info(localizer["approval.many.nothing"]);
+            return Redirect(back);
+        }
+
+        var versions = await db.BaselineVersions
+            .Where(v => wanted.Contains(v.Id)
+                        && (v.Status == BaselineStatus.PendingApproval || v.Status == BaselineStatus.Draft)
+                        && db.Baselines.Any(b => b.Id == v.BaselineId && b.ProjectId == projectId))
+            .ToListAsync(cancellationToken);
+
+        var approved = 0;
+        var yours = 0;
+
+        foreach (var version in versions)
+        {
+            if (await separation.RefusalAsync(version.CreatedByUserId, cancellationToken) is not null)
+            {
+                yours++;
+                continue;
+            }
+
+            await baselines.ApproveAsync(version, cancellationToken);
+
+            // One entry per version, the same shape the single press writes. A single "approved 4"
+            // row would leave the log unable to answer "who approved this one".
+            await audit.RecordAsync(new AuditEntry(
+                "baseline.approved", projectId, nameof(BaselineVersion), version.Id,
+                $"v{version.Number}"), cancellationToken);
+
+            approved++;
+        }
+
+        // Ticked but no longer waiting: somebody else decided it while this page was open. Said
+        // out loud, because the alternative is a count that silently does not add up.
+        var gone = wanted.Count - versions.Count;
+
+        if (approved > 0) TempData.Success(localizer["approval.many.approved", approved]);
+        if (yours > 0) TempData.Info(localizer["approval.many.yours", yours]);
+        if (gone > 0) TempData.Info(localizer["approval.many.gone", gone]);
+
+        return Redirect(back);
+    }
+
     [HttpPost("{endpointId:guid}/versions/{versionId:guid}/reject")]
     [ValidateAntiForgeryToken]
     [Authorize(Policy = Policies.ApproveBaseline)]

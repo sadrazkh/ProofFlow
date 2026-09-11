@@ -445,6 +445,71 @@
   color: var(--ink-subtle);
 }
 
+/* One press over several rows. Sits in the card header, where the heading says what the list is. */
+.approval-bulk {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 0 auto;
+}
+
+/* Wide enough for the box and its focus ring, and no wider: it is a column of 16px controls. */
+.approval-table .cell-tick {
+  inline-size: 1px;
+  white-space: nowrap;
+}
+
+/*
+  The diff's row, attached to the row it explains.
+
+  No border between the two and no padding above, so the pair reads as one entry rather than as two
+  rows that happen to be adjacent. The hover highlight is taken off because hovering the diff is
+  not hovering the row, and a second thing lighting up says it is.
+*/
+.approval-detail-row td {
+  padding-block: 0 var(--space-2);
+}
+
+.table-hover tbody tr.approval-detail-row:hover { background: transparent; }
+
+.approval-detail-row td:not(.approval-detail-cell) { border-block-end: 0; }
+
+/*
+  Held open before the island arrives, so the rows below do not jump when it does. One disclosure
+  button tall — the panel itself only exists once somebody asks for it.
+*/
+.approval-detail-cell {
+  min-block-size: 28px;
+}
+
+.approval-disclose {
+  color: var(--ink-subtle);
+  /* Flush with the cell above it, so the control lines up with the row it belongs to. */
+  margin-inline-start: calc(var(--space-2) * -1);
+}
+
+.approval-detail-panel {
+  padding-block-start: var(--space-2);
+}
+
+/*
+  Nothing was approved before it, so there is nothing to compare against.
+
+  Said in a sentence rather than drawn as a diff with no rows in it. The two look identical and
+  mean opposite things, and the wrong one of them reads as "this proposal changes nothing".
+*/
+.approval-first {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
 /* ================================================================================================ */
 /* Templates, import and export                                                                     */
 /* ================================================================================================ */

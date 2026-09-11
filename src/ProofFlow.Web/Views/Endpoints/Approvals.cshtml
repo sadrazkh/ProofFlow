@@ -1,4 +1,15 @@
+@using System.Text.Json
+@inject IStringLocalizer Strings
 @model ApprovalViewModel
+
+@{
+    // `IStringLocalizer` beside the usual `@T`: `IViewLocalizer` substitutes its arguments when the
+    // string is *written*, so reading `.Value` for an attribute hands back the template with «{0}»
+    // still in it. The aria-labels below have to exist as strings before they can be attributes.
+    // The same note, at more length, is in Pieces/_Sparkline.cshtml.
+    var columns = Model.CanApprove ? 5 : 4;
+    var islandProps = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+}
 
 <div class="page-head">
     <div>
@@ -21,19 +32,55 @@ else
 {
     @if (Model.Inbox.Versions.Count > 0)
     {
-        <section class="card">
+        <section class="card" data-bulk="versions">
             <div class="card-header">
                 <div>
                     <div class="card-title">@T["approval.versions"]</div>
                     <div class="card-subtitle">@T["approval.versions.subtitle"]</div>
                 </div>
+
+                @if (Model.CanApprove)
+                {
+                    @*
+                        The bulk form sits outside the table on purpose: each row already carries an
+                        Approve form of its own, and forms do not nest. The boxes in the rows point
+                        back here with their `form` attribute, which is what lets one press act on
+                        several rows without taking the single press away from any of them.
+
+                        The button starts disabled because at first paint nothing is ticked. Script
+                        enables it; see mountBulkSelect.
+                    *@
+                    <form id="approve-selected" method="post" class="approval-bulk" data-bulk-bar
+                          action="/projects/@Model.ProjectId/approvals/approve">
+                        @Html.AntiForgeryToken()
+
+                        <span class="text-xs subtle tabular"
+                              data-bulk-count="versions"
+                              data-bulk-count-text="approval.selectedCount"
+                              aria-live="polite"></span>
+
+                        <button type="submit" class="btn btn-primary btn-sm"
+                                data-bulk-action="versions" disabled>
+                            <i data-lucide="check-check" aria-hidden="true"></i>@T["approval.approveSelected"]
+                        </button>
+                    </form>
+                }
             </div>
 
             <div class="table-wrap">
-                <table class="table table-hover">
+                <table class="table table-hover approval-table">
                     <caption class="sr-only">@T["approval.versions"]</caption>
                     <thead>
                     <tr>
+                        @if (Model.CanApprove)
+                        {
+                            <th class="cell-tick">
+                                <input type="checkbox" class="checkbox"
+                                       data-bulk-all="versions"
+                                       form="approve-selected"
+                                       aria-label="@Strings["approval.selectAll"].Value" />
+                            </th>
+                        }
                         <th>@T["common.name"]</th>
                         <th>@T["approval.recordedBy"]</th>
                         <th>@T["common.created"]</th>
@@ -43,7 +90,35 @@ else
                     <tbody>
                     @foreach (var version in Model.Inbox.Versions)
                     {
+                        var yours = version.ByYou && Model.Inbox.SomebodyElseCanApprove;
+                        var mine = Model.CanApprove && !yours;
+                        var panelId = $"version-diff-{version.VersionId}";
+
+                        var props = JsonSerializer.Serialize(new
+                        {
+                            path = $"/projects/{Model.ProjectId}/endpoints/{version.BaselineId}"
+                                   + $"/versions/{version.VersionId}/diff",
+                            endpointName = version.BaselineName,
+                            number = version.Number,
+                            panelId,
+                        }, islandProps);
+
                         <tr>
+                            @if (Model.CanApprove)
+                            {
+                                <td class="cell-tick">
+                                    @if (mine)
+                                    {
+                                        @* Named after the row it ticks: "select" on its own is four
+                                           identical controls to anybody reading by label. *@
+                                        <input type="checkbox" class="checkbox"
+                                               name="versionIds" value="@version.VersionId"
+                                               data-bulk-item="versions"
+                                               form="approve-selected"
+                                               aria-label="@Strings["approval.select", version.BaselineName, version.Number].Value" />
+                                    }
+                                </td>
+                            }
                             <td>
                                 <a href="/projects/@Model.ProjectId/endpoints/@version.BaselineId" dir="auto">
                                     @version.BaselineName
@@ -65,7 +140,7 @@ else
                                     because finding out a rule by being refused is a bad way to
                                     learn one.
                                 *@
-                                @if (Model.CanApprove && version.ByYou && Model.Inbox.SomebodyElseCanApprove)
+                                @if (Model.CanApprove && yours)
                                 {
                                     <span class="approval-yours">
                                         <i data-lucide="user-check" aria-hidden="true"></i>
@@ -98,6 +173,22 @@ else
                                 }
                             </td>
                         </tr>
+
+                        @*
+                            The evidence, under the row it belongs to. A second row rather than a
+                            panel inside a cell, because a diff is the width of the table and a
+                            table cell is not.
+
+                            Empty until the island mounts, and that is deliberate: the disclosure
+                            fetches a comparison that does not exist on the server-rendered page, so
+                            offering the control where it could not work would be offering a dead
+                            button. Without script the row is invisible and «Look at it» is still
+                            the way through.
+                        *@
+                        <tr class="approval-detail-row">
+                            <td colspan="@columns" class="approval-detail-cell"
+                                data-island="version-diff" data-props="@props"></td>
+                        </tr>
                     }
                     </tbody>
                 </table>
@@ -123,6 +214,14 @@ else
                 </div>
             </div>
 
+            @*
+                No ticking here, and that is a decision rather than an omission. A proposed version
+                is one answer and one decision; a sweep is two thousand answers, each of which is
+                its own. «Approve these three sweeps» could only mean «bless every waiting sample in
+                them, including the ones that differ» — which is the blind approval the rows above
+                were changed to stop. The review queue inside the endpoint already selects samples
+                in bulk, with the diff for each one on screen, which is where that belongs.
+            *@
             <div class="table-wrap">
                 <table class="table table-hover">
                     <caption class="sr-only">@T["approval.sessions"]</caption>

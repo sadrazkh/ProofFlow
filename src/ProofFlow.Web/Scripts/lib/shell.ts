@@ -815,3 +815,62 @@ export function mountRenames(): void {
     });
   });
 }
+
+/**
+ * Ticking several rows and acting on them once.
+ *
+ * Plain DOM, like the rest of this file. The state is "which boxes are checked", which the boxes
+ * already hold — keeping a copy of the browser's own answer is how the count and the form come to
+ * disagree.
+ *
+ * The button lives outside the table it acts on. A form cannot wrap the rows, because the per-row
+ * Approve forms are already in them and forms do not nest, so the checkboxes name their form with
+ * the `form` attribute and this ties the group together by a shared name instead.
+ *
+ * The button is rendered disabled and enabled from here. At first paint nothing is ticked, so
+ * disabled is the true state and rendering it enabled would show a control that is briefly lying.
+ * The cost is that with no script the bulk button stays dead — which is exactly why the single
+ * Approve beside each row stayed a form of its own rather than becoming a button this file drives.
+ */
+export function mountBulkSelect(): void {
+  document.querySelectorAll<HTMLElement>('[data-bulk]').forEach((group) => {
+    const name = group.dataset.bulk!;
+
+    const boxes = [...group.querySelectorAll<HTMLInputElement>(
+      `input[type="checkbox"][data-bulk-item="${name}"]`)];
+    const all = group.querySelector<HTMLInputElement>(`input[type="checkbox"][data-bulk-all="${name}"]`);
+    const count = group.querySelector<HTMLElement>(`[data-bulk-count="${name}"]`);
+    const buttons = [...group.querySelectorAll<HTMLButtonElement>(`[data-bulk-action="${name}"]`)];
+
+    // Nothing tickable — every row waiting here is one this reader recorded. The bar would be
+    // furniture, and a "select all" over nothing is worse than no bar at all.
+    if (boxes.length === 0) {
+      group.querySelectorAll<HTMLElement>('[data-bulk-bar]').forEach((bar) => { bar.hidden = true; });
+      return;
+    }
+
+    function sync(): void {
+      const ticked = boxes.filter((box) => box.checked).length;
+
+      buttons.forEach((button) => { button.disabled = ticked === 0; });
+
+      if (count) count.textContent = ticked === 0 ? '' : t(count.dataset.bulkCountText ?? '', ticked);
+
+      if (all) {
+        all.checked = ticked === boxes.length;
+        // Neither on nor off while some are: without the third state, pressing the header box is
+        // the only way to find out which of the two things it was about to do.
+        all.indeterminate = ticked > 0 && ticked < boxes.length;
+      }
+    }
+
+    boxes.forEach((box) => box.addEventListener('change', sync));
+
+    all?.addEventListener('change', () => {
+      boxes.forEach((box) => { box.checked = all.checked; });
+      sync();
+    });
+
+    sync();
+  });
+}

@@ -14,6 +14,7 @@ import EndpointTest from './islands/EndpointTest.vue';
 import ScenarioCanvas from './islands/ScenarioCanvas.vue';
 import RunConsole from './islands/RunConsole.vue';
 import EnvironmentMatrix from './islands/EnvironmentMatrix.vue';
+import VersionDiff from './islands/VersionDiff.vue';
 import { mountSecretReveal } from './lib/secrets';
 import {
   mountSidebar,
@@ -29,6 +30,7 @@ import {
   mountBusyForms,
   mountUploadProgress,
   mountRenames,
+  mountBulkSelect,
 } from './lib/shell';
 
 /**
@@ -54,6 +56,7 @@ mountDemoFill();
 mountNavGroups();
 mountUploadProgress();
 mountBusyForms();
+mountBulkSelect();
 // Registered before mounting, which is the only ordering that matters here.
 island('connect-api', ConnectApi);
 island('request-lab', RequestLab);
@@ -65,6 +68,10 @@ island('endpoint-test', EndpointTest);
 island('scenario-canvas', ScenarioCanvas);
 island('run-console', RunConsole);
 island('environment-matrix', EnvironmentMatrix);
+// One per waiting row on the approval inbox, rather than one island owning that table: the table
+// and its forms have to keep working when the bundle does not, and the diff is the only part of it
+// that is fetched rather than rendered. The reasoning is written out in the component.
+island('version-diff', VersionDiff);
 
 mountIslands();
 mountSecretReveal();
