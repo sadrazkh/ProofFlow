@@ -162,6 +162,100 @@ public sealed class CaptureSweepTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Queueing_a_check_writes_it_down_and_calls_nothing()
+    {
+        await using var context = Db();
+
+        var session = await Capture(context).QueueAsync(Command());
+
+        // The whole point of the split: the press that starts a sweep must come back before any
+        // request goes out, so that two thousand rows are not two thousand rows a browser waits
+        // for. A queued session knows how many rows it is for and nothing else yet.
+        session.Status.Should().Be(CaptureSessionStatus.Queued);
+        session.TotalRows.Should().Be(6);
+        session.Completed.Should().Be(0);
+        session.FinishedAt.Should().BeNull();
+
+        var samples = await context.CaptureSamples.CountAsync(s => s.CaptureSessionId == session.Id);
+        samples.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_queued_check_is_carried_out_when_the_worker_gets_to_it()
+    {
+        await using var context = Db();
+        var capture = Capture(context);
+
+        var queued = await capture.QueueAsync(Command());
+        var done = await capture.ExecuteAsync(queued.Id);
+
+        done.Should().NotBeNull();
+        done!.Status.Should().Be(CaptureSessionStatus.Completed);
+        done.Completed.Should().Be(6);
+
+        var samples = await context.CaptureSamples.CountAsync(s => s.CaptureSessionId == queued.Id);
+        samples.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task A_check_somebody_cancelled_before_it_started_never_runs()
+    {
+        await using var context = Db();
+        var capture = Capture(context);
+
+        var queued = await capture.QueueAsync(Command());
+
+        // What the controller does when the queue says the check is not running in this process:
+        // there is nobody to interrupt, so it is marked here and the worker has to honour that.
+        queued.Status = CaptureSessionStatus.Cancelled;
+        await context.SaveChangesAsync();
+
+        var after = await capture.ExecuteAsync(queued.Id);
+
+        after!.Status.Should().Be(CaptureSessionStatus.Cancelled);
+
+        // The real assertion. If ExecuteAsync only checked for «already finished» it would happily
+        // send six requests to somebody's API after they pressed stop.
+        var samples = await context.CaptureSamples.CountAsync(s => s.CaptureSessionId == queued.Id);
+        samples.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Only_the_first_worker_to_reach_a_check_carries_it_out()
+    {
+        await using var context = Db();
+        var capture = Capture(context);
+
+        var queued = await capture.QueueAsync(Command());
+
+        await capture.ExecuteAsync(queued.Id);
+        await capture.ExecuteAsync(queued.Id);
+
+        // Twelve samples would mean the endpoint was called twice over, which is what a restarted
+        // worker re-reading its channel would do without the guard.
+        var samples = await context.CaptureSamples.CountAsync(s => s.CaptureSessionId == queued.Id);
+        samples.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task The_limit_survives_being_queued()
+    {
+        await using var context = Db();
+        var capture = Capture(context);
+
+        // Limit has no column: the queued session's row count is what the sweep reads back as its
+        // cap. If that ever stops being true, this runs all six.
+        var queued = await capture.QueueAsync(Command(limit: 2));
+        var done = await capture.ExecuteAsync(queued.Id);
+
+        done!.TotalRows.Should().Be(2);
+        done.Completed.Should().Be(2);
+
+        var samples = await context.CaptureSamples.CountAsync(s => s.CaptureSessionId == queued.Id);
+        samples.Should().Be(2);
+    }
+
+    [Fact]
     public async Task A_regression_over_inputs_nobody_has_approved_is_not_a_pass()
     {
         await using var context = Db();

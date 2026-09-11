@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Icon } from '../lib/Icon';
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ReviewQueue from './ReviewQueue.vue';
 import { api, ApiError } from '../lib/api';
 import { t } from '../lib/i18n';
@@ -14,9 +14,14 @@ import { toast } from '../lib/toast';
  * «the endpoint» was a baseline, that the inputs were a data set, and that pressing the button
  * meant starting a capture session in regression mode from a third page.
  *
- * The counts come back from one call, and the queue below them is the same component the review
- * page used — a row per input, and the diff for whichever one is under the cursor. There was no
- * reason to write a second list that shows the same thing slightly differently.
+ * The press queues the check and comes straight back; the counters here are polled. It used to be
+ * one call that returned when the whole sweep was over, which meant a two-thousand-row set held a
+ * browser connection open for twenty minutes and lost the result to any proxy with an opinion
+ * about that. It also means a reload mid-check finds the check rather than an empty page.
+ *
+ * The queue below is the same component the review page used — a row per input, and the diff for
+ * whichever one is under the cursor. There was no reason to write a second list that shows the
+ * same thing slightly differently.
  */
 
 const props = defineProps<{
@@ -54,10 +59,22 @@ type TestResult = {
   stoppedReason: string | null;
 };
 
-const running = ref(false);
+/** How often to ask where the check has got to. */
+const POLL_MS = 1500;
+
+const starting = ref(false);
+const stopping = ref(false);
 const result = ref<TestResult | null>(null);
 const sessionId = ref<string | null>(props.lastSessionId ?? null);
 const environmentId = ref<string>(props.defaultEnvironmentId ?? '');
+
+/** Queued and Running are the two states the server calls «not finished». */
+const inFlight = computed(() =>
+  result.value?.status === 'Queued' || result.value?.status === 'Running');
+
+const running = computed(() => starting.value || inFlight.value);
+
+let poll: number | null = null;
 
 /**
  * Stop after this many inputs.
@@ -77,6 +94,9 @@ const passed = computed(() => {
 
 const clean = computed(() =>
   result.value !== null
+  // A check that was stopped or that fell over has no numbers worth celebrating, and its counters
+  // are all zero — which is exactly what a perfect result looks like from here.
+  && result.value.status === 'Completed'
   && result.value.differing === 0
   && result.value.failed === 0
   && result.value.unmatched === 0
@@ -89,10 +109,53 @@ const base = computed(() =>
 
 const chosen = computed(() => props.environments.find((e) => e.id === environmentId.value) ?? null);
 
+function stopPolling(): void {
+  if (poll !== null) window.clearInterval(poll);
+  poll = null;
+}
+
+/** Reads the counters once. True while there is still something to wait for. */
+async function refresh(): Promise<boolean> {
+  if (!base.value) return false;
+
+  result.value = await api.get<TestResult>(`${base.value}/state`);
+  return inFlight.value;
+}
+
+function announce(): void {
+  const answer = result.value;
+  if (!answer) return;
+
+  if (answer.status === 'Cancelled') return;
+
+  const wrong = answer.differing + answer.failed + answer.unmatched + answer.slow;
+
+  toast(
+    wrong === 0
+      ? t('endpoint.test.allMatched', answer.completed)
+      : t('endpoint.test.found', wrong),
+    wrong === 0 ? 'success' : 'warn');
+}
+
+function watchIt(): void {
+  stopPolling();
+  poll = window.setInterval(() => {
+    void refresh()
+      .then((more) => {
+        if (more) return;
+        stopPolling();
+        announce();
+      })
+      // A check that cannot be read is not a check that failed. Stop asking rather than
+      // filling the screen with the same error every second and a half.
+      .catch(() => stopPolling());
+  }, POLL_MS);
+}
+
 async function run(): Promise<void> {
   if (!props.canRun || running.value) return;
 
-  running.value = true;
+  starting.value = true;
   result.value = null;
 
   const parsed = Number.parseInt(limit.value, 10);
@@ -111,20 +174,45 @@ async function run(): Promise<void> {
     // component would show the previous test's rows under this test's numbers.
     sessionId.value = answer.sessionId;
 
-    const matched = answer.differing === 0 && answer.failed === 0 && answer.unmatched === 0
-      && answer.slow === 0;
-
-    toast(
-      matched
-        ? t('endpoint.test.allMatched', answer.completed)
-        : t('endpoint.test.found', answer.differing + answer.failed + answer.unmatched + answer.slow),
-      matched ? 'success' : 'warn');
+    watchIt();
   } catch (error) {
     toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
   } finally {
-    running.value = false;
+    starting.value = false;
   }
 }
+
+async function stopIt(): Promise<void> {
+  if (!base.value || stopping.value) return;
+
+  stopping.value = true;
+
+  try {
+    const answer = await api.post<{ stopped: boolean; reason?: string }>(`${base.value}/cancel`, {});
+    if (!answer.stopped && answer.reason) toast(answer.reason, 'warn');
+
+    // Read straight back rather than assuming. Whether it stopped between the press and the
+    // arrival is the server's to say.
+    await refresh();
+    if (!inFlight.value) stopPolling();
+  } catch (error) {
+    toast(error instanceof ApiError ? error.message : t('error.body'), 'error');
+  } finally {
+    stopping.value = false;
+  }
+}
+
+onMounted(() => {
+  if (!sessionId.value) return;
+
+  // A reload in the middle of a check lands here. Without this the page would show the button and
+  // nothing else while the sweep it started carried on invisibly.
+  void refresh()
+    .then((more) => { if (more) watchIt(); })
+    .catch(() => undefined);
+});
+
+onUnmounted(stopPolling);
 </script>
 
 <template>
@@ -179,7 +267,27 @@ async function run(): Promise<void> {
         <Icon name="triangle-alert" />{{ t('endpoint.test.production', chosen.name) }}
       </p>
 
-      <div v-if="result" class="endpoint-test-result">
+      <!-- While it runs. The check is on the server now, so this is the only thing saying it is
+           still happening — and it says how far, because «working…» for twenty minutes is
+           indistinguishable from stuck. -->
+      <div v-if="inFlight" class="endpoint-test-result">
+        <span class="status status-idle">
+          <Icon name="loader-circle" class="is-spinning" />
+          {{
+            result!.status === 'Queued'
+              ? t('endpoint.test.queued')
+              : t('endpoint.test.progress', result!.completed, result!.totalRows)
+          }}
+        </span>
+
+        <span class="grow"></span>
+
+        <button type="button" class="btn btn-ghost btn-sm" :disabled="stopping" @click="stopIt">
+          <Icon name="square" />{{ t('endpoint.test.stop') }}
+        </button>
+      </div>
+
+      <div v-else-if="result" class="endpoint-test-result">
         <span v-if="clean" class="status status-pass">
           <span class="status-dot" aria-hidden="true"></span>
           {{ t('endpoint.result.allPassed', result.completed) }}
@@ -226,7 +334,16 @@ async function run(): Promise<void> {
       </div>
     </div>
 
-    <!-- The queue, keyed on the session so a new test replaces it rather than appending to it. -->
-    <ReviewQueue v-if="base" :key="base" :base="base" :can-review="canReview" />
+    <!--
+      The queue, keyed on the session so a new test replaces it rather than appending to it — and
+      on whether the test is still going, so it loads once more when it ends. Mounted at the moment
+      of queueing it would otherwise have read an empty session and kept showing nothing.
+    -->
+    <ReviewQueue
+      v-if="base"
+      :key="`${base}:${inFlight}`"
+      :base="base"
+      :can-review="canReview"
+    />
   </div>
 </template>

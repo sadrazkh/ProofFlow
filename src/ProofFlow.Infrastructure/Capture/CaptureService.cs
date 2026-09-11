@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using ProofFlow.Application.Abstractions;
 using ProofFlow.Contracts.Capture;
 using ProofFlow.Domain.Baselines;
@@ -33,7 +34,8 @@ public sealed class CaptureService(
     EnvironmentAuthenticator authenticator,
     ICurrentUser me,
     IClock clock,
-    Notifications.NotificationWriter? notifications = null)
+    Notifications.NotificationWriter? notifications = null,
+    ILogger<CaptureService>? logger = null)
 {
     /// <summary>
     /// How many requests are in flight at once.
@@ -51,14 +53,19 @@ public sealed class CaptureService(
     };
 
     /// <summary>
-    /// Runs a sweep to completion, writing samples as it goes.
+    /// Writes the sweep down as something to do, and stops.
     ///
-    /// Written in chunks rather than one row at a time or all at the end. One at a time means two
-    /// thousand round trips to the database; all at the end means a cancelled sweep — or a crashed
-    /// one — leaves nothing behind, which is the opposite of what somebody who has just waited
-    /// twenty minutes wants.
+    /// The half that runs inside the request. Everything expensive — the sign-in, the calls, the
+    /// comparisons — happens later in <see cref="ExecuteAsync"/>, on the worker. What comes back
+    /// from here is a session with a row count and nothing else, which is exactly what a page needs
+    /// to start showing progress.
+    ///
+    /// <see cref="CaptureSession.TotalRows"/> is written now and read back as the cap when the
+    /// sweep runs, so <see cref="StartCaptureCommand.Limit"/> needs no column of its own: a version's
+    /// rows never change once it is saved, so «the first n of them» means the same thing in both
+    /// places.
     /// </summary>
-    public async Task<CaptureSession> RunAsync(
+    public async Task<CaptureSession> QueueAsync(
         StartCaptureCommand command, CancellationToken cancellationToken = default)
     {
         var baseline = await db.Baselines
@@ -69,11 +76,11 @@ public sealed class CaptureService(
             .FirstOrDefaultAsync(v => v.Id == command.DataSetVersionId, cancellationToken)
             ?? throw new InvalidOperationException("No such data-set version in this workspace.");
 
-        var rows = await db.DataSetRows
+        var total = await db.DataSetRows
             .Where(r => r.DataSetVersionId == version.Id && r.Enabled)
             .OrderBy(r => r.Ordinal)
             .Take(command.Limit is > 0 ? command.Limit.Value : int.MaxValue)
-            .ToListAsync(cancellationToken);
+            .CountAsync(cancellationToken);
 
         var session = new CaptureSession
         {
@@ -83,13 +90,119 @@ public sealed class CaptureService(
             DataSetVersionId = version.Id,
             EnvironmentId = command.EnvironmentId ?? baseline.EnvironmentId,
             Mode = Enum.TryParse<CaptureMode>(command.Mode, out var mode) ? mode : CaptureMode.Capture,
-            TotalRows = rows.Count,
+            Status = CaptureSessionStatus.Queued,
+            TotalRows = total,
+
+            // Stamped twice on purpose. A column that cannot be null has to hold something the
+            // moment the row exists, and this is the time the list sorts by; the moment the API
+            // actually starts being called overwrites it, because that is what a duration is
+            // measured from.
             StartedAt = clock.UtcNow,
+
+            // Read here rather than on the worker: a background scope has no request and therefore
+            // nobody signed in, and «started by nobody» is a fact this row would then keep forever.
             StartedByUserId = me.UserId ?? Guid.Empty,
         };
 
         db.CaptureSessions.Add(session);
         await db.SaveChangesAsync(cancellationToken);
+
+        return session;
+    }
+
+    /// <summary>
+    /// Queues it and carries it out without leaving the caller.
+    ///
+    /// For a caller that has nothing else to do while it waits, which in practice means the tests.
+    /// Everything a person presses goes through the queue instead, so that no browser is holding a
+    /// connection open for the length of a sweep.
+    /// </summary>
+    public async Task<CaptureSession> RunAsync(
+        StartCaptureCommand command, CancellationToken cancellationToken = default)
+    {
+        var session = await QueueAsync(command, cancellationToken);
+        return await ExecuteAsync(session.Id, cancellationToken) ?? session;
+    }
+
+    /// <summary>
+    /// Runs a queued sweep to completion, writing samples as it goes.
+    ///
+    /// Written in chunks rather than one row at a time or all at the end. One at a time means two
+    /// thousand round trips to the database; all at the end means a cancelled sweep — or a crashed
+    /// one — leaves nothing behind, which is the opposite of what somebody who has just waited
+    /// twenty minutes wants.
+    ///
+    /// Never throws to its caller. The caller is a worker serving every sweep in the process, and
+    /// one endpoint that takes the loop down would stop all of them.
+    /// </summary>
+    public async Task<CaptureSession?> ExecuteAsync(
+        Guid sessionId, CancellationToken cancellationToken = default)
+    {
+        var session = await db.CaptureSessions
+            .FirstOrDefaultAsync(s => s.Id == sessionId, cancellationToken);
+
+        if (session is null) return null;
+
+        // Anything but Queued means somebody got here first — the worker restarting on a row it
+        // already finished, or a person who cancelled it while it was still waiting.
+        if (session.Status != CaptureSessionStatus.Queued) return session;
+
+        var baseline = await db.Baselines
+            .FirstOrDefaultAsync(b => b.Id == session.BaselineId, cancellationToken);
+
+        if (baseline is null)
+        {
+            session.Status = CaptureSessionStatus.Failed;
+            session.StoppedReason = "The endpoint this check was for is no longer there.";
+            session.FinishedAt = clock.UtcNow;
+            await db.SaveChangesAsync(CancellationToken.None);
+            return session;
+        }
+
+        session.Status = CaptureSessionStatus.Running;
+        session.StartedAt = clock.UtcNow;
+        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            return await SweepAsync(session, baseline, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // The row loop has its own handler; this one is for being stopped during the sign-in
+            // or between chunks, where there is no partial result to keep. Recorded as cancelled
+            // rather than failed, because «somebody pressed stop» is not «the API is broken» and
+            // nobody should be woken up for it.
+            session.Status = CaptureSessionStatus.Cancelled;
+            session.StoppedReason = "Stopped before it finished.";
+            session.FinishedAt = clock.UtcNow;
+            await db.SaveChangesAsync(CancellationToken.None);
+            return session;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "The check of {Endpoint} came out of the sweep.", baseline.Name);
+
+            session.Status = CaptureSessionStatus.Failed;
+            session.StoppedReason = "ProofFlow could not carry this check out.";
+            session.FinishedAt = clock.UtcNow;
+            notifications?.SweepFailed(session, baseline.ProjectId, baseline.Name);
+
+            // The token that threw is not the token to save under. A sweep whose failure cannot be
+            // written down is one that stays «running» on the page until somebody restarts the app.
+            await db.SaveChangesAsync(CancellationToken.None);
+            return session;
+        }
+    }
+
+    private async Task<CaptureSession> SweepAsync(
+        CaptureSession session, Baseline baseline, CancellationToken cancellationToken)
+    {
+        var rows = await db.DataSetRows
+            .Where(r => r.DataSetVersionId == session.DataSetVersionId && r.Enabled)
+            .OrderBy(r => r.Ordinal)
+            .Take(session.TotalRows)
+            .ToListAsync(cancellationToken);
 
         var request = ReadRequest(baseline);
         if (request is null)

@@ -119,6 +119,15 @@ public enum CaptureSessionStatus
 
     /// <summary>Stopped by something going wrong that was not one row's fault.</summary>
     Failed = 4,
+
+    /// <summary>
+    /// Written down, and waiting for the worker to pick it up.
+    ///
+    /// Five rather than nought, even though it comes first in time. These numbers are already in
+    /// the column: renumbering so the enum reads in order would turn every stored «Running» into
+    /// something else the next time the application started.
+    /// </summary>
+    Queued = 5,
 }
 
 /// <summary>

@@ -45,6 +45,7 @@ public sealed class EndpointsController(
     ProofFlowDbContext db,
     BaselineService baselines,
     CaptureService capture,
+    ICheckQueue checks,
     Separation separation,
     ApprovalInbox inbox,
     EnvironmentContextBuilder environments,
@@ -918,7 +919,7 @@ public sealed class EndpointsController(
         if (versionId is not { } dataSetVersionId)
             return ValidationProblem(localizer["endpoint.test.noRows"].Value);
 
-        var session = await capture.RunAsync(
+        var session = await capture.QueueAsync(
             new StartCaptureCommand
             {
                 BaselineId = endpointId,
@@ -929,29 +930,92 @@ public sealed class EndpointsController(
             },
             cancellationToken);
 
+        await checks.EnqueueAsync(new QueuedCheck(session.Id, session.WorkspaceId), cancellationToken);
+
+        // Counted, not concluded. This entry used to carry «differing» and «failed» because the
+        // sweep had already finished by the time it was written; now it says what was asked for,
+        // and the session itself is where the answer ends up.
         await audit.RecordAsync(new AuditEntry(
             "capture.started", projectId, nameof(CaptureSession), session.Id, session.Mode.ToString(),
             new Dictionary<string, string?>
             {
                 ["rows"] = session.TotalRows.ToString(),
-                ["differing"] = session.Differing.ToString(),
-                ["unmatched"] = session.Unmatched.ToString(),
-                ["failed"] = session.Failed.ToString(),
             }), cancellationToken);
 
-        return Json(new
-        {
-            sessionId = session.Id,
-            totalRows = session.TotalRows,
-            completed = session.Completed,
-            differing = session.Differing,
-            failed = session.Failed,
-            unmatched = session.Unmatched,
-            slow = session.Slow,
-            status = session.Status.ToString(),
-            stoppedReason = session.StoppedReason,
-        });
+        return Json(State(session));
     }
+
+    /// <summary>
+    /// Where a sweep has got to.
+    ///
+    /// Polled by the page while it runs. There is no live stream here on purpose: a sweep emits one
+    /// number every four rows, and a hub connection per endpoint page to carry a counter would be
+    /// more machinery than the thing it reports.
+    /// </summary>
+    [HttpGet("{endpointId:guid}/tests/{sessionId:guid}/state")]
+    [Authorize(Policy = Policies.ViewProject)]
+    public async Task<IActionResult> TestState(
+        Guid projectId, Guid endpointId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        var session = await db.CaptureSessions
+            .AsNoTracking()
+            .FirstOrDefaultAsync(
+                s => s.Id == sessionId && s.BaselineId == endpointId && s.ProjectId == projectId,
+                cancellationToken);
+
+        return session is null ? NotFound() : Json(State(session));
+    }
+
+    /// <summary>
+    /// Stop a check that is under way, or one that has not started yet.
+    ///
+    /// Both cases matter and they are handled differently. A check running in this process has a
+    /// token to cancel; one still waiting in the queue has nobody listening, so it is marked
+    /// cancelled here and the worker finds it that way and passes over it.
+    /// </summary>
+    [HttpPost("{endpointId:guid}/tests/{sessionId:guid}/cancel")]
+    [Authorize(Policy = Policies.RunTest)]
+    public async Task<IActionResult> CancelTest(
+        Guid projectId, Guid endpointId, Guid sessionId, CancellationToken cancellationToken)
+    {
+        var session = await db.CaptureSessions
+            .FirstOrDefaultAsync(
+                s => s.Id == sessionId && s.BaselineId == endpointId && s.ProjectId == projectId,
+                cancellationToken);
+
+        if (session is null) return NotFound();
+
+        if (session.Status is not (CaptureSessionStatus.Queued or CaptureSessionStatus.Running))
+            return Json(new { stopped = false, reason = localizer["endpoint.test.alreadyDone"].Value });
+
+        if (!checks.Cancel(sessionId))
+        {
+            session.Status = CaptureSessionStatus.Cancelled;
+            session.StoppedReason = localizer["endpoint.test.stopped"].Value;
+            session.FinishedAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(cancellationToken);
+        }
+
+        await audit.RecordAsync(new AuditEntry(
+            "capture.cancelled", projectId, nameof(CaptureSession), session.Id,
+            session.Mode.ToString()), cancellationToken);
+
+        return Json(new { stopped = true });
+    }
+
+    /// <summary>The one shape a sweep is reported in, whether it was just queued or is long over.</summary>
+    private static object State(CaptureSession session) => new
+    {
+        sessionId = session.Id,
+        totalRows = session.TotalRows,
+        completed = session.Completed,
+        differing = session.Differing,
+        failed = session.Failed,
+        unmatched = session.Unmatched,
+        slow = session.Slow,
+        status = session.Status.ToString(),
+        stoppedReason = session.StoppedReason,
+    };
 
     /// <summary>
     /// The other half of the Test button: send it once, and compare the whole answer.

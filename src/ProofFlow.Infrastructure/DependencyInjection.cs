@@ -103,6 +103,11 @@ public static class DependencyInjection
         services.AddSingleton<Runs.IRunQueue, Runs.ChannelRunQueue>();
         services.AddHostedService<Runs.RunWorker>();
 
+        // Endpoint checks have their own, for the reason written on ICheckQueue: sharing one would
+        // make «check this endpoint» wait behind a sixty-cell matrix somebody else started.
+        services.AddSingleton<Capture.ICheckQueue, Capture.ChannelCheckQueue>();
+        services.AddHostedService<Capture.CheckWorker>();
+
         return services;
     }
 }
