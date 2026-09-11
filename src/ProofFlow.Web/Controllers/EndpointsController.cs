@@ -75,14 +75,35 @@ public sealed class EndpointsController(
 
     // ---- the list ---------------------------------------------------------------------------
 
+    /// <summary>
+    /// The list, optionally narrowed by <paramref name="q"/>.
+    ///
+    /// A plain GET parameter, filtered before paging. With forty endpoints, finding one meant
+    /// walking two pages of a table — and the filter has to happen in the database rather than in
+    /// the browser, because the browser only ever has twenty-five of them.
+    /// </summary>
     [HttpGet("")]
     [Authorize(Policy = Policies.ViewProject)]
-    public async Task<IActionResult> Index(Guid projectId, int? page, CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(
+        Guid projectId, int? page, string? q, CancellationToken cancellationToken)
     {
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, cancellationToken);
         if (project is null) return NotFound();
 
+        var term = (q ?? string.Empty).Trim();
+
         var query = db.Baselines.Where(b => b.ProjectId == projectId && b.ArchivedAt == null);
+
+        if (term.Length > 0)
+        {
+            // Name and address both, because after an import the name is whatever the collection
+            // called the folder and «/orders» is the part somebody actually remembers. The address
+            // lives inside the stored request document rather than in a column of its own, so the
+            // match is on the document — a slightly wider net than the address alone, which is the
+            // right way round for a filter box.
+            query = query.Where(b => b.Name.Contains(term)
+                                     || (b.RequestJson != null && b.RequestJson.Contains(term)));
+        }
 
         var total = await query.CountAsync(cancellationToken);
         var current = Paging.Clamp(page, Paging.DefaultPageSize, total);
@@ -195,12 +216,17 @@ public sealed class EndpointsController(
                     Recent = history.GetValueOrDefault(row.Id, []),
                 };
             })],
+            Query = term.Length == 0 ? null : term,
             Page = new Paging
             {
                 Page = current,
                 PageSize = Paging.DefaultPageSize,
                 Total = total,
                 Path = $"/projects/{projectId}/endpoints",
+                // The filter travels with the page number. Without this, page two of a narrowed
+                // list is the whole list again — and it happens silently, which is the worst way
+                // for a filter to fail.
+                Query = term.Length == 0 ? string.Empty : $"&q={Uri.EscapeDataString(term)}",
             },
             CanRecord = canRecord,
         });

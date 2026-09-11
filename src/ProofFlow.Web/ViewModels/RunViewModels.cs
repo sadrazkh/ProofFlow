@@ -29,6 +29,21 @@ public sealed class RunListViewModel
     public required IReadOnlyList<RunSummaryRow> Runs { get; init; }
 
     public bool CanRun { get; init; }
+
+    /// <summary>The scenario name the history was narrowed by, or null when it was not.</summary>
+    public string? Query { get; init; }
+
+    /// <summary>The verdict it was narrowed to, or null for all of them.</summary>
+    public RunStatus? Status { get; init; }
+
+    /// <summary>
+    /// True when either filter is set.
+    ///
+    /// The two empty states are different facts — «nothing has run here yet» and «nothing ran that
+    /// matches this» — and telling somebody to go and write a scenario when they have forty runs
+    /// and a typo is the sort of help that makes people stop reading empty states.
+    /// </summary>
+    public bool Narrowed => Query is not null || Status is not null;
 }
 
 /// <summary>
